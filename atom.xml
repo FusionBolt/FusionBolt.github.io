@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>FusionBolt&#39;s Blog</title>
+  
+  
+  <link href="https://fusionbolt.github.io/atom.xml" rel="self"/>
+  
+  <link href="https://fusionbolt.github.io/"/>
+  <updated>2021-04-01T08:07:00.010Z</updated>
+  <id>https://fusionbolt.github.io/</id>
+  
+  <author>
+    <name>FusionBolt</name>
+    
+  </author>
+  
+  <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>作为应届生我在找工作中经历了什么</title>
+    <link href="https://fusionbolt.github.io/2021/04/01/%E4%BD%9C%E4%B8%BA%E5%BA%94%E5%B1%8A%E7%94%9F%E6%88%91%E5%9C%A8%E6%89%BE%E5%B7%A5%E4%BD%9C%E4%B8%AD%E7%BB%8F%E5%8E%86%E4%BA%86%E4%BB%80%E4%B9%88/"/>
+    <id>https://fusionbolt.github.io/2021/04/01/%E4%BD%9C%E4%B8%BA%E5%BA%94%E5%B1%8A%E7%94%9F%E6%88%91%E5%9C%A8%E6%89%BE%E5%B7%A5%E4%BD%9C%E4%B8%AD%E7%BB%8F%E5%8E%86%E4%BA%86%E4%BB%80%E4%B9%88/</id>
+    <published>2021-04-01T02:40:29.000Z</published>
+    <updated>2021-04-01T08:07:00.010Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="特别感谢"><a href="#特别感谢" class="headerlink" title="特别感谢"></a>特别感谢</h2><p>对于在我找工作中给予我建议、帮我内推、以及提供其他各种帮助的人，我在此表示衷心的感谢</p><h2 id="概要"><a href="#概要" class="headerlink" title="概要"></a>概要</h2><p>本文讲述了我作为一个普通的二本本科应届生，在找工作中遇到的一些<strong>有代表性的经历</strong>，希望你能提前了解找工作的时候都<strong>可能会遇到什么困难</strong>，以便能够有更好的心态、更充足的准备去应对这些</p><p><strong>注：</strong></p><p><strong>本文对 神仙/offer收割机 不具备任何参考价值</strong></p><p><strong>本文不会出现具体的公司名，不会写太多教你写简历教你面试的内容</strong></p><h2 id="大四开始"><a href="#大四开始" class="headerlink" title="大四开始"></a>大四开始</h2><p>因为大四上还有很多课，天真的认为等到来年二三月再找工作也不迟，所以我大三的暑假依然在做自己的东西也没有专门做什么准备，然而后来证明这个想法完全是错误的，因为很多岗位可能秋招就会收满，春招岗位就会少很多</p><p>九月份不知怎么想的，匆匆忙忙刷了几十道题开始找起了工作</p><p>本着觉得“校招是进大厂最好的机会“以及”第一份工作尽可能要找好“的想法，最初都在投一些大厂，现在的我看来或许有些不自量力了</p><h3 id="第一次吃瘪"><a href="#第一次吃瘪" class="headerlink" title="第一次吃瘪"></a>第一次吃瘪</h3><p>最早投递的是大厂A，这是唯一一场相对友好的笔试。尽管有内推码也顺利的通过了笔试，但是简历还是被刷下去了。</p><p>这里也有当时的简历做的并不好的原因。项目经验写的相对较少，而且描述的也不够好，后来被网友一顿指导算是改进了很多</p><h3 id="石沉大海"><a href="#石沉大海" class="headerlink" title="石沉大海"></a>石沉大海</h3><p>投递了大厂B，依然有内推码，可是连笔试的机会都没有得到</p><h3 id="恐怖的笔试"><a href="#恐怖的笔试" class="headerlink" title="恐怖的笔试"></a>恐怖的笔试</h3><p>之后投递了大厂C，一打开考试页面全是算法题，而且数量达到了5道，别说做了，经验比较少的我看到这种场景心态都有点崩，加上一紧张做不出题，最后做了一道就走人了</p><h3 id="简历内推遭拒"><a href="#简历内推遭拒" class="headerlink" title="简历内推遭拒"></a>简历内推遭拒</h3><p>看到大厂D有直接给简历的内推，于是我把简历投上去试了一下，然而最后的结果也是直接被拒掉</p><p>之后又经过种种吃瘪不想继续投下去了，于是继续回到日常校园生活的状态。直到年后又开始找起了工作</p><h2 id="年后"><a href="#年后" class="headerlink" title="年后"></a>年后</h2><h3 id="boss直聘"><a href="#boss直聘" class="headerlink" title="boss直聘"></a>boss直聘</h3><p>在boss直聘上翻了很久，由于之前有过实习经历因此找的对应领域的岗位（认为这样概率会高一些），找到了几家还可以的岗位投递了一遍。最后只有一家回复我，还不要应届生</p><p>过后我才意识到，自己的简历只适合懂技术的人帮我内推进去，并不适合不懂技术的HR筛人，因为普通的HR看简历只会去匹配关键词</p><p>如果你想在这种招聘平台上招聘，简历内容务必往招聘要求的<strong>关键词</strong>上靠</p><h3 id="学校与专业筛选"><a href="#学校与专业筛选" class="headerlink" title="学校与专业筛选"></a>学校与专业筛选</h3><p>很多公司明确要求211/985，也有的不太明说但是不是一本就会被拒，如果读者的学校差一些，希望能够提前做好心理准备</p><p>还有部分公司会明确要求相关专业，我有一个转行的朋友前天还跟我讲因为非相关专业加上他学历也是二本所以被拒过很多次，具体相关专业是哪些还是要看招聘信息</p><h3 id="一次意外"><a href="#一次意外" class="headerlink" title="一次意外"></a>一次意外</h3><p>推特的推友帮忙内推，因为我是专升本，投递过去的简历上没有写专科的教育经历（由于之前种种受挫因此那一段时间我删掉了这一块内容，借此能够获得面试机会），最终被判定为不诚信被拒绝了</p><h3 id="简历内推"><a href="#简历内推" class="headerlink" title="简历内推"></a>简历内推</h3><p>由于一段时间都没有找到工作，又看到某公司很不错的岗位收简历内推，于是抱着试试看的心态投了过去，之后对方也没有什么回复，肯定是无了</p><h3 id="自己给自己挖坑"><a href="#自己给自己挖坑" class="headerlink" title="自己给自己挖坑"></a>自己给自己挖坑</h3><p>被另一个推友内推进了某厂，由于简历上写着蓝桥杯的获奖经历，面试官多问了算法题，因此卒（吓得我面完就赶紧删掉了这块内容，再也不敢写了…）</p><h3 id="人才库"><a href="#人才库" class="headerlink" title="人才库"></a>人才库</h3><p>关于这个网上应该能看到不少，投递某家公司后会直接给你发邮件，提示你进入人才库（基本上就是婉拒了）</p><h2 id="一些没提及的小建议"><a href="#一些没提及的小建议" class="headerlink" title="一些没提及的小建议"></a>一些没提及的小建议</h2><ol><li><p>关于找工作的渠道：除了大厂的官网投递或者内推外，还比较推荐boss直聘和拉勾网，二其他找工作的平台我觉得对于应届生来说用处不大。V2EX的酷工作栏偶尔会有比较不错的岗位，但是绝大部分都是大厂的招聘，时间多可以去逛一逛</p></li><li><p>如果你现在是大二，也可以提前试着去找实习，早找可以多积累一些经验</p></li><li><p>如果学校那边跑不开，可以试着找一下可远程的实习。允许远程的实习可能很少，多留意一下各种平台</p></li><li><p>敢于将自己的作品放到GitHub上（尽管你可能会觉得不自信认为自己做的不好），否则机会可能从你身边溜走，面试之前也一定要回顾自己做的东西的细节</p></li><li><p>想去大厂基本上就是多刷题，优先剑指offer</p></li></ol><h2 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h2><p>读到最后你可能会好奇，怎么基本上都是投递简历相关的内容？</p><p>来来回回投过的大概几十家，实际上我只收到三家公司的面试机会，除了第一家算法翻了车其他两家都相对顺利，所以没有太多面试上的经验</p><p>如果你不是什么神仙或者offer收割机，不管遇到什么问题都是很正常的，如果没戏了就再加油投下一家公司试一试</p><p>希望本文内容能够对读者有所帮助，也希望每一位读者能够找到自己心仪的工作</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;h2 id=&quot;特别感谢&quot;&gt;&lt;a href=&quot;#特别感谢&quot; class=&quot;headerlink&quot; title=&quot;特别感谢&quot;&gt;&lt;/a&gt;特别感谢&lt;/h2&gt;&lt;p&gt;对于在我找工作中给予我建议、帮我内推、以及提供其他各种帮助的人，我在此表示衷心的感谢&lt;/p&gt;
+&lt;h2 id=&quot;概要&quot;&gt;&lt;a </summary>
+      
+    
+    
+    
+    
+  </entry>
+  
+  <entry>
+    <title>Hello World</title>
+    <link href="https://fusionbolt.github.io/2021/04/01/hello-world/"/>
+    <id>https://fusionbolt.github.io/2021/04/01/hello-world/</id>
+    <published>2021-04-01T02:15:52.285Z</published>
+    <updated>2021-04-01T02:15:52.285Z</updated>
+    
+    <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;Welcome to &lt;a href=&quot;https://hexo.io/&quot;&gt;Hexo&lt;/a&gt;! This is your very first post. Check &lt;a href=&quot;https://hexo.io/docs/&quot;&gt;documentation&lt;/a&gt; for</summary>
+      
+    
+    
+    
+    
+  </entry>
+  
+</feed>

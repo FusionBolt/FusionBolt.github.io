@@ -2001,6 +2001,7 @@ pre .javascript .function {
   line-height: 1.8;
   text-align: center;
   color: var(--default-text-color);
+  white-space: pre-wrap;
 }
 @media (max-width: 780px) {
   .first-screen-container .content .description {

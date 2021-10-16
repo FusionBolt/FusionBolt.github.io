@@ -32,5 +32,5 @@ tags:
 
 带上一份歪歪扭扭的签名
 
-![](/images/sign.jpg)
+![](sign.jpg)
 

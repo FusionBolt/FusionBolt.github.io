@@ -1,6 +1,7 @@
 ---
 title: 所坚信的事情
 date: 2021-08-23 19:33:16
+category: Thinking
 tags:
 ---
 

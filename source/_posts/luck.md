@@ -1,6 +1,7 @@
 ---
 title: 运气
 date: 2021-06-12 10:28:45
+category: Thinking
 tags:
 ---
 

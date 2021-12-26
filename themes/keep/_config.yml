@@ -61,9 +61,9 @@ social_contact:
     qq:              # your QQ QR-Code URL
     weibo:           # your WeiBo URL
     zhihu:           # your ZhiHu URL
-    twitter: https://twitter.com/RealFusionCat        # your twitter URL
+    twitter: https://twitter.com/RealAkemiHomura        # your twitter URL
     email: RealFusionBolt@gmail.com          # your email
-    telegram: https://t.me/realfusioncat 
+    telegram: https://t.me/RealAkemiHomura 
 
 
 # ---------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ social_contact:
 menu:
   Home: /
   Archives: /archives
-  # Categories: /categories
+  Categories: /categories
   # Tags: /tags
   Links: /links
   About: /about
@@ -85,7 +85,7 @@ menu:
 # ---------------------------------------------------------------------------------------
 home_article:
   category:
-    enable: false     # show category in home page article block
+    enable: true     # show category in home page article block
     limit: 3          # max number of categories shown in home page article block
   tag:
     enable: false     # show tags in home page article block
@@ -106,10 +106,10 @@ post:
 
   # Author label
   author_label:
-    enable: false
-    auto: true  # if true, show Lv1, Lv2, Lv3... , If false, show custom label
+    enable: true
+    auto: false  # if true, show Lv1, Lv2, Lv3... , If false, show custom label
     # label array item can be one or more
-    custom_label_list: [ "Trainee", "Engineer", "Architect", "CTO", "BOSS" ]
+    custom_label_list: [ "我摸到了！" ]
 
 
 # ---------------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ toc:
   expand_all: true
 
   # If true, open TOC every time when you enter the article page
-  init_open: false
+  init_open: true
 
 
 # ---------------------------------------------------------------------------------------
@@ -170,15 +170,15 @@ local_search:
 # Comment plugin
 # ---------------------------------------------------------------------------------------
 comment:
-  enable: false
+  enable: true
   use: valine  # values: valine | gitalk | twikoo
 
   # Valine
   # See: https://github.com/xCss/Valine
   valine:
-    appid:                # your leancloud application appid
-    appkey:               # your leancloud application appkey
-    placeholder:          # your placeholder
+    appid: GgKArodH4nvO7GwLme58UA9d-MdYXbMMI # your leancloud application appid
+    appkey: RUqlCVwFcwl8pGhmvXHnekWi # your leancloud application appkey
+    placeholder: 想说些什么？         # your placeholder
 
   # Gitalk
   # See: https://github.com/gitalk/gitalk

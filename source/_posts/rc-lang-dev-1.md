@@ -2,7 +2,7 @@
 title: Rc-lang开发周记1 中间代码表示
 date: 2021-12-26 11:41:17
 category: Compiler
-tags: rc-lang
+tags: Rc-lang
 ---
 
 本周前面的时间主要选择了重新整理项目结构以及修正了自己滥用require_relative的问题，后面的话则是开始对ast to tac进行测试，尝试通过TDD的方式在开发效率和质量确保找到一个平衡点。

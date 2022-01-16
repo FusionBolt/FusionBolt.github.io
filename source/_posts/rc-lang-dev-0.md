@@ -2,7 +2,7 @@
 title: Rc-lang开发周记0 基本块与if重排
 date: 2021-12-19 22:06:35
 category: Compiler
-tags: rc-lang
+tags: Rc-lang
 ---
 
 目前的工作重心在于将ast转换为tac指令。

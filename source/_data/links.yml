@@ -1,4 +1,9 @@
-- name: 友链征集～
-  link: 404
-  description: Nil
-  avatar: Nil
+- name: 毛利
+  link: https://mouri.moe
+  description: 大贤者
+  avatar: /images/mouri.jpeg
+
+- name: 夏幻
+  link: https://madoka.moe/wordpress/
+  description: 夏幻今天有新女装了吗
+  avatar: /images/natsu.jpeg

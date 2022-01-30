@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            Rc-lang开发周记4 函数其一 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">Rc-lang开发周记4 函数其一</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-01-16 17:03:13
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        &gt; <a href="/categories/VM/">VM</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.2k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>8 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>本周主要是修复了之前C++代码生成的一些bug，之后开始搞函数定义与调用的部分。</p>
+<h1 id="函数解析方式"><a href="#函数解析方式" class="headerlink" title="函数解析方式"></a>函数解析方式</h1><p>这里我一开始没想好怎么做的，所以会做的很诡异，最大的原因是静态类型语言和动态类型语言是不同的。由于我只对动态语言有一些了解，这里暂时只提动态语言的一些点</p>
+<h2 id="动态语言"><a href="#动态语言" class="headerlink" title="动态语言"></a>动态语言</h2><p>手头动态类型语言的资料是相对较多的，而实际看编译出的产物也是相对熟悉一些。</p>
+<p>对于Ruby和Python来说，函数都是动态定义的。因此解析到一个函数的时候会产生一个定义函数的指令</p>
+<p>Ruby</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0000</span> definemethod     <span class="symbol">:foo</span>, foo      (   <span class="number">1</span>)[Li]</span><br></pre></td></tr></table></figure>
+
+<p>（后面的1是行号）</p>
+<p>Python</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span><span class="params">()</span></span>:</span><br><span class="line"><span class="number">0</span> LOAD_CONST    <span class="number">0</span> (code object f)</span><br><span class="line"><span class="number">3</span> MAKE_FUNCTION <span class="number">0</span></span><br><span class="line"><span class="number">6</span> STORE_NAME    <span class="number">0</span> (f)</span><br></pre></td></tr></table></figure>
+
+<p>而函数本体内容则是创建了一个函数对象并放到了其他的位置，以及地址是重新从0开始的。这个地址应该是相对地址，因为会动态装载</p>
+<p>这两个的源代码不一样的，只是想展示地址都是从0开始。dump出来的内容差异也比较大</p>
+<p>Ruby</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">foo</span></span></span><br><span class="line"> a = <span class="number">3</span> * <span class="number">2</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">== <span class="symbol">disasm:</span> #&lt;ISeq:foo@&lt;compiled&gt;<span class="symbol">:</span><span class="number">9</span> (<span class="number">9</span>,<span class="number">0</span>)-(<span class="number">11</span>,<span class="number">3</span>)&gt; (<span class="symbol">catch:</span> FALSE)</span><br><span class="line">local table (<span class="symbol">size:</span> <span class="number">1</span>, <span class="symbol">argc:</span> <span class="number">0</span> [<span class="symbol">opts:</span> <span class="number">0</span>, <span class="symbol">rest:</span> -<span class="number">1</span>, <span class="symbol">post:</span> <span class="number">0</span>, <span class="symbol">block:</span> -<span class="number">1</span>, <span class="symbol">kw:</span> -<span class="number">1</span>@-<span class="number">1</span>, <span class="symbol">kwrest:</span> -<span class="number">1</span>])</span><br><span class="line">[ <span class="number">1</span>] a<span class="variable">@0</span></span><br><span class="line"><span class="number">0000</span> putobject                              <span class="number">3</span>                         (  <span class="number">10</span>)[LiCa]</span><br><span class="line"><span class="number">0002</span> putobject                              <span class="number">2</span></span><br><span class="line"><span class="number">0004</span> opt_mult                               &lt;calldata!<span class="symbol">mid:</span>*, <span class="symbol">argc:</span><span class="number">1</span>, ARGS_SIMPLE&gt;[CcCr]</span><br><span class="line"><span class="number">0006</span> dup</span><br><span class="line"><span class="number">0007</span> setlocal_WC_0                          a<span class="variable">@0</span></span><br><span class="line">0009 leave</span><br></pre></td></tr></table></figure>
+
+<p>Python（函数体被编译成的内容</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f</span><span class="params">()</span></span>:</span><br><span class="line">	print(<span class="string">&quot;Function&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0</span> LOAD_CONST <span class="number">1</span> (“Function”)</span><br><span class="line"><span class="number">3</span> PRINT_ITEM</span><br><span class="line"><span class="number">4</span> PRINT_NEWLINE</span><br><span class="line"><span class="number">5</span> LOAD_CONST <span class="number">0</span> (None)</span><br><span class="line"><span class="number">8</span> RETURN_VALUE</span><br></pre></td></tr></table></figure>
+
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p>一开始是想仿照做一个动态的实现，但是后来觉得还是静态的好，导致产生了如下的代码。</p>
+<p>对于一个函数，我生成了一个DefineFun。FunLabel是因为我不知道它们是如何判断函数结尾到哪里的，这属于我当时的一个理解错误，编译的时候函数体的内容会被编译好放到其他位置，而不是说运行时再看到一个函数的标签，再将之后的一段代码跳过。</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 只展示关键部分</span></span><br><span class="line"><span class="comment"># 错误版本</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_function</span><span class="params">(node)</span></span></span><br><span class="line">  [DefineFun.new(node.name), <span class="keyword">super</span>(node), Return.new, FunEnd.new]</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>正确的做法应当是在编译的时候就将这些代码单独放到其他位置，运行时再进行装载。</p>
+<h1 id="调用无参函数"><a href="#调用无参函数" class="headerlink" title="调用无参函数"></a>调用无参函数</h1><p>函数调用我们先从简单的无参函数说起</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f1</span></span></span><br><span class="line">    a = <span class="number">1</span></span><br><span class="line">    <span class="number">1</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="target"><a href="#target" class="headerlink" title="target"></a>target</h2><p>那么首先，我们需要考虑到call的target如何来做处理。很自然的会想到target可以使用字符串。</p>
+<p>尽管使用字符串的话会导致指令长度膨胀，解析复杂等。但目前不考虑那些，解析的也是字符串指令，所以先这样</p>
+<h2 id="去哪里找目标函数的信息"><a href="#去哪里找目标函数的信息" class="headerlink" title="去哪里找目标函数的信息"></a>去哪里找目标函数的信息</h2><p>这个自然来说是需要符号表中保存了</p>
+<h3 id="符号表中的函数信息"><a href="#符号表中的函数信息" class="headerlink" title="符号表中的函数信息"></a>符号表中的函数信息</h3><p>对于符号表来说，表中条目需要保存的信息有以下几条</p>
+<ol>
+<li>参数个数（目前全部为无类型，因此返回类型也无需考虑）</li>
+<li>local变量的信息</li>
+<li>函数体的指令地址</li>
+</ol>
+<p>这些<strong>目前</strong>来说都是编译期间可知的，所以也会以字符串的方式dump出来供vm去解析。至于函数体地址的问题牵扯到链接，而目前我们先不需要考虑链接的情况，只需要将生成的符号表中的地址加载进来就好了。</p>
+<h3 id="生成符号表"><a href="#生成符号表" class="headerlink" title="生成符号表"></a>生成符号表</h3><p>由于以上需求，我们在编译的时候需要生成符号表信息</p>
+<p>我们之前设计的全局符号表是这样的</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GlobalEnv</span> &lt; Struct.<span class="title">new</span>(:<span class="title">define_env</span>,:<span class="title">const_table</span>, :<span class="title">fun_env</span>)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>暂时不考虑常量表，我们需要的是剩下两个表的信息。</p>
+<p>生成vm指令这个阶段会将一个全局定义表（define_env，目前仅存其定义），将其定义更改为args以及offset</p>
+<p>offset都是未知的所以先设置为一个未定义值，因为我是通过返回数组并且把数组连接起来的形式，所以这个时候并不知道偏移量。这里用一个数组存放值的做法实在很差劲，但是实在没精力改进了…先能跑吧</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_function</span><span class="params">(node)</span></span></span><br><span class="line">    ...  </span><br><span class="line">    <span class="variable">@global_env</span>.define_env[node.name] = [node.args, <span class="string">&#x27;undefined&#x27;</span>]</span><br><span class="line">    ...</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>重新设置偏移量</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">inst.each_with_index <span class="keyword">do</span> <span class="params">|ins, index|</span>  </span><br><span class="line">    <span class="keyword">if</span> ins.is_a? DefineFun    </span><br><span class="line">        <span class="variable">@global_env</span>.define_env[ins.name][<span class="number">1</span>] = index  </span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>而fun_env表，则是保存了每个表的参数以及局部变量的信息。拥有fun_env表和define_env表（这两个表其实应该合并，下次一定…）的信息，我们就能够生成出上面所需的信息了</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">gen_sym_table</span><span class="params">(global_env)</span></span>  </span><br><span class="line">    global_env.define_env.map <span class="keyword">do</span> <span class="params">|name, (args, offset)|</span></span><br><span class="line">        <span class="string">&quot;<span class="subst">#&#123;name&#125;</span> <span class="subst">#&#123;args.size&#125;</span> <span class="subst">#&#123;global_env.fun_env[name].size&#125;</span> <span class="subst">#&#123;offset&#125;</span>&quot;</span>  </span><br><span class="line">    <span class="keyword">end</span>.join(<span class="string">&quot;\n&quot;</span>)</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>生成示例 格式为 函数名，参数个数，local var个数，起始地址</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">multi <span class="number">2</span> <span class="number">2</span> <span class="number">0</span>main <span class="number">0</span> <span class="number">1</span> <span class="number">6</span></span><br></pre></td></tr></table></figure>
+
+<p>函数符号表中的条目</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FunInfo</span></span></span><br><span class="line"><span class="class">&#123;</span>    </span><br><span class="line">    <span class="built_in">FunInfo</span>(): <span class="built_in">FunInfo</span>(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>) &#123;&#125;    </span><br><span class="line">    <span class="built_in">FunInfo</span>(<span class="keyword">size_t</span> _argc, <span class="keyword">size_t</span> _locals, <span class="keyword">size_t</span> _begin): <span class="built_in">argc</span>(_argc), <span class="built_in">locals</span>(_locals), <span class="built_in">begin</span>(_begin) &#123;&#125;    </span><br><span class="line">    <span class="built_in">FunInfo</span>(constFunInfo&amp; other) =<span class="keyword">default</span>;    </span><br><span class="line">    <span class="built_in">FunInfo</span>(FunInfo&amp;&amp; other) =<span class="keyword">default</span>;    </span><br><span class="line">    FunInfo&amp;<span class="keyword">operator</span>=(constFunInfo&amp; other) =<span class="keyword">default</span>;    </span><br><span class="line">    FunInfo&amp;<span class="keyword">operator</span>=(FunInfo&amp;&amp; other) =<span class="keyword">default</span>;    </span><br><span class="line">    <span class="keyword">size_t</span> argc;    </span><br><span class="line">    <span class="keyword">size_t</span> locals;    </span><br><span class="line">    <span class="keyword">size_t</span> begin;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="调用栈"><a href="#调用栈" class="headerlink" title="调用栈"></a>调用栈</h2><p>既然要调用函数，那么就需要调用栈这个东西了</p>
+<p>就目前的需求来说，调用栈中的栈帧需要有以下几种成员</p>
+<ol>
+<li>前一个栈帧（跟踪整个调用链）</li>
+<li>返回的pc地址（函数调用结束后需要返回到调用者）</li>
+<li>当前栈帧在栈中的起始地址（起始地址开始分配局部变量的空间）</li>
+</ol>
+<p>关于多个栈帧之间的存储方式，由于需要频繁添加删除尾部结点，因此选择了链表的方式。如果使用数组的话会牵扯到长度不够再重新分配数组空间的情况</p>
+<p>而实际栈内数据的布局是</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">----------------</span><br><span class="line">    tmp var</span><br><span class="line">----------------        f1</span><br><span class="line">    local var</span><br><span class="line">----------------  ----------------</span><br><span class="line">    tmp var</span><br><span class="line">----------------        main</span><br><span class="line">    local var</span><br><span class="line">----------------</span><br></pre></td></tr></table></figure>
+
+<p>注意这里和实际的栈不同，对于实际的栈来说类似于返回的pc地址，以及前一个栈帧的地址都是保存在栈内的</p>
+<h2 id="返回值"><a href="#返回值" class="headerlink" title="返回值"></a>返回值</h2><p>目前的设计是返回值最后放到栈顶，这样返回的时候直接从栈顶取值，之后再恢复栈就可以了</p>
+<h1 id="调用带参数的函数"><a href="#调用带参数的函数" class="headerlink" title="调用带参数的函数"></a>调用带参数的函数</h1><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f1</span><span class="params">(a, b)</span></span>	</span><br><span class="line">    c = a + b	</span><br><span class="line">    c</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="参数传递"><a href="#参数传递" class="headerlink" title="参数传递"></a>参数传递</h2><p>目前采用的是push的方式直接push参数，这个体现在函数调用的时候编译出的指令上</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_fun_call</span><span class="params">(fun_call)</span></span></span><br><span class="line">    fun_call.args.map &#123; <span class="params">|arg|</span> push(visit(arg)) &#125; + [Call.new(fun_call.name)]  </span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>栈内数据排布</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">----------------</span><br><span class="line">    tmp var</span><br><span class="line">----------------</span><br><span class="line">    local var           f1</span><br><span class="line">---------------- </span><br><span class="line">      args</span><br><span class="line">----------------  ----------------</span><br><span class="line">     tmp var</span><br><span class="line">----------------</span><br><span class="line">    local var           main</span><br><span class="line">---------------- </span><br><span class="line">      args</span><br><span class="line">----------------</span><br></pre></td></tr></table></figure>
+
+<p>关于参数传递的话题其实还有很多，比如说顺序，变长参数，谁来释放，在之后的内容再一点点补足</p>
+<h1 id="正文无关闲谈"><a href="#正文无关闲谈" class="headerlink" title="正文无关闲谈"></a>正文无关闲谈</h1><p>首先是最重要的一点：本周的内容就充满了各种应付式的内容，这在往期我都是会直接当场修改掉的，但实属有些无力…我在想这样的内容发出来会不会很不负责任，但是如果停更那我所做出的每周更新的承诺这么快就要被打破了，而且以后更容易不遵守了。</p>
+<p>本周的内容相对少的多，最加对于压力的感知更加明显了，尽管我反复将注意力转移到当前做的事情上（每天也会有对应冥想练习），但很多事情依然力不从心。时间安排的太满，我不会的太多，但每一项我都无法舍弃，最后分配到做这个的时间真的不多了，还要一边查看各种实现学习一边写，好多东西都是周日写的时候才学习修改的。学习实现基本上也是靠看书，看前人总结过的内容，对于大型项目实在没有精力去扒。这周还在看Ruby的YJIT的论文，本就不多的时间更没多少了，最后论文也没看多少（就看了几段介绍…），这篇论文读明白后也会再出一篇博客，尽管只看了一点但也让我增加了许多JIT方面的常识</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3486606.3486781" >YJIT: a basic block versioning JIT compiler for CRuby<i class="fas fa-external-link-alt"></i></a></p>
+<p>如何能摆脱这种状态，如果读者有经验还请赐教</p>
+<p>如果我是学生的时候就能开始做这件事情就好了..可是没有那么多如果</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：Rc-lang开发周记4 函数其一</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-01-16 17:03:13</li>
+        <li>
+            本文链接：https://homura.live/2022/01/16/rc-lang-dev-4/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/01/23/rc-lang-dev-5/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记5 函数其二&amp;OOP其一</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/01/09/rc-lang-dev-3/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记3 生成C++代码</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E8%A7%A3%E6%9E%90%E6%96%B9%E5%BC%8F"><span class="nav-number">1.</span> <span class="nav-text">函数解析方式</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E8%AF%AD%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">动态语言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.2.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B0%83%E7%94%A8%E6%97%A0%E5%8F%82%E5%87%BD%E6%95%B0"><span class="nav-number">2.</span> <span class="nav-text">调用无参函数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#target"><span class="nav-number">2.1.</span> <span class="nav-text">target</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8E%BB%E5%93%AA%E9%87%8C%E6%89%BE%E7%9B%AE%E6%A0%87%E5%87%BD%E6%95%B0%E7%9A%84%E4%BF%A1%E6%81%AF"><span class="nav-number">2.2.</span> <span class="nav-text">去哪里找目标函数的信息</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E8%A1%A8%E4%B8%AD%E7%9A%84%E5%87%BD%E6%95%B0%E4%BF%A1%E6%81%AF"><span class="nav-number">2.2.1.</span> <span class="nav-text">符号表中的函数信息</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%9F%E6%88%90%E7%AC%A6%E5%8F%B7%E8%A1%A8"><span class="nav-number">2.2.2.</span> <span class="nav-text">生成符号表</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E7%94%A8%E6%A0%88"><span class="nav-number">2.3.</span> <span class="nav-text">调用栈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%94%E5%9B%9E%E5%80%BC"><span class="nav-number">2.4.</span> <span class="nav-text">返回值</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B0%83%E7%94%A8%E5%B8%A6%E5%8F%82%E6%95%B0%E7%9A%84%E5%87%BD%E6%95%B0"><span class="nav-number">3.</span> <span class="nav-text">调用带参数的函数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E6%95%B0%E4%BC%A0%E9%80%92"><span class="nav-number">3.1.</span> <span class="nav-text">参数传递</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%AD%A3%E6%96%87%E6%97%A0%E5%85%B3%E9%97%B2%E8%B0%88"><span class="nav-number">4.</span> <span class="nav-text">正文无关闲谈</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

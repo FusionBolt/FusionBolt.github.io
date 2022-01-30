@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            Rc-lang开发周记3 生成C++代码 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">Rc-lang开发周记3 生成C++代码</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-01-09 12:00:35
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Ruby/">Ruby</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/%E5%85%83%E7%BC%96%E7%A8%8B/">元编程</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.7k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>11 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>由于元旦第二天开始状态奇差，本周并没有增加太多内容，周记的内容也会相对少一些。以及本周的内容主要在于生成C++的代码，更多的是Ruby的元编程技巧。</p>
+<h1 id="指令定义"><a href="#指令定义" class="headerlink" title="指令定义"></a>指令定义</h1><p>每个指令有一个InstType的枚举字段来标明类型</p>
+<p>所有指令继承自一个VMInst类</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">VMInst</span> &#123;</span></span><br><span class="line">    InstType type;</span><br><span class="line"><span class="keyword">protected</span>:</span><br><span class="line">    <span class="built_in">VMInst</span>(InstType t) : <span class="built_in">type</span>(t) &#123;&#125;;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Addr</span> :</span> VMInst &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">    <span class="built_in">Addr</span>(<span class="keyword">int</span> offset, string seg) : <span class="built_in">VMInst</span>(InstType::Addr), _offset(offset), _seg(seg) &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">    <span class="keyword">int</span> _offset;</span><br><span class="line">    string _seg;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h1 id="C-解析"><a href="#C-解析" class="headerlink" title="C++解析"></a>C++解析</h1><p>最主要的问题是要如何让C++解析这边生成的东西。我目前就选用了最简单粗暴的方法，直接生成字符串，用空格分离参数，用换行分离指令</p>
+<h1 id="获取所有指令信息"><a href="#获取所有指令信息" class="headerlink" title="获取所有指令信息"></a>获取所有指令信息</h1><h2 id="获取有哪些指令"><a href="#获取有哪些指令" class="headerlink" title="获取有哪些指令"></a>获取有哪些指令</h2><p>我将所有的指令都放到了Rc::VM::Inst中，通过获取这个module的所有constant，判断哪些是Class</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_classes</span><span class="params">(mod)</span></span></span><br><span class="line">	mod.constants.map&#123;<span class="params">|c|</span> mod.const_get(c)&#125;.select&#123;<span class="params">|c|</span> c.is_a? Class&#125;.sort_by&#123; <span class="params">|klass|</span> klass.to_s &#125;</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line">classes = get_classes(Rc::VM::Inst)</span><br></pre></td></tr></table></figure>
+
+<p>通过这个代码能够获取到Inst这个模块中的所有指令</p>
+<ol>
+<li>获取每个指令里面是怎么样的</li>
+</ol>
+<p>由于ruby并没有定义成员类型的东西，因此我选择自己造一个指定成员类型的东西</p>
+<p>有两种实现</p>
+<h2 id="实现方式"><a href="#实现方式" class="headerlink" title="实现方式"></a>实现方式</h2><h3 id="TypeStruct"><a href="#TypeStruct" class="headerlink" title="TypeStruct"></a>TypeStruct</h3><p>第一种是将Struct给包装一层，我给其命名为TypeStruct</p>
+<p><strong>使用方式</strong></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">CondJump</span> &lt;</span> TypeStruct.<span class="built_in"><span class="keyword">new</span></span>(:cond, :addr =&gt; :<span class="keyword">int</span>)</span><br><span class="line">  def to_s</span><br><span class="line">    <span class="string">&quot;CondJump #&#123;cond&#125; #&#123;addr&#125;&quot;</span></span><br><span class="line">  end</span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p>类似于常规的Struct的使用方式，但是输入变成了可以是一个hash</p>
+<p><strong>实现</strong></p>
+<ol>
+<li><p>实现的一个要点在于new返回的东西需要是一个class。那么我们需要知道Ruby中new是怎么运作的</p>
+<p>常规的对象来说，new中会做三件事。class MemberMap  def initialize(type_defines)    @type_defines = type_defines  end  def generate(c = “\n”, &amp;f)    @type_defines.generate(c, &amp;f)  end  def keys    @type_defines.map { |td| td.name }  endend通过allocate分配空间，send initialize方法进行构造对象，最后将obj返回。而在这里只要修改返回的内容即可</p>
+</li>
+<li><p>另一个要点在于需要给返回的class添加一些实例方法</p>
+<p>这里我们需要先理解常规的Struct.new做了什么，在我的理解本质上是返回了一个通过动态添加定义的匿名class，那么我们需要的是给这个匿名class添加一些方法来定义</p>
+<p>那么我们很自然的就会想到将所有传给new的参数转换为每一个成员以及与之相应的类型定义，之后再对其中每一对“成员名⇒类型”定义对应的获取类型的方法</p>
+</li>
+<li><p>保存一个type_map，用于后面获取信息使用</p>
+</li>
+</ol>
+<p>来看一下代码</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">args_to_hash</span><span class="params">(*args)</span></span></span><br><span class="line">  args.reduce(&#123;&#125;) <span class="keyword">do</span> <span class="params">|sum, arg|</span></span><br><span class="line">    sum.merge(</span><br><span class="line">      <span class="keyword">if</span> arg.is_a? Hash</span><br><span class="line">        arg</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        &#123; arg =&gt; <span class="symbol">:str</span> &#125;</span><br><span class="line">      <span class="keyword">end</span>)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TypeStruct</span></span></span><br><span class="line">  <span class="keyword">include</span> TypeCheck</span><br><span class="line">  def <span class="keyword">self</span>.new(*args, &amp;block)</span><br><span class="line">    <span class="comment"># if don&#x27;t have allocate, will be nil class</span></span><br><span class="line">    obj = allocate</span><br><span class="line">    <span class="comment"># initialize is a private method</span></span><br><span class="line">    <span class="comment"># initialize must be send instead of direct call</span></span><br><span class="line">    obj.send(<span class="symbol">:initialize</span>, *args, &amp;block)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(*args)</span></span></span><br><span class="line">    args = args_to_hash(*args)</span><br><span class="line">    Struct.new(*args.keys).tap <span class="keyword">do</span> <span class="params">|klass|</span></span><br><span class="line">      args.each <span class="keyword">do</span> <span class="params">|attr, type|</span></span><br><span class="line">        check(type)</span><br><span class="line">        <span class="comment"># per class Struct is different</span></span><br><span class="line">        klass.define_method <span class="string">&quot;<span class="subst">#&#123;attr&#125;</span>_t&quot;</span> <span class="keyword">do</span></span><br><span class="line">          type</span><br><span class="line">        <span class="keyword">end</span></span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">	  klass.define_method <span class="string">&quot;type_map&quot;</span> <span class="keyword">do</span></span><br><span class="line">        args</span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>还有一个点是需要在这里检查type的合法性，这里想过生成类的，但是最后想或许现在没必要，还是先用符号吧。检查相关的代码如下</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">module</span> <span class="title">TypeCheck</span></span></span><br><span class="line">  VALID_TYPE = &#123;<span class="symbol">:int</span> =&gt; <span class="symbol">:int</span>, <span class="symbol">:str</span> =&gt; <span class="symbol">:string</span>&#125;</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">invalid?</span><span class="params">(type)</span></span></span><br><span class="line">    VALID_TYPE.keys.<span class="keyword">include</span>? type</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">check</span><span class="params">(type)</span></span></span><br><span class="line">    <span class="keyword">unless</span> invalid? type</span><br><span class="line">      raise <span class="string">&quot;invalid type <span class="subst">#&#123;type&#125;</span>, only supported <span class="subst">#&#123;VALID_TYPE.map(&amp;<span class="symbol">:to_s</span>).join(<span class="string">&#x27;,&#x27;</span>)&#125;</span>&quot;</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  module_function <span class="symbol">:check</span>, <span class="symbol">:invalid?</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="attr-type"><a href="#attr-type" class="headerlink" title="attr_type"></a>attr_type</h3><p>第二种是增加了一个像attr_reader一样叫做attr_type的东西，但是这个要依赖于常规的Struct，我还是想要常规Struct内部的东西来避免重复代码。虽然有办法不依赖Struct，但是那样需要在这个attr_type里面引入更多不属于这个函数的功能，于是还是放弃吧</p>
+<p><strong>使用示例</strong></p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Push</span> &lt; Struct.<span class="title">new</span>(:<span class="title">value</span>)</span></span><br><span class="line">  attr_type <span class="symbol">:value</span> =&gt; <span class="symbol">:int</span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">to_s</span></span></span><br><span class="line">    <span class="string">&quot;Push <span class="subst">#&#123;value&#125;</span>&quot;</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>实现</strong></p>
+<p>实现的核心原理还是参数转到hash再对每一对值define_method，只是这次我们要直接hack Module。attr_reader等函数也是采用的类似的做法</p>
+<p>type_map的处置有一些不同，type_map需要将成员初始化，所有成员默认str类型，接着需要不断的merge新的参数，这个时候会将type_map中在args出现过的key所关联的值更新，这么解释可能比较复杂，看代码更直接一些</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&#123;<span class="symbol">:a</span> =&gt; <span class="number">1</span>&#125;.merge(&#123;<span class="symbol">:a</span> =&gt; <span class="number">2</span>&#125;)</span><br><span class="line">=&gt; &#123;<span class="symbol">:a=&gt;</span><span class="number">2</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Module</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">attr_type</span><span class="params">(*args)</span></span></span><br><span class="line">    args = args_to_hash(*args)</span><br><span class="line">    args.map <span class="keyword">do</span> <span class="params">|attr, type|</span></span><br><span class="line">      TypeCheck::check(type)</span><br><span class="line">      define_method <span class="string">&quot;<span class="subst">#&#123;attr&#125;</span>_t&quot;</span> <span class="keyword">do</span></span><br><span class="line">        type</span><br><span class="line">      <span class="keyword">end</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">	<span class="variable">@type_map</span> <span class="params">||</span>= <span class="keyword">self</span>.members.reduce(&#123;&#125;) &#123;<span class="params">|mem|</span> &#123;mem =&gt; <span class="symbol">:str</span>&#125;&#125;</span><br><span class="line">    <span class="variable">@type_map</span>.merge!(args)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="二者的选择"><a href="#二者的选择" class="headerlink" title="二者的选择"></a>二者的选择</h3><p>最后的结果嘛…ide分析不出来，不想看到各种报错的红线。遇到需要手动new的时候只能改成第二种了</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="Untitled.png"
+                      alt="Untitled"
+                ></p>
+<p>在获取成员的时候也用了很脏的做法，没找到什么在不new的情况下获取成员的好方法，因此也只有先new再从里面找。</p>
+<h1 id="生成"><a href="#生成" class="headerlink" title="生成"></a>生成</h1><h2 id="以前没做的坑"><a href="#以前没做的坑" class="headerlink" title="以前没做的坑"></a>以前没做的坑</h2><p>这里其实做一个dsl来描述然后生成是最好的。在好久之前了解rv的时候我甚至一度想开一个坑，用一个dsl来描述一个isa，之后生成对应的C++的读写代码。最后也是咕咕咕了，后续有时间可以做一下，还是挺有意思的。</p>
+<p>这是一个描述load store的例子。当时做的时候没想到，现在一想其实也可以直接用Struct来描述，采用和我上面一致的方案</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ISA.define <span class="symbol">:LOAD</span> <span class="keyword">do</span>  field <span class="symbol">:rd</span>, <span class="number">5</span>  field <span class="symbol">:funct3</span>, <span class="number">3</span>  field <span class="symbol">:rs1</span>, <span class="number">5</span>  field <span class="symbol">:imm</span>, 12endISA::define <span class="symbol">:STORE</span> <span class="keyword">do</span>  field <span class="symbol">:offset_4_0</span>, <span class="number">5</span>  field <span class="symbol">:width</span>, <span class="number">3</span>  field <span class="symbol">:base</span>, <span class="number">5</span>  field <span class="symbol">:src</span>, <span class="number">5</span>  field <span class="symbol">:offset</span>, 5end</span><br></pre></td></tr></table></figure>
+
+<p>这是一个只做了外观没有做内部实现的例子，<del>属实有点问题，正经人谁会搞出这玩意</del></p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">namespace <span class="symbol">:Suica</span> <span class="keyword">do</span>  namespace <span class="symbol">:T</span> <span class="keyword">do</span>    struct <span class="symbol">:F</span> <span class="keyword">do</span>      auto <span class="symbol">:a1</span>      auto <span class="symbol">:a2</span>, <span class="number">1</span>      void <span class="symbol">:f2</span>, [<span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;b&#x27;</span>] <span class="keyword">do</span>      <span class="keyword">end</span>    <span class="keyword">end</span>  endend</span><br></pre></td></tr></table></figure>
+
+<h2 id="生成的实现"><a href="#生成的实现" class="headerlink" title="生成的实现"></a>生成的实现</h2><p>有点扯远了，我们来看一下实际生成C++代码的部分。</p>
+<p>我们需要生成如下几步</p>
+<ol>
+<li>获取所有指令信息</li>
+<li>include头文件，名称空间等内容</li>
+<li>InstType的enum定义</li>
+<li>所有指令类的定义</li>
+<li>解析输入的部分</li>
+</ol>
+<p>每个部分生成一个源码字符串，最后将这些拼接为一个长的字符串就好了</p>
+<p>捋清这个流程以后就简单贴一下部分代码好了，源码中&lt;&lt;SRC的部分是一个字符串块的开始，SRC是结束，中间的任何字符都会保留，除了#{expr}，这个是将expr to_s以后再嵌入进去</p>
+<h2 id="帮助方法"><a href="#帮助方法" class="headerlink" title="帮助方法"></a>帮助方法</h2><p>这是我自己加给Array的辅助函数，因为经常会有需要遍历array的所有对象做一套统一的操作最后再join连接的情况</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Array</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">generate</span><span class="params">(c = <span class="string">&quot;\n&quot;</span>, &amp;f)</span></span></span><br><span class="line">    map &#123;<span class="params">|a|</span> f[a] &#125;.join(c)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">pure_generate</span><span class="params">(&amp;f)</span></span></span><br><span class="line">    map &#123; <span class="params">|a|</span> a.demodulize_class &#125;.generate(&amp;f)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>demodulize_class的话就是简单的将类名去除了module前缀</p>
+<h2 id="获取所有指令信息-1"><a href="#获取所有指令信息-1" class="headerlink" title="获取所有指令信息"></a>获取所有指令信息</h2><p>虽然上面提过，这里再放一下代码</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_classes</span><span class="params">(mod)</span></span>  </span><br><span class="line">    mod.constants.map&#123;<span class="params">|c|</span> mod.const_get(c)&#125;.select&#123;<span class="params">|c|</span> c.is_a? Class&#125;.sort_by&#123; <span class="params">|klass|</span> klass.to_s &#125;</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="头文件"><a href="#头文件" class="headerlink" title="头文件"></a>头文件</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">gen_header_namespace</span></span></span><br><span class="line">  <span class="string">&lt;&lt;SRC</span></span><br><span class="line"><span class="string">#include &lt;string&gt;</span></span><br><span class="line"><span class="string">#include &lt;vector&gt;</span></span><br><span class="line"><span class="string">#include &lt;memory&gt;</span></span><br><span class="line"><span class="string">#pragma once</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">using std::string;</span></span><br><span class="line"><span class="string">SRC</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="InstType的enum定义"><a href="#InstType的enum定义" class="headerlink" title="InstType的enum定义"></a>InstType的enum定义</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">gen_enum_inst_type</span><span class="params">(classes)</span></span></span><br><span class="line">  <span class="string">&lt;&lt;SRC</span></span><br><span class="line"><span class="string">enum class InstType &#123;</span></span><br><span class="line"><span class="string"><span class="subst">#&#123;classes.pure_generate &#123;<span class="params">|c|</span> <span class="string">&quot;<span class="subst">#&#123;c&#125;</span>,&quot;</span>&#125;</span>&#125;</span></span><br><span class="line"><span class="string">&#125;;</span></span><br><span class="line"><span class="string">SRC</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>生成的样子</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">enum</span> <span class="keyword">class</span> <span class="title">InstType</span> &#123;</span></span><br><span class="line">Add,</span><br><span class="line">Label,</span><br><span class="line">SetLocal,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="指令类定义"><a href="#指令类定义" class="headerlink" title="指令类定义"></a>指令类定义</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">gen_class_define</span><span class="params">(klass)</span></span></span><br><span class="line">  class_name = klass.demodulize_class</span><br><span class="line">  member_map = klass.get_member_map</span><br><span class="line">  params = member_map.generate(<span class="string">&#x27;, &#x27;</span>) &#123;<span class="params">|td|</span> gen_class_member(td)&#125;</span><br><span class="line">  init_member = <span class="string">&quot;<span class="subst">#&#123;member_map.keys.generate(<span class="string">&#x27;, &#x27;</span>) &#123;<span class="params">|name|</span> <span class="string">&quot;_<span class="subst">#&#123;name&#125;</span>(<span class="subst">#&#123;name&#125;</span>)&quot;</span>&#125;</span>&#125;&quot;</span></span><br><span class="line">  init_member = <span class="string">&quot;, <span class="subst">#&#123;init_member&#125;</span>&quot;</span> <span class="keyword">unless</span> init_member.empty?</span><br><span class="line">  init_inst = <span class="string">&quot;VMInst(InstType::<span class="subst">#&#123;class_name&#125;</span>)&quot;</span></span><br><span class="line">  <span class="string">&lt;&lt;SRC</span></span><br><span class="line"><span class="string">struct <span class="subst">#&#123;class_name&#125;</span> : VMInst</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line"><span class="string">public:</span></span><br><span class="line"><span class="string">  <span class="subst">#&#123;class_name&#125;</span>(<span class="subst">#&#123;params&#125;</span>):<span class="subst">#&#123;init_inst&#125;</span><span class="subst">#&#123;init_member&#125;</span> &#123;&#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">private:</span></span><br><span class="line"><span class="string"><span class="subst">#&#123;member_map.generate &#123;<span class="params">|mem_ty|</span> <span class="string">&quot;<span class="subst">#&#123;gen_class_member(mem_ty, <span class="string">&#x27;_&#x27;</span>)&#125;</span>;&quot;</span>&#125;</span>&#125;</span></span><br><span class="line"><span class="string">&#125;;</span></span><br><span class="line"><span class="string">SRC</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>这里可能有一些需要提一下的东西，比如说有一个get_member_map</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Class</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">get_member_map</span></span></span><br><span class="line">    instance = <span class="keyword">self</span>.new</span><br><span class="line">    <span class="comment"># need keep same order</span></span><br><span class="line">    MemberMap.new(instance.try(<span class="symbol">:type_map</span>).or_else&#123;[]&#125;.map <span class="keyword">do</span> <span class="params">|name, type|</span></span><br><span class="line">      TypeDefine.new(name, type)</span><br><span class="line">    <span class="keyword">end</span>)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>为了保持顺序，我选择了用数组来存放。指令最多无外乎一两百条，对于这个数据量不需要太去关心什么高效算法。</p>
+<p>为了有更多的类型信息来帮助写易读和更可用的代码，一个名称类型对也转转换为了一个类型</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">TypeDefine</span> &lt; Struct.<span class="title">new</span>(:<span class="title">name</span>, :<span class="title">type</span>)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>而MemberMap是一层包装，内部用typedefine的array存储，但也是可以像hash一样取出所有的key</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MemberMap</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(type_defines)</span></span></span><br><span class="line">    <span class="variable">@type_defines</span> = type_defines</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">generate</span><span class="params">(c = <span class="string">&quot;\n&quot;</span>, &amp;f)</span></span></span><br><span class="line">    <span class="variable">@type_defines</span>.generate(c, &amp;f)</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">keys</span></span></span><br><span class="line">    <span class="variable">@type_defines</span>.map &#123; <span class="params">|td|</span> td.name &#125;</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>生成的样子</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Label</span> :</span> VMInst</span><br><span class="line">&#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">Label</span>(string name):<span class="built_in">VMInst</span>(InstType::Label), _name(name) &#123;&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">string _name;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="解析代码"><a href="#解析代码" class="headerlink" title="解析代码"></a>解析代码</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">gen_all_parser</span><span class="params">(classes)</span></span></span><br><span class="line">  <span class="string">&lt;&lt;SRC</span></span><br><span class="line"><span class="string">std::unique_ptr&lt;VMInst&gt; get_inst(const std::vector&lt;std::string&gt; &amp;list)</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line"><span class="string"><span class="subst">#&#123;classes.generate &#123;<span class="params">|x|</span> gen_parser(x)&#125;</span>&#125;</span></span><br><span class="line"><span class="string">throw std::runtime_error(&quot;Unknown inst type&quot; + list[0]);</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">SRC</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>生成的样子（这里只放一个示例</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">std::unique_ptr&lt;VMInst&gt; get_inst(const std::vector&lt;std::string&gt; &amp;list) &#123;	</span><br><span class="line">    <span class="keyword">if</span> (list[<span class="number">0</span>] == <span class="string">&quot;Addr&quot;</span>)		</span><br><span class="line">        <span class="keyword">return</span> std::make_unique&lt;Addr&gt;(std::stoi(list[<span class="number">1</span>]), list[<span class="number">2</span>]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="C-代码格式"><a href="#C-代码格式" class="headerlink" title="C++代码格式"></a>C++代码格式</h2><p>这里应该提一下，这种生成方式代码格式一定会乱七八糟，所以还应该调用一下clang-format处理一下。但是VM那边的clang-format之类的许多东西还没有加好，之后再做一下吧</p>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><p>感谢你能看到这里，我再闲谈几句没什么关联的</p>
+<p>这个系列我已经到了四篇，也就是一个月。持续做了这么几次已经可以确定只要不出意外自己就能连载下去，于是之后都会在推特推送我的更新（本周的就先算了，ruby本身所占比例有点大）<a class="link"   target="_blank" rel="noopener" href="https://twitter.com/RealAkemiHomura" >RealAkemiHomura’ Twitter<i class="fas fa-external-link-alt"></i></a></p>
+<p>如果对我的日常有兴趣可以点个关注，如果并不在意这个只想看后续的文章，那么可以通过rss订阅，或者每周一查看我的文章，更新一定是在周末</p>
+<p>前面也提到元旦状态差，这些天甚至几次觉得这个系列过于玩具没有意义，想要断更、项目不想做下去了。但我最后还是决定继续更新，不为别的，只因为我还想接着做这个项目，哪怕内容如此简陋，只是一个过于简单的玩具，但我确实从中收获了知识和乐趣</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：Rc-lang开发周记3 生成C++代码</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-01-09 12:00:35</li>
+        <li>
+            本文链接：https://homura.live/2022/01/09/rc-lang-dev-3/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/01/16/rc-lang-dev-4/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记4 函数其一</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/01/02/rc-lang-dev-2/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记2 VM相关</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%8C%87%E4%BB%A4%E5%AE%9A%E4%B9%89"><span class="nav-number">1.</span> <span class="nav-text">指令定义</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#C-%E8%A7%A3%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">C++解析</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E6%89%80%E6%9C%89%E6%8C%87%E4%BB%A4%E4%BF%A1%E6%81%AF"><span class="nav-number">3.</span> <span class="nav-text">获取所有指令信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E6%9C%89%E5%93%AA%E4%BA%9B%E6%8C%87%E4%BB%A4"><span class="nav-number">3.1.</span> <span class="nav-text">获取有哪些指令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="nav-number">3.2.</span> <span class="nav-text">实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TypeStruct"><span class="nav-number">3.2.1.</span> <span class="nav-text">TypeStruct</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#attr-type"><span class="nav-number">3.2.2.</span> <span class="nav-text">attr_type</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BA%8C%E8%80%85%E7%9A%84%E9%80%89%E6%8B%A9"><span class="nav-number">3.2.3.</span> <span class="nav-text">二者的选择</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%94%9F%E6%88%90"><span class="nav-number">4.</span> <span class="nav-text">生成</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BB%A5%E5%89%8D%E6%B2%A1%E5%81%9A%E7%9A%84%E5%9D%91"><span class="nav-number">4.1.</span> <span class="nav-text">以前没做的坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E6%88%90%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.2.</span> <span class="nav-text">生成的实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%AE%E5%8A%A9%E6%96%B9%E6%B3%95"><span class="nav-number">4.3.</span> <span class="nav-text">帮助方法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E6%89%80%E6%9C%89%E6%8C%87%E4%BB%A4%E4%BF%A1%E6%81%AF-1"><span class="nav-number">4.4.</span> <span class="nav-text">获取所有指令信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%B4%E6%96%87%E4%BB%B6"><span class="nav-number">4.5.</span> <span class="nav-text">头文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#InstType%E7%9A%84enum%E5%AE%9A%E4%B9%89"><span class="nav-number">4.6.</span> <span class="nav-text">InstType的enum定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8C%87%E4%BB%A4%E7%B1%BB%E5%AE%9A%E4%B9%89"><span class="nav-number">4.7.</span> <span class="nav-text">指令类定义</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E6%9E%90%E4%BB%A3%E7%A0%81"><span class="nav-number">4.8.</span> <span class="nav-text">解析代码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#C-%E4%BB%A3%E7%A0%81%E6%A0%BC%E5%BC%8F"><span class="nav-number">4.9.</span> <span class="nav-text">C++代码格式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-number">5.</span> <span class="nav-text">最后</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

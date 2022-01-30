@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            Rc-lang开发周记2 VM相关 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">Rc-lang开发周记2 VM相关</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-01-02 09:37:17
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        &gt; <a href="/categories/VM/">VM</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>3.2k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>11 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>本周主要先对tac的函数进行了简单的测试，以确保能够正确运行我的vm demo，修正了function的一些问题，之后就是处理对vm指令的生成，处理了一下符号相关的信息，还做了一点函数的相关的以及生成C++的解析代码（都没做完，还是下周吧</p>
+<p>本周vm的代码都在ir/vm中，translator用于转换，inst是指令定义，vm.rb是入口</p>
+<h1 id="Function转换"><a href="#Function转换" class="headerlink" title="Function转换"></a><strong>Function转换</strong></h1><p>这是我目前的Function的ast定义</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Function</span></span></span><br><span class="line">    <span class="keyword">attr_reader</span> <span class="symbol">:name</span>, <span class="symbol">:args</span>, <span class="symbol">:stmts</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>在修改function生成代码的时候发现了一个问题，因为我有默认最后一个值直接返回的设计，所以或许应该在高层添加一个将stmt显式抽出</p>
+<p>return的操作。这个步骤现在看来大概分为简单两步</p>
+<ol>
+<li>消除不可达代码，比如说一个return后面还有好几个值</li>
+<li>消除后就可以放心将最后一个语句的结果转换为一个返回值了</li>
+</ol>
+<p>但是第二步实际实现的时候可能没有这么简单，这里就暂提个思路，以后再回头看这个设计是否有需要</p>
+<h1 id="无意义的tac-to-vm-inst"><a href="#无意义的tac-to-vm-inst" class="headerlink" title="无意义的tac to vm inst"></a><strong>无意义的tac to vm inst</strong></h1><p>之后做了一些将tac转到vm指令。在做这个的过程我才意识到其实不需要转成tac，对于tac和vm指令的表达力应该是同等级的，都比较偏向于中层IR。查看了一下其他语言的做法，Ruby和Java都是从AST转到了字节码</p>
+<p>深入理解Java虚拟机310页：</p>
+<blockquote>
+<p>字节码生成阶段不仅仅是把前面各个步骤所生成的信息（语法树、符号表）转换成字节码写到磁盘中，编译器还进行了少量的代码添加和转换工作</p>
+</blockquote>
+<p>Ruby原理剖析36页：</p>
+<blockquote>
+<p>在解析完 词条生成AST之后，Ruby1.9和Ruby2.0继续把代码编译成一系列的底层指令，叫做YARV指令</p>
+</blockquote>
+<p>这里的YARV是Ruby的字节码解释器，而YARV指令自然就是对应的字节码。而Ruby1.9之前是直接解释执行ast的，甚至不会考虑到tac这样的东西</p>
+<h2 id="为什么不需要先转成tac优化后再到vm指令"><a href="#为什么不需要先转成tac优化后再到vm指令" class="headerlink" title="为什么不需要先转成tac优化后再到vm指令"></a><strong>为什么不需要先转成tac优化后再到vm指令</strong></h2><p>关于这一点，我询问了朋友，最后的结论大概有以下两点。如果读者对这方面很了解希望能科普一下</p>
+<ol>
+<li><p>转成tac做优化以后，尤其是部分针对全局的优化会以及其他的变换会剔除掉一些JIT时所需要的信息。</p>
+<p>关于这点我问了很久，我觉得还要尽可能地多做优化再到jit，应该要通过控制不做哪些优化来避免剔除所需信息。因为我对这几个层面所能做的优化了解不深，不知道所能做的优化有哪些差异，也没法举出例子或者说明收益</p>
+<p>后续我又了解了一些信息，发现jit中还有一个名叫的deoptimize技术，这个出现在multi tiered jit中。关于这个的内容在我另一篇博客中</p>
+</li>
+<li><p>如果直接显式执行的是源码而不是字节码，先转成tac做处理再到vm指令会影响到了启动时间</p>
+<p>Ruby是在内部对源码解析之后再由vm来执行。Java可能给大多数人的印象是必须要先编译到字节码，然后再单独加载执行字节码，但调查发现Java9开始可以通过jshell来直接执行。将这个过程封装到一起实际上也不麻烦，只是不需要你显式操作罢了</p>
+</li>
+</ol>
+<p>所以经过了这些结论，前面做的tac到vm指令的就白费了，只能重新写一套从ast生成vm指令代码。生成tac这个过程并没有白费，编写的过程中让我有对这个东西有了更深的理解，以及后续可能会用tac实现优化算法。</p>
+<h1 id="VM简介"><a href="#VM简介" class="headerlink" title="VM简介"></a><strong>VM简介</strong></h1><p>至于VM的实现，很自然的就会选择栈式VM。以学习为目的肯定要做寄存器分配，但是因为后续想做jit，所以寄存器分配就留到那个时候再做，或者说可以再从tac做成aot，反正目前还是以实现学习为目的。</p>
+<p>搞一个VM本质是什么？我觉得本质是对运行时的环境进行处理。那么我们首先要来谈及这个环境都有哪些部分</p>
+<p>我觉得简单可以分为以下两种</p>
+<ol>
+<li>数据（代码与计算的数据）</li>
+<li>当前状态（寄存器与栈帧）</li>
+</ol>
+<h2 id="数据"><a href="#数据" class="headerlink" title="数据"></a><strong>数据</strong></h2><p>数据牵扯到的问题有很多，比如说数据排布、对象布局、地址分配等等。这也是我第一次动手做这些，这里就先从最简单的只有int32做起。如果后面做完善了可以再单独出一期把这些东西串起来（咕咕咕咕咕咕</p>
+<h2 id="当前状态"><a href="#当前状态" class="headerlink" title="当前状态"></a><strong>当前状态</strong></h2><h3 id="寄存器"><a href="#寄存器" class="headerlink" title="寄存器"></a><strong>寄存器</strong></h3><p>寄存器就从目前来说，我们需要一个pc寄存器来表明当前执行到哪条语句了。至于vm那边的实现目前使用一个数组保存，pc保存下数组索引就好</p>
+<h3 id="栈帧"><a href="#栈帧" class="headerlink" title="栈帧"></a><strong>栈帧</strong></h3><p>栈帧根据不同的需求内容也各不相同</p>
+<p>我们来看一下龙书中提到的常见栈帧成员（不论什么书其实大都差不多</p>
+<ol>
+<li>局部变量</li>
+<li>临时变量的位置（牵扯到临时变量？</li>
+<li>机器状态（保存的特殊寄存器值，这个和调用约定也有一定关联。调用约定决定了哪些寄存器是需要保存的，哪些是不需要保存的，关于调用约定更多详情还请自行查询</li>
+<li>rbp指针（用于管理访问链</li>
+<li>指向调用者的地址</li>
+<li>返回值（我选择统一放到一个寄存器中）</li>
+<li>实参</li>
+</ol>
+<p>要注意的是书中提到的基本上是针对非VM的栈帧，VM的栈帧可以根据需求做出不一样的设计，比如说Ruby中采用了双栈的设计，一个调用栈用于管理调用链，一个计算栈用于存放各种变量与计算，而对于非VM栈帧絕大多说都是一个栈（我没听说过有使用双栈的，但是说不定也存在呢）通过栈中保存的rbp寄存器中的值来处理访问链</p>
+<p>就目前从头开始实现而言，我们需要什么再加什么就好了，后续每个东西怎么加，为什么加我都会有一定说明。</p>
+<h1 id="VM指令转换"><a href="#VM指令转换" class="headerlink" title="VM指令转换"></a><strong>VM指令转换</strong></h1><h2 id="计算赋值"><a href="#计算赋值" class="headerlink" title="计算赋值"></a>计算赋值</h2><p>先从普通的运算赋值做起。这里其实有点问题，我还没有处理好单独的语句，所以都放到了一个函数里（写完这篇就去改），以及对于函数定义该如何处理我也没想好。</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">foo</span></span></span><br><span class="line">  a = <span class="number">3</span> * <span class="number">2</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>在Ruby的虚拟机中扫描到类似的函数定义则是会产生一行调用 <code>definemethod :foo, foo</code></p>
+<p>而foo本身的内容则是</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">== <span class="symbol">disasm:</span> #&lt;ISeq:f@&lt;compiled&gt;<span class="symbol">:</span><span class="number">1</span> (<span class="number">1</span>,<span class="number">0</span>)-(<span class="number">3</span>,<span class="number">3</span>)&gt; (<span class="symbol">catch:</span> FALSE)</span><br><span class="line">local table (<span class="symbol">size:</span> <span class="number">1</span>, <span class="symbol">argc:</span> <span class="number">0</span> [<span class="symbol">opts:</span> <span class="number">0</span>, <span class="symbol">rest:</span> -<span class="number">1</span>, <span class="symbol">post:</span> <span class="number">0</span>, <span class="symbol">block:</span> -<span class="number">1</span>, <span class="symbol">kw:</span> -<span class="number">1</span>@-<span class="number">1</span>, <span class="symbol">kwrest:</span> -<span class="number">1</span>])</span><br><span class="line">[ <span class="number">1</span>] a<span class="variable">@0</span></span><br><span class="line"><span class="number">0000</span> putobject                              <span class="number">3</span>                         (   <span class="number">2</span>)[LiCa]</span><br><span class="line"><span class="number">0002</span> putobject                              <span class="number">2</span></span><br><span class="line"><span class="number">0004</span> opt_mult                               &lt;calldata!<span class="symbol">mid:</span>*, <span class="symbol">argc:</span><span class="number">1</span>, ARGS_SIMPLE&gt;</span><br><span class="line"><span class="number">0006</span> dup</span><br><span class="line"><span class="number">0007</span> setlocal_WC_0                          a<span class="variable">@0</span></span><br><span class="line">0009 leave                                                            (   <span class="number">3</span>)[Re]</span><br></pre></td></tr></table></figure>
+
+<p>这里出现了一个点，由于函数体中是一个assign，值会pop走，但是这个assign又是作为一个返回值，因此ruby中对结果调用了dup，创建一个重复的值用于返回。在写博客的时候看到Ruby指令的结果刚意识到这个问题，不过这个是属于关于函数体与函数调用相关的内容，这里目前暂不修改。</p>
+<p>作为参考，进行编写测试。</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">context <span class="string">&#x27;assign&#x27;</span> <span class="keyword">do</span></span><br><span class="line">  it <span class="string">&#x27;normal expr&#x27;</span> <span class="keyword">do</span></span><br><span class="line">    s = <span class="string">&lt;&lt;SRC</span></span><br><span class="line"><span class="string">def foo</span></span><br><span class="line"><span class="string">a = 1 * 2</span></span><br><span class="line"><span class="string">end</span></span><br><span class="line"><span class="string">SRC</span></span><br><span class="line">    inst = get_vm_inst(s)</span><br><span class="line">    expect(inst).to eq [Rc::VM::Push.new(<span class="number">1</span>), Push.new(<span class="number">2</span>), Mul.new, SetLocal.new(<span class="number">0</span>), Return.new]</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>对于一个普通的a = 1 * 2，我们期望的行为是将两个参数push到栈上，之后进行mul操作，最后设置本地变量的值</p>
+<h3 id="乘法操作"><a href="#乘法操作" class="headerlink" title="乘法操作"></a>乘法操作</h3><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Binary</span> <span class="comment"># Rc::AST::Binary</span></span></span><br><span class="line">  <span class="keyword">attr_reader</span> <span class="symbol">:op</span>, <span class="symbol">:lhs</span>, <span class="symbol">:rhs</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_binary</span><span class="params">(node)</span></span></span><br><span class="line">  [</span><br><span class="line">    push(visit(node.lhs)),</span><br><span class="line">    push(visit(node.rhs)),</span><br><span class="line">    translate_op(node.op),</span><br><span class="line">  ]</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="操作数的处理"><a href="#操作数的处理" class="headerlink" title="操作数的处理"></a>操作数的处理</h3><p>指令操作数目前分了两种，一种是直接可以保存值的，一种是引用某个名字</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">module</span> <span class="title">VMInstOperand</span></span></span><br><span class="line">  <span class="class"><span class="keyword">class</span> <span class="title">Value</span> &lt; Struct.<span class="title">new</span>(:<span class="title">value</span>)</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="comment"># Ref a exist var</span></span><br><span class="line">  <span class="class"><span class="keyword">class</span> <span class="title">Ref</span> &lt; Struct.<span class="title">new</span>(:<span class="title">ref</span>)</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">push</span><span class="params">(node)</span></span></span><br><span class="line">    <span class="keyword">if</span> node.is_a? Value</span><br><span class="line">      Push.new(node.value)</span><br><span class="line">    <span class="keyword">elsif</span> node.is_a? Ref</span><br><span class="line">      GetLocal.new(node.ref)</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      raise <span class="string">&quot;Unsupported node type <span class="subst">#&#123;node.<span class="keyword">class</span>&#125;</span>&quot;</span></span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 下面两个都是visit结点的函数</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_number_constant</span><span class="params">(node)</span></span></span><br><span class="line">  Value.new node.val.to_i</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Get or Set, so need return a id</span></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_identifier</span><span class="params">(node)</span></span></span><br><span class="line">  Ref.new cur_fun_env[node.name].id</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>这么设计的原因是</p>
+<ol>
+<li>针对一个简单的数值我们可以直接将值push到栈上</li>
+<li>针对一个名字我们需要去符号表中找到这个名字所在的位置，再将对应的值push到栈上</li>
+</ol>
+<p>同时也有不同的“push操作”</p>
+<ol>
+<li>针对简单的值直接push</li>
+<li>针对名字我们通过GetLocal来获取（对于vm那边的实现，需要根据局部变量的基址和偏移量以及类型找到对应的值再放上去，但是类型目前不考虑，统一int32）</li>
+</ol>
+<p>这里暂时不考虑访问外部作用域的问题，这会涉及到符号表的访问以及栈的修改两部分内容。</p>
+<p>针对这样的设计，我们需要开始增加栈的功能了</p>
+<ol>
+<li>简单数值的运算，我们需要能将值放上去，再进行运算取出或者留在栈里（这些临时变量）</li>
+</ol>
+<p>因此就有了如下最最最简单的栈</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">----------</span><br><span class="line">  临时变量</span><br><span class="line">----------</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><p>我们需要留有局部变量的位置，能够在里面存取数据。临时变量是会随着当前函数结束而销毁，因此我们需要添加临时变量的位置在栈上，栈回退的时候也会直接销毁掉</p>
+<p>由于1需要反复修改栈指针的操作需要所以放在当前栈帧的最顶端比较合适</p>
+</li>
+</ol>
+<p>因此就有了如下最最简单的栈</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">----------</span><br><span class="line">  临时变量</span><br><span class="line">----------</span><br><span class="line">  局部变量</span><br><span class="line">----------</span><br></pre></td></tr></table></figure>
+
+<h3 id="op处理"><a href="#op处理" class="headerlink" title="op处理"></a>op处理</h3><p>这个没什么好说的，简单从op字符串转换到不同类型的运算指令</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">translate_op</span><span class="params">(op)</span></span></span><br><span class="line">    <span class="keyword">case</span> op.op</span><br><span class="line">    <span class="keyword">in</span> <span class="string">&#x27;+&#x27;</span></span><br><span class="line">      Add.new</span><br><span class="line"><span class="comment"># ...以下省略</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="符号表"><a href="#符号表" class="headerlink" title="符号表"></a><strong>符号表</strong></h1><p>就之前的代码而言，符号表信息之类的记录的并不够。在实际考虑栈帧以及执行之前我对符号表的认识仅仅停留在作为解释器的env以及他的功能的“概念”上。由于是之前写过的，就直接拿来用了，没有 再来认真反思设计以及其他的问题，回头再重新设计吧，先能用就行</p>
+<p>考虑局部变量如何保存这个问题，引出了我对符号表更多的实际理解，所以还是要自己动手做才能更有助于理解，只是看一些理论讲还是不够，至少对我而言是这样的</p>
+<p>关于扫描分析的代码在analysis/global_env中</p>
+<p>符号表相关的定义在lib/env中</p>
+<h2 id="全局表"><a href="#全局表" class="headerlink" title="全局表"></a>全局表</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">GlobalEnv</span> &lt; Struct.<span class="title">new</span>(:<span class="title">define_env</span>, :<span class="title">const_table</span>, :<span class="title">fun_env</span>)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>全局表目前保存三个东西</p>
+<ol>
+<li>各种定义（类定义、函数定义等），这个设计是比较早的时候写的，可能并不合适，后续再好好想一下该怎么做</li>
+<li>常量表</li>
+<li>函数的符号表，根据函数名找到对应函数的符号表</li>
+</ol>
+<h2 id="条目"><a href="#条目" class="headerlink" title="条目"></a>条目</h2><p>针对生成VM指令的阶段，需要知道一个临时变量的位置，因此有了这样的一个东西作为符号表的条目。</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">EnvItemInfo</span> &lt; Struct.<span class="title">new</span>(:<span class="title">id</span>, :<span class="title">type</span>)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>id的话在一个函数中是自增的，用于GetLocal和SetLocal中计算具体的offset（这个设计对于后续可能不够用，先这样）。类型肯定也是需要的，但是目前并没有考虑类型的问题，就留了这么一个坑在这里</p>
+<h2 id="函数"><a href="#函数" class="headerlink" title="函数"></a>函数</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_function</span><span class="params">(node)</span></span></span><br><span class="line">  <span class="variable">@define_env</span>.define_symbol(node.name, node)</span><br><span class="line">  <span class="variable">@cur_fun_sym</span> = Env.new</span><br><span class="line">  <span class="variable">@cur_fun_var_id</span> = <span class="number">0</span></span><br><span class="line">  <span class="variable">@cur_fun_sym</span>.merge(node.args.map&#123; <span class="params">|arg|</span> [arg, EnvItemInfo.new(cur_fun_var_id, <span class="string">&#x27;&#x27;</span>)]&#125;.to_h)</span><br><span class="line">  visit(node.stmts)</span><br><span class="line">  <span class="variable">@fun_env</span>[node.name] = <span class="variable">@cur_fun_sym</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>将函数名字关联到结点</li>
+<li>从每个函数开始分析时初始化各参数的状态</li>
+<li>将参数merge进当前函数的符号表中</li>
+<li>访问函数体</li>
+<li>将函数名关联到对应的符号表</li>
+</ol>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><p>今天写的太久有点写不下去了，所以到后面内容比较潦草，还请见谅。（目前以保证更新频率为主）有疑惑的地方可以联系我</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：Rc-lang开发周记2 VM相关</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-01-02 09:37:17</li>
+        <li>
+            本文链接：https://homura.live/2022/01/02/rc-lang-dev-2/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/01/09/rc-lang-dev-3/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记3 生成C++代码</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2021/12/26/summary-2021/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">2021年终总结</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Function%E8%BD%AC%E6%8D%A2"><span class="nav-number">1.</span> <span class="nav-text">Function转换</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%97%A0%E6%84%8F%E4%B9%89%E7%9A%84tac-to-vm-inst"><span class="nav-number">2.</span> <span class="nav-text">无意义的tac to vm inst</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E9%9C%80%E8%A6%81%E5%85%88%E8%BD%AC%E6%88%90tac%E4%BC%98%E5%8C%96%E5%90%8E%E5%86%8D%E5%88%B0vm%E6%8C%87%E4%BB%A4"><span class="nav-number">2.1.</span> <span class="nav-text">为什么不需要先转成tac优化后再到vm指令</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#VM%E7%AE%80%E4%BB%8B"><span class="nav-number">3.</span> <span class="nav-text">VM简介</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE"><span class="nav-number">3.1.</span> <span class="nav-text">数据</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BD%93%E5%89%8D%E7%8A%B6%E6%80%81"><span class="nav-number">3.2.</span> <span class="nav-text">当前状态</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%84%E5%AD%98%E5%99%A8"><span class="nav-number">3.2.1.</span> <span class="nav-text">寄存器</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E5%B8%A7"><span class="nav-number">3.2.2.</span> <span class="nav-text">栈帧</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#VM%E6%8C%87%E4%BB%A4%E8%BD%AC%E6%8D%A2"><span class="nav-number">4.</span> <span class="nav-text">VM指令转换</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%A1%E7%AE%97%E8%B5%8B%E5%80%BC"><span class="nav-number">4.1.</span> <span class="nav-text">计算赋值</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B9%98%E6%B3%95%E6%93%8D%E4%BD%9C"><span class="nav-number">4.1.1.</span> <span class="nav-text">乘法操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%93%8D%E4%BD%9C%E6%95%B0%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">4.1.2.</span> <span class="nav-text">操作数的处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#op%E5%A4%84%E7%90%86"><span class="nav-number">4.1.3.</span> <span class="nav-text">op处理</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E8%A1%A8"><span class="nav-number">5.</span> <span class="nav-text">符号表</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E8%A1%A8"><span class="nav-number">5.1.</span> <span class="nav-text">全局表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%A1%E7%9B%AE"><span class="nav-number">5.2.</span> <span class="nav-text">条目</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0"><span class="nav-number">5.3.</span> <span class="nav-text">函数</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-number">6.</span> <span class="nav-text">最后</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

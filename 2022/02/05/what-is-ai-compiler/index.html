@@ -9,7 +9,7 @@
     
     <title>
         
-            论柳比歇夫 |
+            AI Compiler是什么？ |
         
         Homura&#39;s Blog
     </title>
@@ -181,7 +181,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">论柳比歇夫</span>
+            <span class="title-hover-animation">AI Compiler是什么？</span>
         </div>
 
         
@@ -199,7 +199,7 @@
                     <div class="meta-info">
                         <div class="article-meta-info">
     <span class="article-date article-meta-item">
-        <i class="fas fa-edit"></i>&nbsp;2022-02-04 11:00:48
+        <i class="fas fa-edit"></i>&nbsp;2022-02-05 10:38:18
     </span>
     
         <span class="article-categories article-meta-item">
@@ -207,7 +207,7 @@
             <ul>
                 
                     <li>
-                        <a href="/categories/Reading/">Reading</a>&nbsp;
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
                     </li>
                 
             </ul>
@@ -219,7 +219,7 @@
             <ul>
                 
                     <li>
-                        <a href="/tags/%E6%9F%B3%E6%AF%94%E6%AD%87%E5%A4%AB/">柳比歇夫</a>&nbsp;
+                        <a href="/tags/AI/">AI</a>&nbsp;
                     </li>
                 
             </ul>
@@ -229,12 +229,12 @@
     
     
         <span class="article-wordcount article-meta-item">
-            <i class="fas fa-file-word"></i>&nbsp;<span>2.8k 字</span>
+            <i class="fas fa-file-word"></i>&nbsp;<span>3.1k 字</span>
         </span>
     
     
         <span class="article-min2read article-meta-item">
-            <i class="fas fa-clock"></i>&nbsp;<span>9 分钟</span>
+            <i class="fas fa-clock"></i>&nbsp;<span>10 分钟</span>
         </span>
     
     
@@ -250,74 +250,59 @@
         
 
         <div class="article-content markdown-body">
-            <p>也许有小部分人听说过时间记录法，因此也有幸听过柳比歇夫的名字；甚至可能会有那么零星几位十分幸运的人（至少在我看来是幸运的），读过《奇特的一生》这本书并且对他有了一些了解</p>
-<p>大部分人看到标题，一定只有一个问题：<strong>柳比歇夫是谁？</strong></p>
-<p>他是一个大半生都在<strong>支配时间</strong>的人。我想你一定会对支配时间这个词摸不着头脑，还会有人在想时间面前人人平等，时间怎么可能被他支配？</p>
-<p>那么我们先从他的成就谈起吧</p>
-<h1 id="他的成就"><a href="#他的成就" class="headerlink" title="他的成就"></a>他的成就</h1><blockquote>
-<p>前苏联的昆虫学家、哲学家、数学家。毕业于圣彼得堡国立大学，一生发布了70余部学术著作，从分散分析、生物分类学到昆虫学等。业余时间研究地蚤的分类，还写过不少科学回忆录。 各种各样的论文和专著，他一共写了五百多印张。五百印张，等于一万二千五百张打字稿。</p>
-</blockquote>
-<p>除了这些，数学、历史与诗歌他都十分擅长。毫无疑问，他是一个全才，并且在一生中做出了超乎想象的成就。他是怎么达到这样的成就的呢？</p>
-<h1 id="开始"><a href="#开始" class="headerlink" title="开始"></a>开始</h1><p>早在他28岁的时候他就已经找到了他一生的奋斗的目标：创造生物自然分类法。尽管遭受怀疑他依然开始着手他的任务，并且将一生投身到其中。</p>
+            <p>为了让更多人对AI compiler有个了解，在此对这两者的区别和联系做一个科普，也因此本文以科普区别为主，不会深入。这篇文章一直想写，也算是对我去年工作中所学到的一部分东西的总结，但是硬是咕咕咕到了现在，最后选择了假期结束前把这一篇赶出来以提前适应上班状态，避免假期太强的假期综合症。个人水平有限，如有偏颇之处欢迎联系我指正</p>
+<p>本文将从两方面讲述内容，首先是AI compiler是什么，都在做什么，其次是和传统compiler的异同。为了让读者能更好的理解内容，所需的背景知识我会尽可能的在文中做注解</p>
+<h1 id="AI-compiler是做什么的"><a href="#AI-compiler是做什么的" class="headerlink" title="AI compiler是做什么的"></a>AI compiler是做什么的</h1><p>将各种框架训练产生的模型文件进行编译，生成目标平台的代码。从这个角度来看是和传统compiler是非常类似的，但是模型文件更像一个DSL（ldomain-specific language）</p>
+<h1 id="编译流程"><a href="#编译流程" class="headerlink" title="编译流程"></a>编译流程</h1><p>先从解析输入开始，按照编译的流程来讲解各个阶段的异同。而这些异同大都是由于ai compiler输入的特殊性质导致的</p>
+<h2 id="编译对象"><a href="#编译对象" class="headerlink" title="编译对象"></a>编译对象</h2><p>首先要编译的对象就有很大的不同。传统compiler则是编译的语言源代码，而AI compiler编译的是各种各样的模型，编译对象的不同导致了后面的各种处理大相径庭。</p>
+<p>先来科普一下模型的组成：模型中包含了一个计算图以及各种数据，而计算图又是由许多算子构成的。每一个算子代表了一种计算</p>
+<p>我个人觉得模型也可以算是一种DSL，从模型的输出向上看相当于一个expr，而每个op结点相当于一些特定函数。</p>
+<h2 id="解析输入方式不同"><a href="#解析输入方式不同" class="headerlink" title="解析输入方式不同"></a>解析输入方式不同</h2><p>而传统语言源代码需要经过各种的parse，手写parser更是非常费力不讨好的一件事情，尽管现在的parser generator技术比较成熟，parser写起来依然是非常麻烦的。</p>
+<p>对于AI compiler来说需要支持各种各样的模型的解析。这里不需要写什么复杂的parser了，像onnx会提供一个文件，可以通过protobuf解析这个文件生成对应的解析模型的源代码，直接调用生成的解析模型的源码中的函数即可。由于这个原因，你也不用担心不使用特定的语言进行编写还要自己做解析的工作，极端的讲，哪怕有一天要换语言做你也不需要担心解析的过程。在这个过程中更多的是将模型的数据取出来，放入设计好的IR中。</p>
+<p>但是对于ai compiler来说你需要支持各种模型，如果只是支持某一种格式的模型是远远不会有用户的，这里不像传统compiler只需要支持自己语言的parser就可以了。目前主流的框架大致有三类，pytorch、onnx以及tensorflow，这三类有着各自的模型格式，而三者都有一定的用户群体，框架的支持程度对于用户来讲是一个非常关键的点。</p>
+<h2 id="高层IR设计"><a href="#高层IR设计" class="headerlink" title="高层IR设计"></a>高层IR设计</h2><p>上面提到了ai compiler需要支持多种格式的模型，而不同格式模型的算子定义又是有许多差异。想要做到兼容各种格式的模型又是一个非常麻烦的问题，假设你设计了一套对应了算子的高层IR，可能需要对输入的模型中的算子前后添加一些操作，使其达到等效于你所选择的这个算子的实现。<br>用常规编程语言的例子就是C语言中要做到类似于成员函数调用通常会在这个函数的第一个成员传入结构体的指针。但是实际上麻烦的事情更多，很多算子甚至不能在不同框架转换，有的能转换也非常复杂，而关于这个问题本文就不深入探索了。</p>
+<p>而传统编程语言的高层IR（通常为ast）相对简化很多，高层不需要考虑兼容与转换的问题。</p>
+<h2 id="优化"><a href="#优化" class="headerlink" title="优化"></a>优化</h2><p>将输入读取进来后要做的事情当然是优化，编译器不仅要能够正确的生成对应平台的可执行代码，还要尽可能保证性能。</p>
+<p>这个方面可讲的实在太多，不同层面的IR的优化方式又是各不相，而我所知的也比较有限（很多地方没有参与，但是有一些了解，我想做一个简单的科普还是不成问题），就挑ai编译器讲一下通常都有哪些方面的优化（简单提及概念），都是做什么用的，为什么要有这样的优化。</p>
+<h3 id="图优化"><a href="#图优化" class="headerlink" title="图优化"></a>图优化</h3><ol>
+<li>图节点合并：这个想法非常自然，只要减少了节点数量那么计算所需要的时间自然也会减少许多</li>
+<li>更换顺序：有的时候更换节点顺序后一些节点就可以自然的合并</li>
+<li>还有很多优化是基于算子自身定义的，这些在此就不提及了，本质上都是为了减少计算</li>
+</ol>
+<h3 id="fuse"><a href="#fuse" class="headerlink" title="fuse"></a>fuse</h3><p>将多个节点融合到一个子图中，直接影响到后面的tiling、调度、buffer分配，这是比较常见的一个步骤，因为本质上是为优化服务因此放到了这里。</p>
+<h3 id="tiling-：数据切分与重排"><a href="#tiling-：数据切分与重排" class="headerlink" title="tiling ：数据切分与重排"></a>tiling ：数据切分与重排</h3><p>tiling这边我没有实际参与过，所以我只能大概讲一下在编译到ai加速器上的情况下我的理解。</p>
+<p>对于ai加速器来说，通常只会适应某一些满足条件的数据大小的计算，而实际给加速器的数据大小则是各种各样的，因此需要将数据切分到适应加速器的结构。而大部分情况图上的每个节点所需要数据的大小则是已知的，因此可以提前切分好数据进行计算。（也有节点的数据大小不固定的情况，这里暂且不谈）</p>
+<p>对于ai来说计算很多数据都是多维数组，而实际计算很多又是多层循环，常规的数据计算方式相对低效，而许多数据又是编译期间固定的，所以需要重新以一个高效的方式重排数据。</p>
+<p>tiling这个过程可以说是对性能影响最大的部分之一，相信大部分人都看过那个经典的按行遍历与按列遍历二维数组的例子，不仅如此，还会牵扯到计算单元的利用率以及数据传输的带宽利用。</p>
+<h3 id="调度"><a href="#调度" class="headerlink" title="调度"></a>调度</h3><p>将计算图序列化，计算出一个合适的算子执行顺序</p>
+<p>如果要涉及多设备还要尽可能做到多设备之间减少依赖，同时要考虑到数据在不同设备之间传输的带宽</p>
+<h3 id="buffer分配"><a href="#buffer分配" class="headerlink" title="buffer分配"></a>buffer分配</h3><p>数据是通常以一个tensor为单位（最简单的说法tensor就是一个多维数组，但是这样并不确切，但是理解这里足以），而一个tensor通常存在一个buffer之中，运算的时候从buffer中取数据</p>
+<p>通过合理的分配方式减少运算中内存的使用，其中牵扯到计算buffer的生命周期，什么时候可以及时释放掉这块buffer，什么时候可以重用已有的buffer等等</p>
+<h2 id="生成代码与运行"><a href="#生成代码与运行" class="headerlink" title="生成代码与运行"></a>生成代码与运行</h2><p>在这方面其实都是差不多的，ai compiler还经常会生成一些ai加速器用的代码。对于ai加速器来说更多是几条配置指令加一条计算指令来执行特定的算子（上面提到的数据切分重排也和这个问题有非常大的联系）</p>
+<p>关于生成产物的运行，和传统compiler相同也是有两类选择</p>
+<ol>
+<li>生成一个直接可以执行的程序</li>
+<li>生成类似于字节码的东西供另一个运行时的程序读取并且执行</li>
+</ol>
+<h2 id="编译时间敏感度"><a href="#编译时间敏感度" class="headerlink" title="编译时间敏感度"></a>编译时间敏感度</h2><p>传统compiler还是对编译时间比较敏感的，因此导致了一些算法必须选择一个较好解，而最优解是需要很长时间的。</p>
+<p>对于ai compiler编译时间的敏感程度相对较小，而且如果开启量化需要跑量化矫正集那根本无法控制时间（也因此需要高性能的evaluator）。而且对目标执行速度要求高，因此有更多的时间去搜索更好的解，<del>相对于炼丹来说这点时间洒洒水啦</del>。</p>
+<h2 id="AI-compiler特有的部分"><a href="#AI-compiler特有的部分" class="headerlink" title="AI compiler特有的部分"></a>AI compiler特有的部分</h2><h3 id="量化"><a href="#量化" class="headerlink" title="量化"></a>量化</h3><p>这里的量化并不是指量化交易，而是指一种将浮点数转换为定点数的计算。在ai中通常使用float进行计算，为了缩小数据大小通常会将float量化到int8，而最后还会转换回float输出（这个则是反量化过程）。如果只是做常规的数据类型转换那一定会有很大的精度损失，因此需要各种量化的算法来尽可能减少这一影响。</p>
+<p>而量化通常需要统计数值范围，并且使用这个范围来算出一个适当的量化参数，而这个范围我们需要通过在编译期间实际执行整个模型来得到，这个时候我们就需要一个evaluator来执行。</p>
+<h3 id="evaluator与kernel"><a href="#evaluator与kernel" class="headerlink" title="evaluator与kernel"></a>evaluator与kernel</h3><p>我觉得这里可以视为以模型和参数作为输入的解释器，对于模型来说最小单位是一个算子，那么我们就需要添加每一个算子所对应的实现，又称为kernel。</p>
+<p>而kernels的实现不仅要正确，还要尽可能的高效。原因有如下两条</p>
+<ol>
+<li>这直接影响到开启量化后的编译时间。</li>
+<li>对于ai加速器来说只能够加速特定的算子，而其他算子依然会使用cpu来执行。cpu上的算子执行如果要利用这些kernels的话那它们的性能也是非常重要。</li>
+</ol>
+<p>关于第二条，这只是做法之一，实际上加速器加速不到的算子也有很多的实现方式，在这里只是提及有这种实现方式不进行评价好与坏，所以仅供参考。</p>
+<h1 id="利用传统编译器的技术来做ai-compiler"><a href="#利用传统编译器的技术来做ai-compiler" class="headerlink" title="利用传统编译器的技术来做ai compiler"></a>利用传统编译器的技术来做ai compiler</h1><p>常量折叠、寄存器分配等技术都是可以从传统编译器来借鉴的。</p>
+<p>一个非常典型的利用传统编译器技术的莫过于TVM（最有名的开源ai compiler）。其中的高层IR（Relay）直接利用了lambda calculus</p>
 <blockquote>
-<p>他当然相信他能做到，但总是要从另外什么地方再去挖掘一些力量，再去挖掘一些时间。</p>
+<p>既然我们知道如何做control flow（lambda calculus），为啥不直接用<a class="link"   target="_blank" rel="noopener" href="https://www.zhihu.com/search?q=lambda+calculus&search_source=Entity&hybrid_search_source=Entity&hybrid_search_extra=%7B%22sourceType%22:%22answer%22,%22sourceId%22:%22875630325%22%7D" >lambda calculus<i class="fas fa-external-link-alt"></i></a>当IR呢？这就是relay了。(当然，传统DL compiler能做的还是一样，但是没啥好讲的（maybe sized tensor？but sized tensor is boring））。<br>选取了lambda calculus为ir以后，由于这上面的研究很多，我们实现需求复杂的任务比其他框架简单得多 - 因为我们只需要照抄经典compiler算法。</p>
 </blockquote>
-<p><strong>而为了完成这一切，他选择了“支配时间”</strong></p>
-<h1 id="时间"><a href="#时间" class="headerlink" title="时间"></a>时间</h1><p>完成事情需要时间，这是一个不可避免的内容。而对于时间的使用，很自然会想到利用好各种时间，他自然是做到了，将各种碎片时间利用到了极致。但只是利用碎片时间自然是不足以使他获得如此成就</p>
-<blockquote>
-<p>应当不断挖掘一切时间潜力。明摆着，人不能者是每天工作十四五个小时。应当正确利用工作时间。从时间中去找时间。</p>
-</blockquote>
-<p>接着他就开始了记录时间的生涯。他将自己做得<strong>几乎每件事情</strong>所需要的时间记录下来，进而达到能够<strong>十分清楚地了解自己做每件事情的时间</strong>，在了解自己的时间后进行十分周密的安排（注意，这是在他能够保证利用各种碎片时间的前提下）。</p>
-<p>这些内容我觉得比起我来讲不如来看摘录的原文</p>
-<blockquote>
-<p>计划就是挑选时间、规定节律，使一切都各得其所。头脑清醒的时候应当钻研数学，累了便看书。</p>
-</blockquote>
-<blockquote>
-<p>这个方法之所以能够存在，是依靠经常的计算和检查。没有计算的计划是盲目的计划，就象某些研究所那样，光会做计划，却不去操心这计划能不能完成。</p>
-</blockquote>
-<p>他对于时间的理解是非常深刻的。而最重要的则是他使用了一生来实践这样的方法。</p>
-<p>了解时间记录法后我偶然想到在一本书中看到的话：不是要达到什么目标，而是要形成一个自己想要的系统，目标会自然而然达到。再看柳比歇夫的经历，亦是如此</p>
-<p>而书中也有很多时间相关值得回味的内容，在这里摘录两段</p>
-<blockquote>
-<p>为了节约时间，实干家下了马车坐上火车，下了火车坐上飞机。发明了电报和电话来代替书信，电视代替了剧院，拉链代替了扣子，圆珠笔代替了鹅翎。电梯、计算机、百货公司、电传打字机、电动制刀——这一切发明，都是为了替人节省时间。然而，不知道为什么，人越来越感到时间不够用</p>
-</blockquote>
-<blockquote>
-<p>时间的分配几乎同两千年以前赛纳卡时代一摸一样：“我们一生的时间，大部分用于错误及种种恶行；很大一部分虚抛浪掷，无所事事。我们整个一生，几乎都没有用来干应当干的事</p>
-</blockquote>
-<h1 id="代价与幸福"><a href="#代价与幸福" class="headerlink" title="代价与幸福"></a>代价与幸福</h1><p>可能很多人会觉得，这样机械式的生活真的快乐幸福吗？这里可以肯定的回答，至少对他来说是这样的。这里我有一个比较奇特的视角来讲，他清晰的明白自己的能力边界，因此他不需要担心时间不足或者担心自己做不到，他不需要焦虑在这种事情上，减少了焦虑并且能够更好的发挥自己的才能。</p>
-<p>而在作者看来他亦是幸福的。在书的一开始，作者就提到</p>
-<blockquote>
-<p>我从中得到的一切，对于我来说，是一个新发现，使我参透了一个人一生的秘密。</p>
-<p>这个秘密是——怎么生活得更好。</p>
-</blockquote>
-<p>但是这一切是有一个前提：他不断的给自己设定更高的要求，并且他有着源源不断的好奇心和求知欲，而这样做正是满足了他的欲望，因此这一切对他来说是十分幸福的。</p>
-<p>在写下前面的部分，回顾文中的内容，在最后也看到了作者持有着同样的态度</p>
-<blockquote>
-<p>只有一个人向自己提出崇高目标时，这个时间统计法才能成立</p>
-</blockquote>
-<h1 id="能力边界与高要求"><a href="#能力边界与高要求" class="headerlink" title="能力边界与高要求"></a>能力边界与高要求</h1><p>他持续对自己高要求，并且在明确自己能力边界的情况下不断在边界中前进</p>
-<blockquote>
-<p> 他不让自己负担过重，力不胜任；他总是循着他能力的边缘前进，他对自己能力的掂量愈来愈精确。这是一条永不停顿的自我认识的道路”“如果每个人都能知道自己能干些什么，那生活会变得多么美好！因为每个人的能力都比他自己感觉到的大得多。他会变得比自己想象的更为勇敢；他会变得更坚韧、更有力，更能适应环境”</p>
-</blockquote>
-<p>还有一段我觉得是非常棒的描述</p>
-<blockquote>
-<p>对于柳比歇夫，任何时候都不能说他已“成为”怎样一个人。他永远正在“逐步成为”怎样一个人。他一直在探索，一直在变化，他总是重新考虑，不断提高对自己和对自己理想的要求</p>
-</blockquote>
-<h1 id="对知识的热爱以及偏离目标"><a href="#对知识的热爱以及偏离目标" class="headerlink" title="对知识的热爱以及偏离目标"></a>对知识的热爱以及偏离目标</h1><p>他学习知识，数学、历史、文学、音乐等等各种方面。</p>
-<p>他不善于克制自己，经常迷上同他完全无关的东西中。他无法抗拒周围环境的诱惑，他无法抗拒那些知识。但是关于这些，作者给出了很明确的观点</p>
-<blockquote>
-<p>“天哪，对于嗜癖和精力分散我们又能知道些什么呢！谁能说清楚“人应当是怎么样的”。我们从何知道人应当是怎么样的呢”</p>
-</blockquote>
-<p>不过有一点要注意，不论怎么样<strong>他最后都能够确保任务的完成</strong>，这也和他对自己能力有着清晰的认识有关。</p>
-<p>而“偏离目标”，也就是学习各种看似不相关的知识实际上也会产生一些意想不到的效果。达芬奇就是一个非常擅长将不同领域的知识融合在一起的人，他的许多创作都是如此。</p>
-<h1 id="关于这本书"><a href="#关于这本书" class="headerlink" title="关于这本书"></a>关于这本书</h1><p>作者在本书的开头就在提到如何吸引读者这一件事情，而毋庸置疑的作者达到了他的目的，不像我后来看的达芬奇传（作者沃尔特 艾萨克森）真的是无聊至极。</p>
-<p>正如作者所期望的那样，每读一点我就更加迫不及待的想要看到后面的内容，作者巧妙的描述出了一个饱满的柳比歇夫的形象。读完这本书后让我产生了更强烈的阅读其他传记的欲望，之后也就顺势读完了乔布斯传。</p>
-<p>读这本书的过程中自己被柳比歇夫所吸引，也许这就是我所理想的样子。他对自我的要求、他的自由、他的幸福、他对自己的严格要求、他不断增长的边界，无一例外充满了魅力。在写到这一段的时候越写下去越发不可收拾，我着了迷、入了魔，那段时间读到相关的部分都会感到非常兴奋。</p>
-<p>我希望这本书给别人的印象不仅仅是只有柳比歇夫的时间统计法，尽管是在读者的角度，我依然想要让其他阅读这本书的人更多的去体会、感受柳比歇夫的各种特质，而并非只是局限于时间统计法，时间统计法本质上是他的特质的衍生产物，是他为了完成自己的目的所选择的一条道路。</p>
-<p>而完美的是作者也将这些特质巧妙的讲了出来，也没有花费太大篇幅去描述时间统计法。我最初也并不知道柳比歇夫是怎么样的人，但至少读完本书之后对他的形象有了一个饱满的认识，尽管这些只是局限于作者所描述的部分。</p>
-<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><p>整理这篇文章花费的时间比预想的还要多很多，整理的过程中几度想要放弃了，但是整理的时候多少又找回了一些热情，又回想起了很多，最后还是坚持了下来。请原谅我个人能力有限，文中内容简陋，而且内容有所遗忘，无法在这么短的篇幅中将他的魅力讲述到极致，只能提及部分性格特点，而书中所讲述的他更为有趣。<strong>如果你是对自己有要求的人，那么我非常推荐你去读这本书</strong>，去感受他的人生，感受他的精神，也许你会和我一样着迷。</p>
-<p>虽然我做不到柳比歇夫的时间记录法，但是我可以学习他的高要求、不断在自己的边界进步、他对知识的热情，这些也足够我获得很大的成长了。我应该认真思考如何像他一样对自己不断的提出要求并且<strong>达到这些要求，而不只是空谈</strong>，写完这篇文章的今天我该拿出时间好好反思。</p>
-<p>最开始写这些文字的内容是几个月前我刚读完这本书的时候，现在将其整理成文。开头一段现在回头看多少有点怪异，但我最后还是决定保留。不过不论如何，我现在依然很为能看到这本书并且了解这个人而感到幸运。</p>
+<p>原文链接：<a class="link"   target="_blank" rel="noopener" href="https://www.zhihu.com/question/331611341/answer/875630325" >https://www.zhihu.com/question/331611341/answer/875630325<i class="fas fa-external-link-alt"></i></a></p>
+<p>不过只是这些当然还不够，需要探索更多专为ai相关的技术才能做好ai compiler。</p>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><p>当了解了一些知识以后，就很难从一个完全不知道的视角去讲述了，所以写完本文我也难以把握哪里是相关知识较少的人看不明白的地方。读者如果能够通过本文了解ai compiler大致是什么样子的话那是再好不过了，如果读完本文对ai compiler产生了兴趣也欢迎进入这个行业和我一起摸爬滚打</p>
 
         </div>
 
@@ -325,11 +310,11 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：论柳比歇夫</li>
+        <li>本文标题：AI Compiler是什么？</li>
         <li>本文作者：Homura</li>
-        <li>创建时间：2022-02-04 11:00:48</li>
+        <li>创建时间：2022-02-05 10:38:18</li>
         <li>
-            本文链接：https://homura.live/2022/02/04/Lyubishchev/
+            本文链接：https://homura.live/2022/02/05/what-is-ai-compiler/
         </li>
         <li>
             版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
@@ -343,29 +328,14 @@
         
             <div class="article-nav">
                 
-                    <div class="article-prev">
-                        <a class="prev"
-                           rel="prev"
-                           href="/2022/02/05/what-is-ai-compiler/"
-                        >
-                            <span class="left arrow-icon flex-center">
-                              <i class="fas fa-chevron-left"></i>
-                            </span>
-                            <span class="title flex-center">
-                                <span class="post-nav-title-item">AI Compiler是什么？</span>
-                                <span class="post-nav-item">上一篇</span>
-                            </span>
-                        </a>
-                    </div>
-                
                 
                     <div class="article-next">
                         <a class="next"
                            rel="next"
-                           href="/2022/01/30/iPadminiReview/"
+                           href="/2022/02/04/Lyubishchev/"
                         >
                             <span class="title flex-center">
-                                <span class="post-nav-title-item">iPhone Ultra Max(iPad mini)体验</span>
+                                <span class="post-nav-title-item">论柳比歇夫</span>
                                 <span class="post-nav-item">下一篇</span>
                             </span>
                             <span class="right arrow-icon flex-center">
@@ -580,7 +550,7 @@
         <aside class="page-aside">
             <div class="post-toc-wrap">
     <div class="post-toc">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%96%E7%9A%84%E6%88%90%E5%B0%B1"><span class="nav-number">1.</span> <span class="nav-text">他的成就</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%BC%80%E5%A7%8B"><span class="nav-number">2.</span> <span class="nav-text">开始</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%97%B6%E9%97%B4"><span class="nav-number">3.</span> <span class="nav-text">时间</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%A3%E4%BB%B7%E4%B8%8E%E5%B9%B8%E7%A6%8F"><span class="nav-number">4.</span> <span class="nav-text">代价与幸福</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%83%BD%E5%8A%9B%E8%BE%B9%E7%95%8C%E4%B8%8E%E9%AB%98%E8%A6%81%E6%B1%82"><span class="nav-number">5.</span> <span class="nav-text">能力边界与高要求</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%B9%E7%9F%A5%E8%AF%86%E7%9A%84%E7%83%AD%E7%88%B1%E4%BB%A5%E5%8F%8A%E5%81%8F%E7%A6%BB%E7%9B%AE%E6%A0%87"><span class="nav-number">6.</span> <span class="nav-text">对知识的热爱以及偏离目标</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B3%E4%BA%8E%E8%BF%99%E6%9C%AC%E4%B9%A6"><span class="nav-number">7.</span> <span class="nav-text">关于这本书</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-number">8.</span> <span class="nav-text">最后</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AI-compiler%E6%98%AF%E5%81%9A%E4%BB%80%E4%B9%88%E7%9A%84"><span class="nav-number">1.</span> <span class="nav-text">AI compiler是做什么的</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">编译流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E5%AF%B9%E8%B1%A1"><span class="nav-number">2.1.</span> <span class="nav-text">编译对象</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E6%9E%90%E8%BE%93%E5%85%A5%E6%96%B9%E5%BC%8F%E4%B8%8D%E5%90%8C"><span class="nav-number">2.2.</span> <span class="nav-text">解析输入方式不同</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%AB%98%E5%B1%82IR%E8%AE%BE%E8%AE%A1"><span class="nav-number">2.3.</span> <span class="nav-text">高层IR设计</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96"><span class="nav-number">2.4.</span> <span class="nav-text">优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9B%BE%E4%BC%98%E5%8C%96"><span class="nav-number">2.4.1.</span> <span class="nav-text">图优化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fuse"><span class="nav-number">2.4.2.</span> <span class="nav-text">fuse</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tiling-%EF%BC%9A%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86%E4%B8%8E%E9%87%8D%E6%8E%92"><span class="nav-number">2.4.3.</span> <span class="nav-text">tiling ：数据切分与重排</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E5%BA%A6"><span class="nav-number">2.4.4.</span> <span class="nav-text">调度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#buffer%E5%88%86%E9%85%8D"><span class="nav-number">2.4.5.</span> <span class="nav-text">buffer分配</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E6%88%90%E4%BB%A3%E7%A0%81%E4%B8%8E%E8%BF%90%E8%A1%8C"><span class="nav-number">2.5.</span> <span class="nav-text">生成代码与运行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E6%97%B6%E9%97%B4%E6%95%8F%E6%84%9F%E5%BA%A6"><span class="nav-number">2.6.</span> <span class="nav-text">编译时间敏感度</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AI-compiler%E7%89%B9%E6%9C%89%E7%9A%84%E9%83%A8%E5%88%86"><span class="nav-number">2.7.</span> <span class="nav-text">AI compiler特有的部分</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8F%E5%8C%96"><span class="nav-number">2.7.1.</span> <span class="nav-text">量化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#evaluator%E4%B8%8Ekernel"><span class="nav-number">2.7.2.</span> <span class="nav-text">evaluator与kernel</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%A9%E7%94%A8%E4%BC%A0%E7%BB%9F%E7%BC%96%E8%AF%91%E5%99%A8%E7%9A%84%E6%8A%80%E6%9C%AF%E6%9D%A5%E5%81%9Aai-compiler"><span class="nav-number">3.</span> <span class="nav-text">利用传统编译器的技术来做ai compiler</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-number">4.</span> <span class="nav-text">最后</span></a></li></ol>
     </div>
 </div>
         </aside>

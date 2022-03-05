@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            Rc-lang开发周记10 分支与循环 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+
+
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">Rc-lang开发周记10 分支与循环</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-03-05 11:56:29
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        &gt; <a href="/categories/VM/">VM</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.2k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>5 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>开头忏悔，上周因为年会出去玩了三天没写多少东西，加上回来太累了，也就咕了一周，本周会把上周的东西一起写进来</p>
+<p>本周更新的内容主要是修复之前的问题以及处理了分支循环</p>
+<h1 id="继承与成员变量"><a href="#继承与成员变量" class="headerlink" title="继承与成员变量"></a>继承与成员变量</h1><p>首先是上周遗留的继承的情况下成员变量id会有问题，我们先来看一下成员变量相关的实现</p>
+<ol>
+<li>使用id标明</li>
+<li>运行时存一个hash，按照名字来取</li>
+</ol>
+<p>我选择在添加parent的时候将parent的成员变量添加到当前的instance_vars中。这样需要布局在编译器确定，无法应对动态添加成员变量的情况，不过先不管那些</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">instance_var_keys</span></span></span><br><span class="line">  <span class="variable">@instance_vars</span>.sort_by(&amp;<span class="symbol">:last</span>).map &#123;<span class="params">|k, _|</span>k&#125;</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">add_parents</span><span class="params">(parent_name, parent_table)</span></span></span><br><span class="line">  <span class="variable">@parent</span> = parent_name</span><br><span class="line">  <span class="keyword">unless</span> parent_table.is_a? ClassTable</span><br><span class="line">    raise <span class="string">&quot;parent_table should be a ClassTable&quot;</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line">  parent_table.instance_vars.each <span class="keyword">do</span> <span class="params">|var_name, _|</span></span><br><span class="line">    <span class="keyword">unless</span> <span class="variable">@instance_vars</span>.<span class="keyword">include</span>? var_name</span><br><span class="line">      add_instance_var(var_name)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="分支"><a href="#分支" class="headerlink" title="分支"></a>分支</h1><p>最近才发现我还没有做分支以及循环的内容</p>
+<h2 id="AST"><a href="#AST" class="headerlink" title="AST"></a>AST</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">If</span></span></span><br><span class="line">	<span class="comment"># stmt_list: [[if_cond, stmt], [elsif_cond, stmt]*]</span></span><br><span class="line">	<span class="keyword">attr_reader</span> <span class="symbol">:stmt_list</span>, <span class="symbol">:else_stmts</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="translator"><a href="#translator" class="headerlink" title="translator"></a>translator</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_if</span><span class="params">(node)</span></span></span><br><span class="line">  list = node.stmt_list.map <span class="keyword">do</span> <span class="params">|cond, stmt|</span></span><br><span class="line">    c = visit(cond)</span><br><span class="line">    s = [visit(stmt), JumpAfterIf.new].flatten</span><br><span class="line">    cmp_and_jmp = push_eq_jmp(s.size)</span><br><span class="line">    [c, cmp_and_jmp, s].flatten</span><br><span class="line">  <span class="keyword">end</span>.flatten</span><br><span class="line">  els = visit(node.else_stmts)</span><br><span class="line">  list = list + els</span><br><span class="line">  list.each_with_index <span class="keyword">do</span> <span class="params">|inst, index|</span></span><br><span class="line">    <span class="keyword">if</span> inst.is_a? JumpAfterIf</span><br><span class="line">      list[index] = RelativeJump.new(list.size - index + <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">end</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line">  list</span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">push_eq_jmp</span><span class="params">(true_branch_size)</span></span></span><br><span class="line">  [Push.new(<span class="number">1</span>), EQ.new, JumpFalse.new(true_branch_size + <span class="number">1</span>)]</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="思路"><a href="#思路" class="headerlink" title="思路"></a>思路</h3><p>对于每一组（if或者elsif）if条件和stmt进行遍历</p>
+<ol>
+<li><p>生成判断条件的指令</p>
+</li>
+<li><p>生成比较指令</p>
+<p>将判断执行的结果与true进行eq操作，失败则跳转到下一组elsif，也就是true分支之后的第一条指令</p>
+</li>
+<li><p>生成当前组if中对应的true的分支</p>
+<p>最后要添加一个跳转到整个if结束的指令</p>
+</li>
+</ol>
+<h3 id="新指令"><a href="#新指令" class="headerlink" title="新指令"></a>新指令</h3><p>可以看到这里引入了几个新的指令</p>
+<p>JumpAfterIf：用于跳转到if结束语句，提前占好指令位置，最后由RelativeJump代替</p>
+<p>RelativeJump：跳转到一个相对地址</p>
+<p>对于分支来说，判断指令也是需要的，因此还引入了GT，LT，EQ三个指令</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">translate_op</span><span class="params">(op)</span></span></span><br><span class="line">  <span class="keyword">case</span> op.op</span><br><span class="line">	...</span><br><span class="line">  <span class="keyword">in</span> <span class="string">&#x27;&lt;&#x27;</span></span><br><span class="line">    LT.new</span><br><span class="line">  <span class="keyword">in</span> <span class="string">&#x27;&gt;&#x27;</span></span><br><span class="line">    GT.new</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    raise <span class="string">&#x27;unsupported op&#x27;</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="循环"><a href="#循环" class="headerlink" title="循环"></a>循环</h1><h2 id="ast"><a href="#ast" class="headerlink" title="ast"></a>ast</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">While</span> &lt; Struct.<span class="title">new</span>(:<span class="title">cond</span>, :<span class="title">body</span>)</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="translator-1"><a href="#translator-1" class="headerlink" title="translator"></a>translator</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">on_while</span><span class="params">(node)</span></span></span><br><span class="line">  cond = visit(node.cond)</span><br><span class="line">  body = visit(node.body).flatten</span><br><span class="line">  cmp_and_jmp = push_eq_jmp(body.size + <span class="number">1</span>)</span><br><span class="line">  while_inst = [cond, cmp_and_jmp, body].flatten</span><br><span class="line">  while_inst + [RelativeJump.new(-while_inst.size)]</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>这里的内容更简单，相比if来说只需要处理一个分支判断和true的语句，最后加一个回到while开头的跳转即可</p>
+<h1 id="指令的VM实现"><a href="#指令的VM实现" class="headerlink" title="指令的VM实现"></a>指令的VM实现</h1><h2 id="新的pc寻址方式"><a href="#新的pc寻址方式" class="headerlink" title="新的pc寻址方式"></a>新的pc寻址方式</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">VM::set_pc</span><span class="params">(<span class="keyword">size_t</span> new_pc)</span> </span>&#123;</span><br><span class="line">    _pc = new_pc;</span><br><span class="line">    _pc_need_incr = <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">voidVM::<span class="built_in">relative_pc</span>(<span class="keyword">int</span> offset) &#123;</span><br><span class="line">    <span class="built_in">DEBUG_CHECK</span>(<span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(_pc) + offset &lt; <span class="number">0</span>,</span><br><span class="line">                <span class="string">&quot;invalid pc, pc:&quot;</span> + std::<span class="built_in">to_string</span>(_pc) + <span class="string">&quot;offset:&quot;</span> + std::<span class="built_in">to_string</span>(offset))</span><br><span class="line">    <span class="built_in">set_pc</span>(_pc + offset);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="比较"><a href="#比较" class="headerlink" title="比较"></a>比较</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">visit</span><span class="params">([[maybe_unused]]  <span class="keyword">const</span> EQ &amp;inst)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    _eval_stack.<span class="built_in">exec</span>(BinaryOp::EQ);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">visit</span><span class="params">([[maybe_unused]]  <span class="keyword">const</span> GT &amp;inst)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    _eval_stack.<span class="built_in">exec</span>(BinaryOp::GT);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">visit</span><span class="params">([[maybe_unused]]  <span class="keyword">const</span> LT &amp;inst)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    _eval_stack.<span class="built_in">exec</span>(BinaryOp::LT);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于这里，我把一些binary的op做了一下处理</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">exec</span><span class="params">(BinaryOp op)</span> </span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> PUSH(_opname, _op) \</span></span><br><span class="line"><span class="meta">   case BinaryOp::_opname: \</span></span><br><span class="line"><span class="meta">      push(v1 _op v2);     \</span></span><br><span class="line"><span class="meta">      break;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// LT GT, FILO</span></span><br><span class="line">    <span class="keyword">auto</span> v2 = <span class="built_in">pop</span>();</span><br><span class="line">    <span class="keyword">auto</span> v1 = <span class="built_in">pop</span>();</span><br><span class="line">    <span class="built_in"><span class="keyword">switch</span></span> (op) &#123;</span><br><span class="line">        <span class="built_in">PUSH</span>(Add, +)</span><br><span class="line">        <span class="built_in">PUSH</span>(Sub, -)</span><br><span class="line">        <span class="built_in">PUSH</span>(Mul, *)</span><br><span class="line">        <span class="built_in">PUSH</span>(Div, /)</span><br><span class="line">        <span class="built_in">PUSH</span>(Mod, %)</span><br><span class="line">        <span class="built_in">PUSH</span>(EQ, ==)</span><br><span class="line">        <span class="built_in">PUSH</span>(LT, &lt;)</span><br><span class="line">        <span class="built_in">PUSH</span>(GT, &gt;)</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">undef</span> PUSH</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>有一个需要注意的点是第一个pop出来的是表达式右侧的变量，因为栈是先进后出的。不仅比较操作需要注意，减法和除法也是如此</p>
+<h2 id="RelativeJump"><a href="#RelativeJump" class="headerlink" title="RelativeJump"></a>RelativeJump</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">visit</span><span class="params">(constRelativeJump &amp;inst)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    _vm.<span class="built_in">relative_pc</span>(inst.offset);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="JumpFalse"><a href="#JumpFalse" class="headerlink" title="JumpFalse"></a>JumpFalse</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">visit</span><span class="params">([[maybe_unused]] <span class="keyword">const</span> JumpFalse &amp;inst)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> cond = _eval_stack.<span class="built_in">pop</span>();</span><br><span class="line">    <span class="keyword">if</span>(cond == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">        _vm.<span class="built_in">relative_pc</span>(inst.offset);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h1><p>过于急切的去摸了一点oop的边，甚至连基本的分支跳转之类的都没有做，这么匆匆忙忙是否表示我已经不想做了呢…不管怎么说，这个坑决定开了，不想做也要做下去，做的烂总比什么都没做要强的多（最近几周的内容不论是数量还是质量都开始大幅下降了…</p>
+<p>开始不想接着写当前的了，vm那边我觉得虽然没写多少但已经开始有屎山的倾向了，应该花点时间重新考虑下代码结构以及测试。</p>
+<p>优化以及类型分析之类的我觉得还是换一门静态类型的语言来做。最近也在开始进行编译器重写的工作，好在实际上东西不是很多。重写过后就会从优化以及类型开始做一些工作，而下周开始可能会花更大比例的时间在重写上。尽管东西不多，但由于我对新语言对不熟悉，而且尽可能的改用好的设计，还是要花上一定的时间</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：Rc-lang开发周记10 分支与循环</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-03-05 11:56:29</li>
+        <li>
+            本文链接：https://homura.live/2022/03/05/rc-lang-dev-10/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/02/20/rc-lang-dev-9/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记9 OOP之继承</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BB%A7%E6%89%BF%E4%B8%8E%E6%88%90%E5%91%98%E5%8F%98%E9%87%8F"><span class="nav-number">1.</span> <span class="nav-text">继承与成员变量</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%86%E6%94%AF"><span class="nav-number">2.</span> <span class="nav-text">分支</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#AST"><span class="nav-number">2.1.</span> <span class="nav-text">AST</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#translator"><span class="nav-number">2.2.</span> <span class="nav-text">translator</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%80%9D%E8%B7%AF"><span class="nav-number">2.2.1.</span> <span class="nav-text">思路</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%96%B0%E6%8C%87%E4%BB%A4"><span class="nav-number">2.2.2.</span> <span class="nav-text">新指令</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%BE%AA%E7%8E%AF"><span class="nav-number">3.</span> <span class="nav-text">循环</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ast"><span class="nav-number">3.1.</span> <span class="nav-text">ast</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#translator-1"><span class="nav-number">3.2.</span> <span class="nav-text">translator</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%8C%87%E4%BB%A4%E7%9A%84VM%E5%AE%9E%E7%8E%B0"><span class="nav-number">4.</span> <span class="nav-text">指令的VM实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B0%E7%9A%84pc%E5%AF%BB%E5%9D%80%E6%96%B9%E5%BC%8F"><span class="nav-number">4.1.</span> <span class="nav-text">新的pc寻址方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%94%E8%BE%83"><span class="nav-number">4.2.</span> <span class="nav-text">比较</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#RelativeJump"><span class="nav-number">4.3.</span> <span class="nav-text">RelativeJump</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#JumpFalse"><span class="nav-number">4.4.</span> <span class="nav-text">JumpFalse</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B6%E4%BB%96"><span class="nav-number">5.</span> <span class="nav-text">其他</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -34,7 +34,7 @@
 <meta property="og:description" content="本周一开始重构了一下vm的部分代码，之后基本上都是在用新语言重写parser的部分。 重构vm目前代码很少，做的重构主要是将一些东西抽象拆分出来 这是之前vm的成员变量 1234567std::shared_ptr&lt;VMInstVisitor&gt; _visitor;std::vector&lt;std::shared_ptr&lt;VMInst&gt;&gt; _inst_list;si">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2022-03-13T03:08:42.000Z">
-<meta property="article:modified_time" content="2022-03-13T05:16:08.173Z">
+<meta property="article:modified_time" content="2022-03-13T08:33:02.179Z">
 <meta property="article:author" content="Homura">
 <meta property="article:tag" content="Rc-lang">
 <meta property="article:tag" content="Lexer">
@@ -327,7 +327,7 @@
 <figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">space</span></span>: <span class="type">Parser</span>[<span class="type">Token</span>] = positioned &#123;</span><br><span class="line">  whiteSpace.+ ^^^ <span class="type">SPACE</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">notSpacer</span></span>: <span class="type">Parser</span>[<span class="type">Token</span>] = keyword | value | eol</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">spacer</span></span>: <span class="type">Parser</span>[<span class="type">Token</span>] = symbol | operator | eql | space</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">keyword</span></span>: <span class="type">Parser</span>[<span class="type">Token</span>] = stringLiteral | trueLiteral | falseLiteral |</span><br><span class="line">    defStr | endStr | ifStr | thenStr | elsifStr | elseStr | whileStr |</span><br><span class="line">    classStr | superStr | varStr | valStr</span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">symbol</span></span>: <span class="type">Parser</span>[<span class="type">Token</span>] = comma | eol | leftParentTheses | rightParentTheses | leftSquare | rightSquare</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">value</span></span>: <span class="type">Parser</span>[<span class="type">Token</span>] = number | identifier</span><br></pre></td></tr></table></figure>
 
 <p>这里对我来说是一个比较难写的点，上周在写的时候头痛了好一阵子，想明白逻辑以后再回来看会好很多</p>
-<h3 id="整体逻辑"><a href="#整体逻辑" class="headerlink" title="整体逻辑"></a>整体逻辑</h3><p>这里的逻辑是这样的：我们先定义不能作为间隔符的为A（notSpacer），可以作为间隔符的为B（spacer），那么我们需要的是A(B+A)<em>B</em>，或者是B+(AB+)*A?</p>
+<h3 id="整体逻辑"><a href="#整体逻辑" class="headerlink" title="整体逻辑"></a>整体逻辑</h3><p>这里的逻辑是这样的：我们先定义不能作为间隔符的为A（notSpacer），可以作为间隔符的为B（spacer），那么我们需要的是A(B+A)*B*，或者是B+(AB+)*A?</p>
 <p>注：这里的*+?都是正则表达式的语义</p>
 <h3 id="拆分逻辑"><a href="#拆分逻辑" class="headerlink" title="拆分逻辑"></a>拆分逻辑</h3><p>关于为什么要这么设定，我们先从B开始。</p>
 <ol>

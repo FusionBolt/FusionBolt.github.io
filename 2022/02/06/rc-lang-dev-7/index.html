@@ -26,6 +26,18 @@
     KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
     KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
   </script>
+    <meta name="description" content="本周的内容主要是写了一点点GC，同时做了一些对接GC的改动，之后接入了gtest开始测试。 由于GC基本的功能还没写完（你这也太慢了），本周将着重介绍一下GC的原理 ，让读者对GC对一些概念之类有个大概的了解，实现的细节以及我在实现中遇到思考的问题留到下周再说，可以等到下周养肥再一起看 本周从质和量来说都无法令人满意，状态比较差要写不下去了，但是起码比咕了强 GC的对象表示对象被保存在内存中，而对">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Rc-lang开发周记7 GC也没有那么可怕 其一">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/02/06/rc-lang-dev-7/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="本周的内容主要是写了一点点GC，同时做了一些对接GC的改动，之后接入了gtest开始测试。 由于GC基本的功能还没写完（你这也太慢了），本周将着重介绍一下GC的原理 ，让读者对GC对一些概念之类有个大概的了解，实现的细节以及我在实现中遇到思考的问题留到下周再说，可以等到下周养肥再一起看 本周从质和量来说都无法令人满意，状态比较差要写不下去了，但是起码比咕了强 GC的对象表示对象被保存在内存中，而对">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-02-06T04:36:30.000Z">
+<meta property="article:modified_time" content="2022-02-12T03:46:28.889Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Rc-lang">
+<meta name="twitter:card" content="summary">
 <meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
 </head>
 

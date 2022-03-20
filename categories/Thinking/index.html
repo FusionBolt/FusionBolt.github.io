@@ -282,161 +282,62 @@
     
 
     <div class="right-bottom-side-tools">
-        $tools-item-width = 32px;
-$tools-item-font-size = 1.1rem;
-$tools-item-border-radius = 1px;
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
 
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
 
-.side-tools-container {
-  position: relative;
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
 
-  .tools-item {
-    width: $tools-item-width;
-    height: $tools-item-width;
-    font-size: $tools-item-font-size;
-    margin-bottom: 3px;
-    cursor: pointer;
-    border-right: none;
-    border-radius: $tools-item-border-radius;
-    box-shadow: 1px 1px 3px var(--shadow-color);
-    color: var(--default-text-color);
-    background: var(--background-color);
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
 
-    i {
-      color: var(--default-text-color);
-    }
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
 
-    &:hover {
-      color: var(--background-color);
-      background: var(--primary-color);
-      box-shadow: 2px 2px 6px var(--shadow-color);
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
 
-      i {
-        color: var(--background-color);
-      }
-    }
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
 
-    +keep-tablet() {
-      width: $tools-item-width * 0.9;
-      height: $tools-item-width * 0.9;
-      font-size: $tools-item-font-size * 0.9;
-      margin-bottom: 2px;
-    }
-
-    &.rss {
-
-      a {
-        border-radius: $tools-item-border-radius;
-        width: 100%;
-        height: 100%;
-
-        &:hover {
-          color: var(--background-color);
-          background: var(--primary-color);
-          box-shadow: 2px 2px 6px var(--shadow-color);
-        }
-      }
-    }
-  }
-
-
-  .side-tools-list {
-    opacity: 0;
-    transform: translateX(100%);
-    transition-t("transform, opacity", "0, 0", "0.2, 0.2", "linear, linear");
-
-    .tool-expand-width {
-      +keep-tablet() {
-        display: none;
-      }
-    }
-
-
-    &.show {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-
-  .exposed-tools-list {
-
-    if (hexo-config('style.scroll.percent.enable') == true) {
-      .tool-scroll-to-top {
-        display: none;
-
-        &.show {
-          display: flex;
-        }
-
-        &:hover {
-
-          .percent {
-            display: none;
-          }
-
-          .arrow-up {
-            display: flex;
-          }
-
-        }
-
-        .arrow-up {
-          display: none;
-        }
-
-        .percent {
-          display: flex;
-          font-size: 1rem;
-        }
-
-      }
-
-    }
-  }
-}
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
 
     </div>
 
     
 
-    .image-viewer-container {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0);
-  visibility: hidden;
-  z-index: $z-index-8;
-  padding: 6%;
-  box-sizing: border-box;
-  transition-t("visibility, background", "0, 0", "0.3, 0.3", "ease, ease");
-
-  &.active {
-    background: rgba(0, 0, 0, 0.5);
-    visibility: visible;
-
-    img {
-      cursor: zoom-out;
-      transform: scale(1);
-      padding: 2px;
-      background: var(--background-color);
-    }
-  }
-
-  img {
-    max-width: 100%;
-    max-height: 100%;
-    transform: scale(0);
-    transition-t("transform", "0", "0.3", "ease");
-  }
-}
-
-
+    <div class="image-viewer-container">
+    <img src="">
+</div>
 
 
     

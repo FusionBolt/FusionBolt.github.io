@@ -35,7 +35,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://fusionbolt.github.io/images/rc-lang-dev-13/52EA4D4A98FF564EE062964187F4D6B0.jpg">
 <meta property="article:published_time" content="2022-04-04T02:21:54.000Z">
-<meta property="article:modified_time" content="2022-04-04T05:16:45.147Z">
+<meta property="article:modified_time" content="2022-04-04T08:39:20.053Z">
 <meta property="article:author" content="Homura">
 <meta property="article:tag" content="Rc-lang">
 <meta property="article:tag" content="ParserCombaintor">
@@ -266,7 +266,7 @@
     
     
         <span class="article-wordcount article-meta-item">
-            <i class="fas fa-file-word"></i>&nbsp;<span>914 字</span>
+            <i class="fas fa-file-word"></i>&nbsp;<span>923 字</span>
         </span>
     
     
@@ -314,13 +314,14 @@
 
 <h2 id="Index"><a href="#Index" class="headerlink" title="Index"></a>Index</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">arrayIndex</span></span>: <span class="type">Parser</span>[<span class="type">Expr</span>.<span class="type">Index</span>] = positioned &#123;</span><br><span class="line">  termExpr ~ squareSround(termExpr) ^^ &#123;</span><br><span class="line">    <span class="keyword">case</span> expr ~ index =&gt; <span class="type">Expr</span>.<span class="type">Index</span>(expr, index)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">protected</span> <span class="function"><span class="keyword">def</span> <span class="title">squareSround</span></span>[<span class="type">T</span>](p: <span class="type">Parser</span>[<span class="type">T</span>]) = <span class="type">LEFT_SQUARE</span> ~&gt; p &lt;~ <span class="type">RIGHT_SQUARE</span></span><br></pre></td></tr></table></figure>
 
-<h2 id="左递归"><a href="#左递归" class="headerlink" title="左递归"></a>左递归</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">beginWithTerm</span></span>: <span class="type">PackratParser</span>[<span class="type">Expr</span>] = positioned &#123;</span><br><span class="line">  memCall | memField | arrayIndex</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">term</span></span>: <span class="type">Parser</span>[<span class="type">Expr</span>] = positioned &#123;</span><br><span class="line">  bool | num | string | selfField | call | beginWithTerm | sym ^^ <span class="type">Expr</span>.<span class="type">Constant</span> | idExpr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">termExpr</span></span>: <span class="type">Parser</span>[<span class="type">Expr</span>] = positioned &#123;</span><br><span class="line">  term ~ (operator ~ term).* ^^ &#123;</span><br><span class="line">    <span class="keyword">case</span> term ~ terms =&gt; termsToBinary(term, terms.map(a =&gt; <span class="type">List</span>(a._1, a._2)))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="左递归"><a href="#左递归" class="headerlink" title="左递归"></a>左递归</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">lazy</span> <span class="keyword">val</span> beginWithTerm: <span class="type">PackratParser</span>[<span class="type">Expr</span>] = positioned &#123;</span><br><span class="line">  memCall | memField | arrayIndex</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">term</span></span>: <span class="type">Parser</span>[<span class="type">Expr</span>] = positioned &#123;</span><br><span class="line">  bool | num | string | selfField | call | beginWithTerm | sym ^^ <span class="type">Expr</span>.<span class="type">Constant</span> | idExpr</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">termExpr</span></span>: <span class="type">Parser</span>[<span class="type">Expr</span>] = positioned &#123;</span><br><span class="line">  term ~ (operator ~ term).* ^^ &#123;</span><br><span class="line">    <span class="keyword">case</span> term ~ terms =&gt; termsToBinary(term, terms.map(a =&gt; <span class="type">List</span>(a._1, a._2)))</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>添加了如上几个语法后，语法已经变成了左递归的形式。遇到这种问题一般来说是转成非左递归的语法，因为左递归的情况很容易堆栈溢出，而Scala的parser combaintor提供了记忆化的能力，简单来说就是能够缓存遍历过的情况，第二次递归到某个情况，如果这个情况已经被遍历过那么直接从缓存中取出即可，而不需要再次递归搜索</p>
 <p>想要使用这个功能需要两个步骤</p>
 <ol>
 <li>parser继承自PackratParsers。之前我的parser都是继承自Parsers，而更换成PackratParsers是兼容的，直接修改继承类名即可</li>
 <li>显式指定需要这个功能的parser返回PackratParser</li>
+<li>函数必须改成lazy val</li>
 </ol>
 <p>可以看到上面的beginWithTerm已经修改为了这种形式</p>
 
@@ -352,10 +353,10 @@
                     <div class="article-next">
                         <a class="next"
                            rel="next"
-                           href="/2022/03/28/rest-for-a-week/"
+                           href="/2022/03/29/solve-ci-and-link/"
                         >
                             <span class="title flex-center">
-                                <span class="post-nav-title-item">我原本计划停下一周，然而...</span>
+                                <span class="post-nav-title-item">与CI和链接大战三百回合</span>
                                 <span class="post-nav-item">下一篇</span>
                             </span>
                             <span class="right arrow-icon flex-center">

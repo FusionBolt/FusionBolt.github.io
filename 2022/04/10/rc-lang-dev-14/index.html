@@ -9,7 +9,7 @@
     
     <title>
         
-            Rc-lang开发周记14 |
+            Rc-lang开发周记14 重构与AST Visitor |
         
         Homura&#39;s Blog
     </title>
@@ -26,17 +26,22 @@
     KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
     KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
   </script>
-    <meta name="description" content="本周先是解决了上周遗留下来的一个非常头疼的问题，之后重构了Token和AST的定义以及考虑了一下Visitor以及转到VM指令的部分 PackratReader上周为了解决左递归的语法使用了PackratParser，但是这会引入一个问题，PackratParser会使用PackratReader管理输入，而PackratReader并没有重载toString，因此在log的时候都是类似于 1tr">
+    <meta name="description" content="非pixiv作品   本周先是解决了上周遗留下来的一个非常头疼的问题，之后重构了Token和AST的定义以及考虑了一下Visitor。之后也编写了建立符号表的代码以及一半转换到vm指令的代码，但是总觉得哪里不太对劲就先停了下来，后续确认无误了再一起拿出来讲。还学习了一些rust的实现方式，关于IR方面有更多了解以后有意向再单独出一篇文章讲解自己的一些了解 PackratReader上周为了解决左">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Rc-lang开发周记14">
+<meta property="og:title" content="Rc-lang开发周记14 重构与AST Visitor">
 <meta property="og:url" content="https://fusionbolt.github.io/2022/04/10/rc-lang-dev-14/index.html">
 <meta property="og:site_name" content="Homura&#39;s Blog">
-<meta property="og:description" content="本周先是解决了上周遗留下来的一个非常头疼的问题，之后重构了Token和AST的定义以及考虑了一下Visitor以及转到VM指令的部分 PackratReader上周为了解决左递归的语法使用了PackratParser，但是这会引入一个问题，PackratParser会使用PackratReader管理输入，而PackratReader并没有重载toString，因此在log的时候都是类似于 1tr">
+<meta property="og:description" content="非pixiv作品   本周先是解决了上周遗留下来的一个非常头疼的问题，之后重构了Token和AST的定义以及考虑了一下Visitor。之后也编写了建立符号表的代码以及一半转换到vm指令的代码，但是总觉得哪里不太对劲就先停了下来，后续确认无误了再一起拿出来讲。还学习了一些rust的实现方式，关于IR方面有更多了解以后有意向再单独出一篇文章讲解自己的一些了解 PackratReader上周为了解决左">
 <meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/rc-lang-dev-14/noire.jpg">
 <meta property="article:published_time" content="2022-04-10T03:22:23.000Z">
-<meta property="article:modified_time" content="2022-04-10T03:24:10.974Z">
+<meta property="article:modified_time" content="2022-04-10T03:49:21.753Z">
 <meta property="article:author" content="Homura">
+<meta property="article:tag" content="Rc-lang">
+<meta property="article:tag" content="Rust">
+<meta property="article:tag" content="AST">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/rc-lang-dev-14/noire.jpg">
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
@@ -213,7 +218,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">Rc-lang开发周记14</span>
+            <span class="title-hover-animation">Rc-lang开发周记14 重构与AST Visitor</span>
         </div>
 
         
@@ -234,17 +239,47 @@
         <i class="fas fa-edit"></i>&nbsp;2022-04-10 11:22:23
     </span>
     
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Rust/">Rust</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/AST/">AST</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
     
 
     
     
         <span class="article-wordcount article-meta-item">
-            <i class="fas fa-file-word"></i>&nbsp;<span>2.1k 字</span>
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.2k 字</span>
         </span>
     
     
         <span class="article-min2read article-meta-item">
-            <i class="fas fa-clock"></i>&nbsp;<span>8 分钟</span>
+            <i class="fas fa-clock"></i>&nbsp;<span>9 分钟</span>
         </span>
     
     
@@ -260,11 +295,19 @@
         
 
         <div class="article-content markdown-body">
-            <p>本周先是解决了上周遗留下来的一个非常头疼的问题，之后重构了Token和AST的定义以及考虑了一下Visitor以及转到VM指令的部分</p>
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/rc-lang-dev-14/noire.jpg"
+                      alt="noire"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">非pixiv作品</center> 
+
+<p>本周先是解决了上周遗留下来的一个非常头疼的问题，之后重构了Token和AST的定义以及考虑了一下Visitor。之后也编写了建立符号表的代码以及一半转换到vm指令的代码，但是总觉得哪里不太对劲就先停了下来，后续确认无误了再一起拿出来讲。还学习了一些rust的实现方式，关于IR方面有更多了解以后有意向再单独出一篇文章讲解自己的一些了解</p>
 <h1 id="PackratReader"><a href="#PackratReader" class="headerlink" title="PackratReader"></a>PackratReader</h1><p>上周为了解决左递归的语法使用了PackratParser，但是这会引入一个问题，PackratParser会使用PackratReader管理输入，而PackratReader并没有重载toString，因此在<strong>log的时候</strong>都是类似于</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">trying class member at scala.util.parsing.combinator.PackratParsers$$anon$1@4d3167f4</span><br></pre></td></tr></table></figure>
 
-<p>我的思路如下</p>
+<p>我的解决思路如下</p>
 <p>首先尝试继承并且实现一个自己的PackratReader，因为之前TokenReader就是继承并实现了Reader。但是发现经过了PackratParser的处理后又会变成系统自带的reader</p>
 <p>查看源码发现有这么一段内容</p>
 <figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">rest</span></span>: <span class="type">Reader</span>[<span class="type">T</span>] = <span class="keyword">new</span> <span class="type">PackratReader</span>(underlying.rest) &#123;</span><br><span class="line">  <span class="keyword">override</span> <span class="keyword">private</span>[<span class="type">PackratParsers</span>] <span class="keyword">val</span> cache = outer.cache</span><br><span class="line">  <span class="keyword">override</span> <span class="keyword">private</span>[<span class="type">PackratParsers</span>] <span class="keyword">val</span> recursionHeads = outer.recursionHeads</span><br><span class="line">  lrStack = outer.lrStack</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -318,10 +361,6 @@
 <figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">trait</span> <span class="title">ASTVisitor</span> </span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">type</span> <span class="title">R</span> </span>= <span class="type">Unit</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">visit</span></span>(modules: <span class="type">Modules</span>): <span class="type">R</span> = visitRecursive(modules)</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">visit</span></span>(module: <span class="type">RcModule</span>): <span class="type">R</span> = visitRecursive(module)</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">visit</span></span>(item: <span class="type">Item</span>): <span class="type">R</span> = visitRecursive(item)</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">visit</span></span>(expr: <span class="type">Expr</span>): <span class="type">R</span> = visitRecursive(expr)</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line"></span><br><span class="line">	<span class="keyword">final</span> <span class="function"><span class="keyword">def</span> <span class="title">visitRecursive</span></span>(item: <span class="type">Item</span>): <span class="type">R</span> = &#123;</span><br><span class="line">	    item <span class="keyword">match</span> &#123;</span><br><span class="line">	      <span class="keyword">case</span> method: <span class="type">Item</span>.<span class="type">Method</span> =&gt; visit(method)</span><br><span class="line">	      <span class="keyword">case</span> klass: <span class="type">Item</span>.<span class="type">Class</span> =&gt; visit(klass)</span><br><span class="line">	      <span class="keyword">case</span> _ =&gt; <span class="keyword">throw</span> <span class="keyword">new</span> <span class="type">RuntimeException</span>(<span class="string">&quot;NoneItem&quot;</span>)</span><br><span class="line">	    &#125;</span><br><span class="line">	  &#125;</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>关于返回值的地方我也纠结了一下，虽然留有了一个R的类型，但是没想好之后怎么用。因此就先这样实现吧，之后根据需求再改。在不了解的情况下不应当想着一口气写出合适的实现，而是先从能用开始，再不断修改</p>
-<h1 id="之后的努力方向"><a href="#之后的努力方向" class="headerlink" title="之后的努力方向"></a>之后的努力方向</h1><ol>
-<li>优化</li>
-<li>类型</li>
-</ol>
 
         </div>
 
@@ -329,7 +368,7 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：Rc-lang开发周记14</li>
+        <li>本文标题：Rc-lang开发周记14 重构与AST Visitor</li>
         <li>本文作者：Homura</li>
         <li>创建时间：2022-04-10 11:22:23</li>
         <li>
@@ -569,7 +608,7 @@
         <aside class="page-aside">
             <div class="post-toc-wrap">
     <div class="post-toc">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#PackratReader"><span class="nav-number">1.</span> <span class="nav-text">PackratReader</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%87%8D%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">重构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Token"><span class="nav-number">2.1.</span> <span class="nav-text">Token</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AST"><span class="nav-number">2.2.</span> <span class="nav-text">AST</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#AST-Visitor"><span class="nav-number">3.</span> <span class="nav-text">AST Visitor</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%9D%E8%B7%AF"><span class="nav-number">3.1.</span> <span class="nav-text">思路</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rust"><span class="nav-number">3.2.</span> <span class="nav-text">rust</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.3.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B9%8B%E5%90%8E%E7%9A%84%E5%8A%AA%E5%8A%9B%E6%96%B9%E5%90%91"><span class="nav-number">4.</span> <span class="nav-text">之后的努力方向</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#PackratReader"><span class="nav-number">1.</span> <span class="nav-text">PackratReader</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%87%8D%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">重构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Token"><span class="nav-number">2.1.</span> <span class="nav-text">Token</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#AST"><span class="nav-number">2.2.</span> <span class="nav-text">AST</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#AST-Visitor"><span class="nav-number">3.</span> <span class="nav-text">AST Visitor</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%9D%E8%B7%AF"><span class="nav-number">3.1.</span> <span class="nav-text">思路</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#rust"><span class="nav-number">3.2.</span> <span class="nav-text">rust</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.3.</span> <span class="nav-text">实现</span></a></li></ol></li></ol>
     </div>
 </div>
         </aside>

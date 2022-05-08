@@ -211,6 +211,93 @@
                 
 
                 <h3 class="home-article-title">
+                    <a href="/2022/03/20/rc-lang-dev-12/">
+                        Rc-lang开发周记12 部分Parser
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        
+pixiv:95518122 
+
+本周内容主要就是parser，而ast的内容会穿插其中
+Parser的一些问题换行由于是由换行来分句，我觉得一个头疼的点在于要想清楚哪里要换行，想清楚这个parser都是由什么组成，然后拼接在一起。但是写到这里的时...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Mar 20 2022 12:16:15 GMT+0800">2022-03-20</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/03/20/rc-lang-dev-12/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2022/03/13/rc-lang-dev-11/">
+                        Rc-lang开发周记11 重构与Lexer
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        本周一开始重构了一下vm的部分代码，之后基本上都是在用新语言重写parser的部分。
+重构vm目前代码很少，做的重构主要是将一些东西抽象拆分出来
+这是之前vm的成员变量
+1234567std::shared_ptr&lt;VMInstVisitor&...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Mar 13 2022 11:08:42 GMT+0800">2022-03-13</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/03/13/rc-lang-dev-11/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
                     <a href="/2022/03/05/rc-lang-dev-10/">
                         Rc-lang开发周记10 分支与循环
                     </a>
@@ -556,101 +643,6 @@ iPad mini也已经入手有半个月了，半个月内重度使用，过了那�
     </div>
 
     <a href="/2022/01/30/rc-lang-dev-6/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/01/23/rc-lang-dev-5/">
-                        Rc-lang开发周记5 函数其二&amp;OOP其一
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        本周要做的第一件事情当然是把之前写的脏代码全部干掉！神清气爽
-那么就让我们进入本周的正题。最近几周的代码可能会较少而且内容非常碎片，时间短缺且这块内容跨度非常大，需要参考其他已有实现，再加上第一次做并不熟悉正处于开荒期，更多的是学习于思考相关的知识。...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Jan 23 2022 11:28:49 GMT+0800">2022-01-23</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                        <li>
-                            &gt; 
-                            <a href="/categories/VM/">VM</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/01/23/rc-lang-dev-5/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/01/16/rc-lang-dev-4/">
-                        Rc-lang开发周记4 函数其一
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        本周主要是修复了之前C++代码生成的一些bug，之后开始搞函数定义与调用的部分。
-函数解析方式这里我一开始没想好怎么做的，所以会做的很诡异，最大的原因是静态类型语言和动态类型语言是不同的。由于我只对动态语言有一些了解，这里暂时只提动态语言的一些点
-动...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Jan 16 2022 17:03:13 GMT+0800">2022-01-16</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                        <li>
-                            &gt; 
-                            <a href="/categories/VM/">VM</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/01/16/rc-lang-dev-4/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
 </div>
 
             </li>

@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            Rc-lang开发周记18 简单类型推导 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="不要小看我，这种程度我也可以做得出！非pixiv   本周主要都在了解MIR相关，但是还存有非常多的问题，因此先来讲一下之前写的TypeInfer的内容 我将Infer的过程分为了两部分。第一部分是最纯粹的类型推导，第二部分是实际将ast转换为带有类型信息的ast。 Type目前先这样做了一个非常简易的样子 123456789enum Type:  case Boolean  case Stri">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Rc-lang开发周记18 简单类型推导">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/05/08/rc-lang-dev-18/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="不要小看我，这种程度我也可以做得出！非pixiv   本周主要都在了解MIR相关，但是还存有非常多的问题，因此先来讲一下之前写的TypeInfer的内容 我将Infer的过程分为了两部分。第一部分是最纯粹的类型推导，第二部分是实际将ast转换为带有类型信息的ast。 Type目前先这样做了一个非常简易的样子 123456789enum Type:  case Boolean  case Stri">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/rc-lang-dev-18/timg.jpg">
+<meta property="article:published_time" content="2022-05-08T03:17:10.000Z">
+<meta property="article:modified_time" content="2022-05-08T03:29:24.275Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Rc-lang">
+<meta property="article:tag" content="Type">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/rc-lang-dev-18/timg.jpg">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">Rc-lang开发周记18 简单类型推导</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-05-08 11:17:10
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Type/">Type</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.6k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>7 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/rc-lang-dev-18/timg.jpg"
+                      alt="timg.jpg"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">不要小看我，这种程度我也可以做得出！非pixiv</center> 
+
+<p>本周主要都在了解MIR相关，但是还存有非常多的问题，因此先来讲一下之前写的TypeInfer的内容</p>
+<p>我将Infer的过程分为了两部分。第一部分是最纯粹的类型推导，第二部分是实际将ast转换为带有类型信息的ast。</p>
+<h1 id="Type"><a href="#Type" class="headerlink" title="Type"></a>Type</h1><p>目前先这样做了一个非常简易的样子</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">enum <span class="type">Type</span>:</span><br><span class="line">  <span class="keyword">case</span> <span class="type">Boolean</span></span><br><span class="line">  <span class="keyword">case</span> <span class="type">String</span></span><br><span class="line">  <span class="keyword">case</span> <span class="type">Int32</span></span><br><span class="line">  <span class="keyword">case</span> <span class="type">Float</span></span><br><span class="line">  <span class="keyword">case</span> <span class="type">Nil</span></span><br><span class="line">  <span class="keyword">case</span> <span class="type">Fn</span>(ret: <span class="type">Type</span>, params: <span class="type">List</span>[<span class="type">Type</span>])</span><br><span class="line">  <span class="keyword">case</span> <span class="type">Infer</span></span><br><span class="line">  <span class="keyword">case</span> <span class="type">Err</span>(msg: <span class="type">String</span>)</span><br></pre></td></tr></table></figure>
+
+<h1 id="Typed"><a href="#Typed" class="headerlink" title="Typed"></a>Typed</h1><p>对于类型相关的操作来讲，首先本身是有类型的才能进行infer，因此有了这样一个trait</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">trait</span> <span class="title">Typed</span> </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> ty:<span class="type">Type</span> = <span class="type">Type</span>.<span class="type">Infer</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">withTy</span></span>(ty: <span class="type">Type</span>): <span class="keyword">this</span>.<span class="keyword">type</span> = &#123;</span><br><span class="line">    <span class="keyword">this</span>.ty = ty</span><br><span class="line">    <span class="keyword">this</span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">withInfer</span></span>: <span class="keyword">this</span>.<span class="keyword">type</span> = withTy(infer)</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">infer</span></span>: <span class="type">Type</span> = <span class="type">Infer</span>(<span class="keyword">this</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意这里默认的是Type.Infer，表示需要Infer才行</p>
+<p>infer的过程则是调用了case object Infer（单例对象），后面会讲到</p>
+<p>用的时候直接mixin这个trait即可</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">enum <span class="type">Expr</span> <span class="keyword">extends</span> <span class="type">ASTNode</span> <span class="keyword">with</span> <span class="type">Typed</span>:</span><br><span class="line">  <span class="keyword">case</span> <span class="type">Number</span>(v: <span class="type">Int</span>)</span><br><span class="line">  <span class="keyword">case</span> <span class="type">Identifier</span>(ident: <span class="type">Ident</span>)</span><br><span class="line"></span><br><span class="line">enum <span class="type">Item</span> <span class="keyword">extends</span> <span class="type">ASTNode</span> <span class="keyword">with</span> <span class="type">Typed</span>:</span><br><span class="line">  <span class="keyword">case</span> <span class="type">Method</span>(decl: <span class="type">MethodDecl</span>, body: <span class="type">Block</span>) <span class="keyword">extends</span> <span class="type">Item</span> <span class="keyword">with</span> <span class="type">Typed</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="TyCtxt"><a href="#TyCtxt" class="headerlink" title="TyCtxt"></a>TyCtxt</h1><p>ctxt的部分主要存放一个全局符号表，以及一个局部符号表（这里的符号表只包含了类型信息）</p>
+<p>而局部符号表又分为了当前scope以及outer的两部分。</p>
+<p>接口也很简单，简单的添加与查找，以及进入一个新的scope</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">TyCtxt</span>(<span class="params">val global:<span class="type">Map</span>[<span class="type">Ident</span>, <span class="type">Type</span>] = <span class="type">Map</span>[<span class="type">Ident</span>, <span class="type">Type</span>](</span>)) </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> outer = <span class="type">List</span>[<span class="type">Map</span>[<span class="type">Ident</span>, <span class="type">Type</span>]]()</span><br><span class="line">  <span class="keyword">var</span> local = <span class="type">Map</span>[<span class="type">Ident</span>, <span class="type">Type</span>]()</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">lookup</span></span>(ident: <span class="type">Ident</span>): <span class="type">Option</span>[<span class="type">Type</span>] = &#123;</span><br><span class="line">    <span class="keyword">val</span> ty = local.get(ident) orElse outer.find(_.contains(ident)) orElse global.get(ident)</span><br><span class="line">    ty.asInstanceOf[<span class="type">Option</span>[<span class="type">Type</span>]]</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">enter</span></span>[<span class="type">T</span>](f: =&gt; <span class="type">T</span>): <span class="type">T</span> = &#123;</span><br><span class="line">    outer ::= local</span><br><span class="line">    local = <span class="type">Map</span>[<span class="type">Ident</span>, <span class="type">Type</span>]()</span><br><span class="line">    <span class="keyword">val</span> result = f</span><br><span class="line">    local = outer.head</span><br><span class="line">    outer = outer.tail</span><br><span class="line">    result</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">addLocal</span></span>(k: <span class="type">Ident</span>, v: <span class="type">Type</span>): <span class="type">Unit</span> = &#123;</span><br><span class="line">    local += (k -&gt; v)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于enter的参数需要讲一下，既不是一个f: T，也不是一个f: () ⇒ T。</p>
+<p>使用f: ⇒ T的写法可以推迟实际传进来的求值过程。既可以接受一个简单的T，也可以接受一个函数计算结果的T，同样也可以接受一个() ⇒ T</p>
+<p>看一个测试就明白了</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">it(<span class="string">&quot;nested&quot;</span>) &#123;</span><br><span class="line">  tyCtxt.enter(() =&gt; &#123;</span><br><span class="line">    <span class="keyword">val</span> id = <span class="type">Ident</span>(<span class="string">&quot;a&quot;</span>)</span><br><span class="line">    <span class="keyword">val</span> ty = <span class="type">Nil</span></span><br><span class="line">    tyCtxt.addLocal(id, ty)</span><br><span class="line">    tyCtxt.enter(testEnter(id))</span><br><span class="line">    assert(tyCtxt.enter(id) == <span class="type">String</span>)</span><br><span class="line">    assert(tyCtxt.lookup(id).contains(ty))</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">testEnter</span></span>(id: <span class="type">Ident</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">	assert(tyCtxt.local.isEmpty)</span><br><span class="line">  <span class="keyword">val</span> innerTy = <span class="type">String</span></span><br><span class="line">  tyCtxt.addLocal(id, innerTy)</span><br><span class="line">  assert(tyCtxt.lookup(id).contains(innerTy))</span><br><span class="line">  innerTy</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到这里的enter存在两种写法。</p>
+<p>在进入testEnter之前添加了local，进入之后local变成了空的，也就是说进入了一个新的scope。</p>
+<p>最初是觉得每次tyCtxt.enter(() ⇒ f())都要写() ⇒ 感到非常麻烦，后来发现了这样的写法</p>
+<h1 id="Infer"><a href="#Infer" class="headerlink" title="Infer"></a>Infer</h1><p>成员变量只有一个tyCtxt</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">object</span> <span class="title">Infer</span> </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> tyCtxt: <span class="type">TyCtxt</span> = <span class="type">TyCtxt</span>()</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>infer的入口处</p>
+<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">apply</span></span>(typed: <span class="type">Typed</span>, force: <span class="type">Boolean</span> = <span class="literal">false</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">  infer(typed, force)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">infer</span></span>(typed: <span class="type">Typed</span>, force: <span class="type">Boolean</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">  <span class="keyword">if</span>(!force &amp;&amp; typed.ty != <span class="type">Type</span>.<span class="type">Infer</span>) &#123;</span><br><span class="line">    typed.ty</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    infer(typed)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">infer</span></span>(typed: <span class="type">Typed</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">  typed <span class="keyword">match</span></span><br><span class="line">    <span class="keyword">case</span> expr: <span class="type">Expr</span> =&gt; infer(expr)</span><br><span class="line">    <span class="keyword">case</span> item: <span class="type">Item</span> =&gt; infer(item)</span><br><span class="line">    <span class="keyword">case</span> method: <span class="type">Item</span>.<span class="type">Method</span> =&gt; infer(method)</span><br><span class="line">    <span class="keyword">case</span> stmt: <span class="type">Stmt</span> =&gt; infer(stmt)</span><br><span class="line">    <span class="keyword">case</span> _ =&gt; ???</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>force也很好理解，不是force的情况下原来有type则直接返回，而不是进行推导</p>
+<h2 id="Expr-infer"><a href="#Expr-infer" class="headerlink" title="Expr infer"></a>Expr infer</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">infer</span></span>(expr: <span class="type">Expr</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">  expr <span class="keyword">match</span></span><br><span class="line">    <span class="keyword">case</span> <span class="type">Number</span>(v) =&gt; <span class="type">Int32</span></span><br><span class="line">    <span class="keyword">case</span> <span class="type">Identifier</span>(ident) =&gt; lookup(ident)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Bool</span>(b) =&gt; <span class="type">Boolean</span></span><br><span class="line">    <span class="keyword">case</span> <span class="type">Binary</span>(op, lhs, rhs) =&gt; common(lhs, rhs)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Str</span>(str) =&gt; <span class="type">String</span></span><br><span class="line">    <span class="keyword">case</span> <span class="type">If</span>(cond, true_branch, false_branch) =&gt; false_branch <span class="keyword">match</span></span><br><span class="line">      <span class="keyword">case</span> <span class="type">Some</span>(fBr) =&gt; common(true_branch, fBr)</span><br><span class="line">      <span class="keyword">case</span> <span class="type">None</span> =&gt; infer(true_branch)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Return</span>(expr) =&gt; infer(expr)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Block</span>(stmts) =&gt; tyCtxt.enter(infer(stmts.last))</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Call</span>(target, args) =&gt; lookup(target)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Infer的部分主要还是在于表达式的类型推导，实际上也很直观。有的种类表达式自身类型是确定了，需要考虑id的就去lookup，像if和binary这种通过common来获取。</p>
+<h2 id="lookup"><a href="#lookup" class="headerlink" title="lookup"></a>lookup</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">lookup</span></span>(ident: <span class="type">Ident</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">  tyCtxt.lookup(ident).getOrElse(<span class="type">Err</span>(<span class="string">s&quot;<span class="subst">$ident</span> not found&quot;</span>))</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>简单的在ctxt中查找符号的信息</p>
+<h2 id="common"><a href="#common" class="headerlink" title="common"></a>common</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="function"><span class="keyword">def</span> <span class="title">common</span></span>(lhs: <span class="type">Expr</span>, rhs: <span class="type">Expr</span>): <span class="type">Type</span> = &#123;</span><br><span class="line">  <span class="keyword">val</span> lt = infer(lhs)</span><br><span class="line">  <span class="keyword">val</span> rt = infer(rhs)</span><br><span class="line">  <span class="keyword">if</span> lt == rt then lt <span class="keyword">else</span> <span class="type">Err</span>(<span class="string">&quot;failed&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里我还抱有一些疑问，在这里产生一个TypeErr是否合适，但是如果lhs和rhs的类型是不兼容的情况那也无法得出一个正确的Type</p>
+<p>虽然名字叫common，然而这里做的非常简单，只是简单判别类型是否相同而没有考虑到type compatible</p>
+<h2 id="enter"><a href="#enter" class="headerlink" title="enter"></a>enter</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">enter</span></span>[<span class="type">T</span>](tyCtxt: <span class="type">TyCtxt</span>, f: =&gt; <span class="type">T</span>): <span class="type">T</span> = &#123;</span><br><span class="line">  <span class="keyword">this</span>.tyCtxt = tyCtxt</span><br><span class="line">  tyCtxt.enter(f)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">enter</span></span>[<span class="type">T</span>](f: =&gt; <span class="type">T</span>): <span class="type">T</span> = &#123;</span><br><span class="line">  tyCtxt.enter(f)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>除了普通的enter，还支持通过指定一个typeCtxt来推导</p>
+<h1 id="Translator"><a href="#Translator" class="headerlink" title="Translator"></a>Translator</h1><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">object</span> <span class="title">TypedTranslator</span> </span>&#123;</span><br><span class="line">  <span class="keyword">var</span> tyCtxt: <span class="type">TyCtxt</span> = <span class="type">TyCtxt</span>()</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">apply</span></span>(tyCtxt: <span class="type">TyCtxt</span>)(module: <span class="type">RcModule</span>): <span class="type">RcModule</span> = &#123;</span><br><span class="line">    <span class="comment">// update local table in TypedTranslator will cause Infer ctxt update</span></span><br><span class="line">    <span class="comment">// because of pass a typCtxt by Ref</span></span><br><span class="line">    <span class="type">Infer</span>.enter(tyCtxt, <span class="type">RcModuleTrans</span>(module))</span><br><span class="line">  &#125;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里传递一个ctxt的引用给Infer，之后在translator里面通过tyCtxt更新各种local信息，这样Infer只做infer就可以了，不需要关心其他的事情。翻译的最小单元则是一个Module</p>
+<p>translator主要的想法就是通过infer获取类型，之后返回一个保存有意义的类型信息的ASTNode</p>
+<h2 id="Expr"><a href="#Expr" class="headerlink" title="Expr"></a>Expr</h2><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">exprTrans</span></span>(expr: <span class="type">Expr</span>): <span class="type">Expr</span> =</span><br><span class="line">	(expr <span class="keyword">match</span></span><br><span class="line">    <span class="keyword">case</span> <span class="type">Binary</span>(op, lhs, rhs) =&gt; <span class="type">Binary</span>(op, lhs.withInfer, rhs.withInfer)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">If</span>(cond, true_branch, false_branch) =&gt; &#123;</span><br><span class="line">      <span class="keyword">val</span> false_br = false_branch <span class="keyword">match</span></span><br><span class="line">        <span class="keyword">case</span> <span class="type">Some</span>(fBr) =&gt; <span class="type">Some</span>(fBr.withInfer)</span><br><span class="line">        <span class="keyword">case</span> <span class="type">None</span> =&gt; <span class="type">None</span></span><br><span class="line">      <span class="type">If</span>(cond.withInfer,</span><br><span class="line">        true_branch.withInfer.asInstanceOf[<span class="type">Block</span>],</span><br><span class="line">        false_br)</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Call</span>(target, args) =&gt; <span class="type">Call</span>(target, args.map(_.withInfer))</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Return</span>(expr) =&gt; <span class="type">Return</span>(expr.withInfer)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Block</span>(stmts) =&gt; tyCtxt.enter(<span class="type">Block</span>(stmts.map(stmtTrans)))</span><br><span class="line">    <span class="keyword">case</span> _ =&gt; expr).withInfer</span><br></pre></td></tr></table></figure>
+
+<p>可以看到就是简单的将参数withInfer，之后重新构建起这个表达式，并且将这个表达式整体进行infer。</p>
+<p>为了避免一个个调用withInfer，因此在最后将expr的结果统一调用withInfer</p>
+<p>对于Stmt的部分本质做法是差不多的，就不再赘述了</p>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><p>下周开始会开始专注于适合优化层面IR的内容了。最早我给自己规定的每天写一部分功能，不过我后来已经将写与学习成为了习惯，因此不会再局限于每天写这种事情。现在更多的是了解各种不同的做法，分析不同做法之间的差异（了解这些的过程有些上瘾，一不小心就会陷进去）。也因此下周开始的内容可能写的篇幅会少一些，会多一些对比分析</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：Rc-lang开发周记18 简单类型推导</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-05-08 11:17:10</li>
+        <li>
+            本文链接：https://homura.live/2022/05/08/rc-lang-dev-18/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/05/08/IandBlog/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">我与博客</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/05/01/rc-lang-dev-17/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记17 一点AST检查</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Type"><span class="nav-number">1.</span> <span class="nav-text">Type</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Typed"><span class="nav-number">2.</span> <span class="nav-text">Typed</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TyCtxt"><span class="nav-number">3.</span> <span class="nav-text">TyCtxt</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Infer"><span class="nav-number">4.</span> <span class="nav-text">Infer</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Expr-infer"><span class="nav-number">4.1.</span> <span class="nav-text">Expr infer</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#lookup"><span class="nav-number">4.2.</span> <span class="nav-text">lookup</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#common"><span class="nav-number">4.3.</span> <span class="nav-text">common</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#enter"><span class="nav-number">4.4.</span> <span class="nav-text">enter</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Translator"><span class="nav-number">5.</span> <span class="nav-text">Translator</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Expr"><span class="nav-number">5.1.</span> <span class="nav-text">Expr</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%80%E5%90%8E"><span class="nav-number">6.</span> <span class="nav-text">最后</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

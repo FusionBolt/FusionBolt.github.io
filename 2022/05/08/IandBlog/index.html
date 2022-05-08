@@ -9,7 +9,7 @@
     
     <title>
         
-            Rc-lang开发周记17 一点AST检查 |
+            我与博客 |
         
         Homura&#39;s Blog
     </title>
@@ -26,21 +26,20 @@
     KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
     KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
   </script>
-    <meta name="description" content="聪明如我怎么会写出ast有错误的代码 pixiv:69589494   先说一声五一快乐！久违的长假，之后会花一些时间把其他一些写到一半的博客整理出来 本来想要好好做一下检查相关以及类型推导的工作，但是目前来说我更需要先学习优化方面的知识，因此关于ast的检查以及类型推导和类型检查做的比较简易，过后有时间再回来做。本周虽然做了部分类型推导和类型检查，但是只做了一半，剩下的部分可能要下周再说了。下">
+    <meta name="description" content="你愿意和我一起读下去吗 pixiv: 44636666   读《暗时间》这本书的时候看到关于你为什么应该写博客的章节，想先把自己有关博客的想法做一个记录，因此就有了本文。 我和博客的开始以前也尝试过建立博客，也搞过什么Wordpress之类的，但也都是搭建好新鲜感过去来，之后就没写什么东西，之后也就不了了之了。 去年三月多的时候又将这个事情回想了起来，决定好好对待这件事情。结果去年一年也没写上几">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Rc-lang开发周记17 一点AST检查">
-<meta property="og:url" content="https://fusionbolt.github.io/2022/05/01/rc-lang-dev-17/index.html">
+<meta property="og:title" content="我与博客">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/05/08/IandBlog/index.html">
 <meta property="og:site_name" content="Homura&#39;s Blog">
-<meta property="og:description" content="聪明如我怎么会写出ast有错误的代码 pixiv:69589494   先说一声五一快乐！久违的长假，之后会花一些时间把其他一些写到一半的博客整理出来 本来想要好好做一下检查相关以及类型推导的工作，但是目前来说我更需要先学习优化方面的知识，因此关于ast的检查以及类型推导和类型检查做的比较简易，过后有时间再回来做。本周虽然做了部分类型推导和类型检查，但是只做了一半，剩下的部分可能要下周再说了。下">
+<meta property="og:description" content="你愿意和我一起读下去吗 pixiv: 44636666   读《暗时间》这本书的时候看到关于你为什么应该写博客的章节，想先把自己有关博客的想法做一个记录，因此就有了本文。 我和博客的开始以前也尝试过建立博客，也搞过什么Wordpress之类的，但也都是搭建好新鲜感过去来，之后就没写什么东西，之后也就不了了之了。 去年三月多的时候又将这个事情回想了起来，决定好好对待这件事情。结果去年一年也没写上几">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://fusionbolt.github.io/images/rc-lang-dev-17/69589494_p0.png">
-<meta property="article:published_time" content="2022-05-01T02:37:41.000Z">
-<meta property="article:modified_time" content="2022-05-01T02:39:16.944Z">
+<meta property="og:image" content="https://fusionbolt.github.io/images/IandBlog/Untitled.png">
+<meta property="article:published_time" content="2022-05-08T03:42:36.000Z">
+<meta property="article:modified_time" content="2022-05-08T03:51:52.440Z">
 <meta property="article:author" content="Homura">
-<meta property="article:tag" content="Rc-lang">
-<meta property="article:tag" content="AST">
+<meta property="article:tag" content="Blog">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://fusionbolt.github.io/images/rc-lang-dev-17/69589494_p0.png">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/IandBlog/Untitled.png">
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
@@ -217,7 +216,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">Rc-lang开发周记17 一点AST检查</span>
+            <span class="title-hover-animation">我与博客</span>
         </div>
 
         
@@ -235,7 +234,7 @@
                     <div class="meta-info">
                         <div class="article-meta-info">
     <span class="article-date article-meta-item">
-        <i class="fas fa-edit"></i>&nbsp;2022-05-01 10:37:41
+        <i class="fas fa-edit"></i>&nbsp;2022-05-08 11:42:36
     </span>
     
         <span class="article-categories article-meta-item">
@@ -243,7 +242,7 @@
             <ul>
                 
                     <li>
-                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        <a href="/categories/Think/">Think</a>&nbsp;
                     </li>
                 
             </ul>
@@ -255,11 +254,7 @@
             <ul>
                 
                     <li>
-                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
-                    </li>
-                
-                    <li>
-                        | <a href="/tags/AST/">AST</a>&nbsp;
+                        <a href="/tags/Blog/">Blog</a>&nbsp;
                     </li>
                 
             </ul>
@@ -269,12 +264,12 @@
     
     
         <span class="article-wordcount article-meta-item">
-            <i class="fas fa-file-word"></i>&nbsp;<span>913 字</span>
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.4k 字</span>
         </span>
     
     
         <span class="article-min2read article-meta-item">
-            <i class="fas fa-clock"></i>&nbsp;<span>3 分钟</span>
+            <i class="fas fa-clock"></i>&nbsp;<span>7 分钟</span>
         </span>
     
     
@@ -293,43 +288,48 @@
             <p><img  
                      lazyload
                      src="/images/loading.svg"
-                     data-src="/images/rc-lang-dev-17/69589494_p0.png"
-                      alt="69589494_p0.png"
+                     data-src="/images/IandBlog/Untitled.png"
+                      alt="Untitled"
                 ></p>
-<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">聪明如我怎么会写出ast有错误的代码 pixiv:69589494</center> 
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">你愿意和我一起读下去吗 pixiv: 44636666</center> 
 
-<p>先说一声五一快乐！久违的长假，之后会花一些时间把其他一些写到一半的博客整理出来</p>
-<p>本来想要好好做一下检查相关以及类型推导的工作，但是目前来说我更需要先学习优化方面的知识，因此关于ast的检查以及类型推导和类型检查做的比较简易，过后有时间再回来做。本周虽然做了部分类型推导和类型检查，但是只做了一半，剩下的部分可能要下周再说了。下周大概就能做完简单的类型推导和检查</p>
-<h1 id="AST检查"><a href="#AST检查" class="headerlink" title="AST检查"></a>AST检查</h1><p>目前所实现的检查无外乎这么几类</p>
-<ol>
-<li>名称冲突</li>
-<li>未定义符号</li>
-<li>变量的声明类型或者初始值必须有一个存在</li>
-</ol>
-<p>我挑出一些经典的部分讲解，不过多赘述重复的部分了</p>
-<p>实际上能做的类型无关的检查还有非常多</p>
-<h1 id="名称冲突"><a href="#名称冲突" class="headerlink" title="名称冲突"></a>名称冲突</h1><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">dupNameCheck</span></span>(names: <span class="type">List</span>[<span class="type">Ident</span>]): <span class="type">Result</span> = &#123;</span><br><span class="line">  dupCheck(names, <span class="string">&quot;Name&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">dupCheck</span></span>[<span class="type">T</span> &lt;: <span class="type">ASTNode</span>](values: <span class="type">List</span>[<span class="type">T</span>], valueName: <span class="type">String</span>): <span class="type">Result</span> = &#123;</span><br><span class="line">  <span class="keyword">val</span> s = <span class="type">Set</span>[<span class="type">T</span>]()</span><br><span class="line">  values.filterNot(s.add).map(n =&gt; <span class="type">ValidateError</span>(n, <span class="string">s&quot;<span class="subst">$valueName</span> <span class="subst">$n</span> Dup&quot;</span>))</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">checkModule</span></span>(module: <span class="type">RcModule</span>): <span class="type">Result</span> = &#123;</span><br><span class="line">  dupNameCheck(module.items.map(item =&gt; item <span class="keyword">match</span></span><br><span class="line">    <span class="keyword">case</span> <span class="type">Item</span>.<span class="type">Class</span>(name, _, _, _) =&gt; name</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Item</span>.<span class="type">Method</span>(decl, _) =&gt; decl.name</span><br><span class="line">  )):::module.items.flatMap(checkItem)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>比如说Module的检查中对所有item的名字检查是否存在冲突，并且再check每个Item本身</p>
-<p>关于返回值的Result只是一个type alias</p>
-<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">type</span> <span class="title">Result</span> </span>= <span class="type">List</span>[<span class="type">ValidateError</span>]</span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">ValidateError</span>(<span class="params">node: <span class="type">ASTNode</span>, reason: <span class="type">String</span></span>)</span></span><br></pre></td></tr></table></figure>
-
-<p>这里还有很多待改进的空间，比如说将实际的错误分类，或者写一个diagnosis类来管理这些错误信息等等</p>
-<p>这里使用一个type alias也是为了后面修改时候方便</p>
-<p>这里可以看到所有的错误信息都是组合之后返回，原因是我想将代码中的副作用范围缩到最小，这样能够保证调用的结果尽可能的不受外部状态影响</p>
-<h1 id="未定义的符号"><a href="#未定义的符号" class="headerlink" title="未定义的符号"></a>未定义的符号</h1><p>目前只做了一些简单的处理。这里还没有处理全局的符号（比如说函数和类）</p>
-<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">Scope</span>(<span class="params">var localTable: <span class="type">Set</span>[<span class="type">Ident</span>] = <span class="type">Set</span>(</span>)) </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">add</span></span>(ident: <span class="type">Ident</span>): <span class="type">Boolean</span> = &#123;</span><br><span class="line">    localTable.add(ident)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">contains</span></span>(ident: <span class="type">Ident</span>): <span class="type">Boolean</span> = &#123;</span><br><span class="line">    localTable.contains(ident)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">case</span> <span class="class"><span class="keyword">class</span> <span class="title">ScopeManager</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">private</span> <span class="keyword">var</span> scopes = <span class="type">List</span>[<span class="type">Scope</span>]()</span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">enter</span></span>[<span class="type">T</span>](f:() =&gt; <span class="type">T</span>): <span class="type">T</span> = &#123;</span><br><span class="line">    enter(<span class="type">Params</span>(<span class="type">List</span>()), f)</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">enter</span></span>[<span class="type">T</span>](params: <span class="type">Params</span>, f:() =&gt; <span class="type">T</span>): <span class="type">T</span> = &#123;</span><br><span class="line">    <span class="keyword">val</span> oldScope = scopes</span><br><span class="line">    scopes ::= <span class="type">Scope</span>(mutable.<span class="type">Set</span>.from(params.params.map(_.name)))</span><br><span class="line">    <span class="keyword">val</span> result = f()</span><br><span class="line">    scopes = oldScope</span><br><span class="line">    result</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">curScope</span></span>: <span class="type">Scope</span> = scopes.last</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">add</span></span>(ident: <span class="type">Ident</span>): <span class="type">Boolean</span> = curScope.add(ident)</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">contains</span></span>(ident: <span class="type">Ident</span>): <span class="type">Boolean</span> = &#123;</span><br><span class="line">    !scopes.exists(_.contains(ident))</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">curContains</span></span>(ident: <span class="type">Ident</span>): <span class="type">Boolean</span> = curScope.contains(ident)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>每个Scope有自己的table，每次通过enter进入一个table则将当前的放到List中</p>
-<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">checkBlock</span></span>(block: <span class="type">Block</span>, params: <span class="type">Params</span> = <span class="type">Params</span>(<span class="type">List</span>())): <span class="type">Result</span> = &#123;</span><br><span class="line">  scopes.enter(params, () =&gt; &#123;</span><br><span class="line">    block.stmts.flatMap(checkStmt)</span><br><span class="line">  &#125;)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">checkMethod</span></span>(method: <span class="type">Method</span>): <span class="type">Result</span> = &#123;</span><br><span class="line">  checkMethodDecl(method.decl)</span><br><span class="line">  checkBlock(method.body, method.decl.inputs)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>在每次进入一个Block的时候则进入了一个新的scope，比如说一个Method的body的expr</p>
-<p>对于Id表达式则会去检查是否存在这个符号，</p>
-<figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">case</span> <span class="type">Expr</span>.<span class="type">Identifier</span>(id) =&gt; checkCond(scopes.contains(id), expr, <span class="string">&quot;$name not decl&quot;</span>)</span><br></pre></td></tr></table></figure>
-
-<h1 id="初始值与类型二选一"><a href="#初始值与类型二选一" class="headerlink" title="初始值与类型二选一"></a>初始值与类型二选一</h1><figure class="highlight scala"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">fieldDefValid</span></span>(fieldDef: <span class="type">FieldDef</span>): <span class="type">Result</span> = &#123;</span><br><span class="line">  fieldDef.initValue <span class="keyword">match</span> &#123;</span><br><span class="line">    <span class="keyword">case</span> <span class="type">Some</span>(expr) =&gt; checkExpr(expr)</span><br><span class="line">    <span class="keyword">case</span> <span class="type">None</span> =&gt; checkCond(fieldDef.ty != <span class="type">TyInfo</span>.<span class="type">Infer</span>, fieldDef, <span class="string">&quot;Field without initValue need spec Type&quot;</span>)</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>对于类的field做了这样的检查，存在initValue则去检查expr，否则检查ty是否为需要Infer的。如果没有initValue也没有ty信息，那我们无法在后面类型推导的时候得出类型</p>
+<p>读《暗时间》这本书的时候看到关于你为什么应该写博客的章节，想先把自己有关博客的想法做一个记录，因此就有了本文。</p>
+<h1 id="我和博客的开始"><a href="#我和博客的开始" class="headerlink" title="我和博客的开始"></a>我和博客的开始</h1><p>以前也尝试过建立博客，也搞过什么Wordpress之类的，但也都是搭建好新鲜感过去来，之后就没写什么东西，之后也就不了了之了。</p>
+<p>去年三月多的时候又将这个事情回想了起来，决定好好对待这件事情。<del>结果去年一年也没写上几篇</del></p>
+<p>今年的话渐渐有了更多的想法，内容也逐渐的有了一些。</p>
+<h1 id="博客所带来的好处"><a href="#博客所带来的好处" class="headerlink" title="博客所带来的好处"></a>博客所带来的好处</h1><h2 id="反复思考"><a href="#反复思考" class="headerlink" title="反复思考"></a>反复思考</h2><p>写博客本身是一个反复思考复盘的过程。不论是单纯记录还是思考，写下的过程中会不断复习这些知识，在这个过程中自己对这些知识的记忆会更加牢靠，同时可能产生了新的问题，进而产生新的思考。同时梳理思考的过程中会无意中发现一些问题，我在写自己的开发周记的时候发现了一些自己的bug。</p>
+<p>在讲解给读者的时候会强迫自己去思考，读者可能会提出哪些问题？这些地方自己是否真的明白了？有的技术博客我在写的时候也会发现自己知识的漏洞，现去弥补一下知识漏洞再来接着写。</p>
+<p>这样长期反复梳理思考下去我觉得慢慢这种思考就会变成一种习惯，不仅是写博客，在做其他的事情也会受益。</p>
+<h2 id="展示自我"><a href="#展示自我" class="headerlink" title="展示自我"></a>展示自我</h2><p>看博客能够知道你是什么样的人。你写什么样的博客，你关注哪些内容，你的思考方式是怎么样的等等。这也算是一种特殊的自我介绍了，在网络上看一个人的几条发言可能看不出一个人是怎样的，但是如果他一直持续输出内容，则可以从输出的内容中对这个人多几分了解。或许还会有志同道合的人因此和你成为朋友，也许其中还会有非常聊得来的人。（<del>首页中的图标和关于都有我的联系方式，欢迎私信</del>）</p>
+<h2 id="积累与激励"><a href="#积累与激励" class="headerlink" title="积累与激励"></a>积累与激励</h2><p>看到自己写了那么多博客，既是一种积累，后面再回来看，看着自己的内容不断精进，不断变化，意识到自己的进步与成长，进而给自信添砖加瓦，激励自己后续持续学习和思考。这是一种良性循环，只要熬过了最初不知道该写什么与不知道怎么写的阶段，就会不断有所收获。</p>
+<h1 id="遇到过的问题"><a href="#遇到过的问题" class="headerlink" title="遇到过的问题"></a>遇到过的问题</h1><h2 id="出师不利：不知道该写什么"><a href="#出师不利：不知道该写什么" class="headerlink" title="出师不利：不知道该写什么"></a>出师不利：不知道该写什么</h2><p>在刚开始写的时候，这个问题是最让我头疼的。去年年底开始写开发周记之前，基本上都没什么内容。后来开发周记写了几篇，读书的时候也开始能够留下一些笔记和想法，渐渐的有了一些想写的东西。读书感悟，简单的科普，开发问题复盘，自己的一些想法，我还有很多想法都没有写出来，很多来不及整理的只能在我的笔记中默默等待</p>
+<p>仔细考虑的话，发生这种改变的本质原因是我去年开始做了各种各样的事情，同时渐渐开始养成记录内容的习惯（这个记录的习惯真的是非常重要，我的很多博客都是从碎片整理来的），因此我渐渐的有一些东西可说。如果你实在不知道怎么写，那就试着多留心观察自己的想法，自己经历的事情，说不定会找到什么答案。</p>
+<p>但是因为不知道写什么就放弃不去写了这件事情是完全不一样的。如果不去做些什么的话，你不管放弃几次回头看可能都不知道写什么。只要写了一篇，就更可能有第二篇，以此类推</p>
+<p>我在初学编程的时候也是不知道该写什么，因为我对这个东西没有形成一些印象，后来过了非常长的时间总算是多少入了门。在这个过程中我一直没有停止学习接触相关知识，即便现在看来都是错误的方式，但最终都是我过去的行为推动了我现在的行为</p>
+<h2 id="想着一定要写好"><a href="#想着一定要写好" class="headerlink" title="想着一定要写好"></a>想着一定要写好</h2><p>当然保证质量是很重要的事情，但是也因此有的博客过于追求质量、又或者说把握不住详细到什么地步就难产了。</p>
+<p>后来我在写第一篇读书笔记的时候写了一部分了，剩下的不知道怎么写，当我想到了我之前难产的博客以及如果再这么要求质量的话可能就完不成的时候我决定草草收尾。</p>
+<p>对于一开始来说我觉得还是坚持写下去更加重要，尤其是在你觉得自己很不擅长这件事情的时候。之前看到一个人的推特写目标是坚持输出内容，前二十多期可以不追求质量，这也是同样的道理。一开始总是不熟练，那就放低要求，先以完成为目的。</p>
+<h1 id="写博客的误区"><a href="#写博客的误区" class="headerlink" title="写博客的误区"></a>写博客的误区</h1><p>除了我上面提到的问题，《暗时间》这本书中还提到了一些写博客的误区，我也在这里提及一下，加入了一些我自己的想法，有兴趣的读者可以去看原书</p>
+<h2 id="担心自己的内容"><a href="#担心自己的内容" class="headerlink" title="担心自己的内容"></a>担心自己的内容</h2><p>如果担心自己写的东西别人都已经写过了，我认为不需要去关心这些。这里要注意一个非常关键的点：<strong>写博客是为了更好的学习与思考，</strong>而不是说一定要去写什么别人没写过的东西。这不是毕业论文，不需要担心这些问题，你在成文的过程中的思考有所收获就够了。</p>
+<p>如果担心内容质量不佳，那就像上面说的想着一定要写好一样，不再赘述。如果担心想法有漏洞，那更不必担心，这个漏洞不会因为你不写出来而消失，写出来被别人指正反而是更好的改进方式。</p>
+<h2 id="关注反馈"><a href="#关注反馈" class="headerlink" title="关注反馈"></a>关注反馈</h2><p>上面也提到了写博客的目的，对于外部的反馈以及其他博客的好处来说这不过是附赠品，同时如果是为了外部反馈而写，那么很可能做出偏离学习与思考这一本意的行为。</p>
+<p>暗时间中有这样一句话</p>
+<blockquote>
+<p>只做你最感兴趣的事情，钱会随之而来</p>
+</blockquote>
+<p>这个例子是类似的，牢记初心，专注于你当前真正要做的事情，其他的附属品都会随之而来。</p>
+<h2 id="碎碎念"><a href="#碎碎念" class="headerlink" title="碎碎念"></a>碎碎念</h2><p>阅读博客的人更希望得到信息而非噪音。每个人都会有想法牢骚的冲动，但是这应该是在其他一些适合发牢骚的平台，比如说Twitter。</p>
+<p>我在之前也非常容易碎碎念，看到这条以后我下定决心以后其他输出内容的地方都不会掺杂各种碎碎念，还请读者们监督。</p>
+<h1 id="亲自动手写了博客才发现的事情"><a href="#亲自动手写了博客才发现的事情" class="headerlink" title="亲自动手写了博客才发现的事情"></a>亲自动手写了博客才发现的事情</h1><p>最大的感悟是输出内容真的是不容易。完成一篇内容充足的博客需要很久，同时又要保证质量的话是非常难的事情。</p>
+<p>看别人写和自己写完全是两回事。经常看别人在知乎上写了那么长一大段的干货，真到自己写的时候发现是多么困难。（这里我不禁好奇他们是怎么有时间能写那么多那么长的回答？）</p>
+<p>由于这些感受，我对持续输出内容的人逐渐开始有了更多的尊敬，因为输出内容确实是一件比较辛苦的事情。尽管有的时候输出内容也很开心，但是最终能够持续输出的还是少数。</p>
+<h1 id="我与博客"><a href="#我与博客" class="headerlink" title="我与博客"></a>我与博客</h1><p>虽然我第一次接触博客的时候没有做下去，但庆幸的是现在我已经逐渐形成了这个习惯。即便去掉开发周记也还剩下许多其他博客，看到这些我感到十分欣慰。我会持续的输出内容，并且在保证不影响写完的前提下提升质量。</p>
+<p>文章的最后我想引用一句《暗时间》中的话</p>
+<blockquote>
+<p>人太容易为各种各样的事情分心，要集中注意力做一件事情是非常难的，而正因为难，少有人做到，那些做到的，就都变成了牛。</p>
+</blockquote>
+<p>只有坚持做下去才能做到，而实际上博客所带来的基本上都是好处，为什么不坚持做下去呢？</p>
+<p>不过能不能变成牛这不重要，只要坚持学习、思考与行动，最终总会变成大牛。</p>
 
         </div>
 
@@ -337,11 +337,11 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：Rc-lang开发周记17 一点AST检查</li>
+        <li>本文标题：我与博客</li>
         <li>本文作者：Homura</li>
-        <li>创建时间：2022-05-01 10:37:41</li>
+        <li>创建时间：2022-05-08 11:42:36</li>
         <li>
-            本文链接：https://homura.live/2022/05/01/rc-lang-dev-17/
+            本文链接：https://homura.live/2022/05/08/IandBlog/
         </li>
         <li>
             版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
@@ -355,29 +355,14 @@
         
             <div class="article-nav">
                 
-                    <div class="article-prev">
-                        <a class="prev"
-                           rel="prev"
-                           href="/2022/05/08/rc-lang-dev-18/"
-                        >
-                            <span class="left arrow-icon flex-center">
-                              <i class="fas fa-chevron-left"></i>
-                            </span>
-                            <span class="title flex-center">
-                                <span class="post-nav-title-item">Rc-lang开发周记18 简单类型推导</span>
-                                <span class="post-nav-item">上一篇</span>
-                            </span>
-                        </a>
-                    </div>
-                
                 
                     <div class="article-next">
                         <a class="next"
                            rel="next"
-                           href="/2022/04/26/rc-lang-dev-16/"
+                           href="/2022/05/08/rc-lang-dev-18/"
                         >
                             <span class="title flex-center">
-                                <span class="post-nav-title-item">Rc-lang开发周记16 Rust源码学习之初识类型</span>
+                                <span class="post-nav-title-item">Rc-lang开发周记18 简单类型推导</span>
                                 <span class="post-nav-item">下一篇</span>
                             </span>
                             <span class="right arrow-icon flex-center">
@@ -592,7 +577,7 @@
         <aside class="page-aside">
             <div class="post-toc-wrap">
     <div class="post-toc">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AST%E6%A3%80%E6%9F%A5"><span class="nav-number">1.</span> <span class="nav-text">AST检查</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%8D%E7%A7%B0%E5%86%B2%E7%AA%81"><span class="nav-number">2.</span> <span class="nav-text">名称冲突</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E7%AC%A6%E5%8F%B7"><span class="nav-number">3.</span> <span class="nav-text">未定义的符号</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%80%BC%E4%B8%8E%E7%B1%BB%E5%9E%8B%E4%BA%8C%E9%80%89%E4%B8%80"><span class="nav-number">4.</span> <span class="nav-text">初始值与类型二选一</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%88%91%E5%92%8C%E5%8D%9A%E5%AE%A2%E7%9A%84%E5%BC%80%E5%A7%8B"><span class="nav-number">1.</span> <span class="nav-text">我和博客的开始</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%9A%E5%AE%A2%E6%89%80%E5%B8%A6%E6%9D%A5%E7%9A%84%E5%A5%BD%E5%A4%84"><span class="nav-number">2.</span> <span class="nav-text">博客所带来的好处</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%8D%E5%A4%8D%E6%80%9D%E8%80%83"><span class="nav-number">2.1.</span> <span class="nav-text">反复思考</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B1%95%E7%A4%BA%E8%87%AA%E6%88%91"><span class="nav-number">2.2.</span> <span class="nav-text">展示自我</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A7%AF%E7%B4%AF%E4%B8%8E%E6%BF%80%E5%8A%B1"><span class="nav-number">2.3.</span> <span class="nav-text">积累与激励</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%81%87%E5%88%B0%E8%BF%87%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-number">3.</span> <span class="nav-text">遇到过的问题</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BA%E5%B8%88%E4%B8%8D%E5%88%A9%EF%BC%9A%E4%B8%8D%E7%9F%A5%E9%81%93%E8%AF%A5%E5%86%99%E4%BB%80%E4%B9%88"><span class="nav-number">3.1.</span> <span class="nav-text">出师不利：不知道该写什么</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%83%B3%E7%9D%80%E4%B8%80%E5%AE%9A%E8%A6%81%E5%86%99%E5%A5%BD"><span class="nav-number">3.2.</span> <span class="nav-text">想着一定要写好</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%99%E5%8D%9A%E5%AE%A2%E7%9A%84%E8%AF%AF%E5%8C%BA"><span class="nav-number">4.</span> <span class="nav-text">写博客的误区</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8B%85%E5%BF%83%E8%87%AA%E5%B7%B1%E7%9A%84%E5%86%85%E5%AE%B9"><span class="nav-number">4.1.</span> <span class="nav-text">担心自己的内容</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B3%E6%B3%A8%E5%8F%8D%E9%A6%88"><span class="nav-number">4.2.</span> <span class="nav-text">关注反馈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A2%8E%E7%A2%8E%E5%BF%B5"><span class="nav-number">4.3.</span> <span class="nav-text">碎碎念</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%B2%E8%87%AA%E5%8A%A8%E6%89%8B%E5%86%99%E4%BA%86%E5%8D%9A%E5%AE%A2%E6%89%8D%E5%8F%91%E7%8E%B0%E7%9A%84%E4%BA%8B%E6%83%85"><span class="nav-number">5.</span> <span class="nav-text">亲自动手写了博客才发现的事情</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%88%91%E4%B8%8E%E5%8D%9A%E5%AE%A2"><span class="nav-number">6.</span> <span class="nav-text">我与博客</span></a></li></ol>
     </div>
 </div>
         </aside>

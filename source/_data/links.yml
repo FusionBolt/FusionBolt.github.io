@@ -1,9 +1,14 @@
 - name: 毛利
   link: https://mouri.moe
   description: 大贤者
-  avatar: /images/mouri.jpeg
+  avatar: /images/avatar/mouri.jpeg
 
 - name: 夏幻
   link: https://madoka.moe/wordpress/
   description: 夏幻今天有新女装了吗
-  avatar: /images/natsu.jpeg
+  avatar: /images/avatar/natsu.jpeg
+
+- name: 露比
+  link: https://drown.party/
+  description: 露比露比露比露！
+  avatar: /images/avatar/ruby.jpeg

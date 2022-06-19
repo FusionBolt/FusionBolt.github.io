@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM Pass 其零：新的Pass机制 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="以高攻击力著称的传说之龙。任何编程语言和目标平台都能被粉碎，其破坏力不可估量   在目前的LLVM中存在两套Pass相关的机制，一套是基本上已经过时的被称为LegacyPass的机制（codegen的部分还没有迁移完毕），另一套则是现在主要使用的Pass机制 这个系列会讲解新Pass结构的各个方面（重点在于新的Pass结构），PassManager以及与Pass的联系、Pass相关基础设施，旧架">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM Pass 其零：新的Pass机制">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/06/19/llvm-pass-0/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="以高攻击力著称的传说之龙。任何编程语言和目标平台都能被粉碎，其破坏力不可估量   在目前的LLVM中存在两套Pass相关的机制，一套是基本上已经过时的被称为LegacyPass的机制（codegen的部分还没有迁移完毕），另一套则是现在主要使用的Pass机制 这个系列会讲解新Pass结构的各个方面（重点在于新的Pass结构），PassManager以及与Pass的联系、Pass相关基础设施，旧架">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-0/2c8c0f197016eb2f404a18dc65212ff2ca62e772.jpg942w_1388h_progressive.jpg">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-0/Untitled-5622778.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-0/Untitled%201-5622778.png">
+<meta property="article:published_time" content="2022-06-19T06:57:30.000Z">
+<meta property="article:modified_time" content="2022-06-19T07:17:20.871Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="LLVM">
+<meta property="article:tag" content="Pass">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/llvm-pass-0/2c8c0f197016eb2f404a18dc65212ff2ca62e772.jpg942w_1388h_progressive.jpg">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM Pass 其零：新的Pass机制</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-06-19 14:57:30
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/LLVM/">LLVM</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Pass/">Pass</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.5k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>11 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-0/2c8c0f197016eb2f404a18dc65212ff2ca62e772.jpg942w_1388h_progressive.jpg"
+                      alt="2c8c0f197016eb2f404a18dc65212ff2ca62e772.jpg@942w_1388h_progressive.jpg"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">以高攻击力著称的传说之龙。任何编程语言和目标平台都能被粉碎，其破坏力不可估量</center> 
+
+<p>在目前的LLVM中存在两套Pass相关的机制，一套是基本上已经过时的被称为LegacyPass的机制（codegen的部分还没有迁移完毕），另一套则是现在主要使用的Pass机制</p>
+<p>这个系列会讲解新Pass结构的各个方面（重点在于新的Pass结构），PassManager以及与Pass的联系、Pass相关基础设施，旧架构设计上的问题以及在新架构的解决方案等内容，而第一篇则是着重于Pass本身。这个系列有些一笔带过的内容通常都会在后续文章提及，后面不再赘述。</p>
+<p>本文从以下几个点来对比分析这两类的不同并且着重看一下新的机制的实现</p>
+<ol>
+<li>Pass的类结构是怎样的</li>
+<li>Pass的编写方式</li>
+<li>Pass的注册方式（这里只提及LLVM本身的Pass）</li>
+<li>Pass元信息的获取方式</li>
+</ol>
+<h1 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h1><h2 id="类型关系链"><a href="#类型关系链" class="headerlink" title="类型关系链"></a>类型关系链</h2><p>在LegacyPass中通过类型严格区分了module pass，function pass等。通过这张图可以看到Pass的继承链。（这里图片太长我只截取部分</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-0/Untitled-5622778.png"
+                      alt="Untitled"
+                ></p>
+<p>来源：<a class="link"   target="_blank" rel="noopener" href="https://llvm.org/doxygen/classllvm_1_1Pass.html" >https://llvm.org/doxygen/classllvm_1_1Pass.html<i class="fas fa-external-link-alt"></i></a></p>
+<p>LegacyPass中就是非常普通的继承链，从这个角度上来说没什么可讲的</p>
+<p>而在新Pass中每个Pass都是一个满足了PassConcept的东西。而PassConcept的要求是和PassInfoMixin相关联起来的，也就是说继承了PassInfoMixin的类算是Pass。虽然说是mixin，但是C++语法层面没有这样的特性，因此通过特殊的技巧来实现这样的语义。</p>
+<p>关于Pass的实现方式有这样一段注释，大意是说继承是非常不好的，因此采用了这种concept-based polymorphism方式。在这里不具体讲解相关细节了，有兴趣可以点进注释中提到的链接看下</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Note that the implementations of the pass managers use concept-based</span></span><br><span class="line"><span class="comment">/// polymorphism as outlined in the &quot;Value Semantics and Concept-based</span></span><br><span class="line"><span class="comment">/// Polymorphism&quot; talk (or its abbreviated sibling &quot;Inheritance Is The Base</span></span><br><span class="line"><span class="comment">/// Class of Evil&quot;) by Sean Parent:</span></span><br><span class="line"><span class="comment">/// * http://github.com/sean-parent/sean-parent.github.com/wiki/Papers-and-Presentations</span></span><br><span class="line"><span class="comment">/// * http://www.youtube.com/watch?v=_BpMYeUFXv8</span></span><br><span class="line"><span class="comment">/// * http://channel9.msdn.com/Events/GoingNative/2013/Inheritance-Is-The-Base-Class-of-Evil</span></span><br></pre></td></tr></table></figure>
+
+<p>我对这个概念没什么了解，按照我目前从代码中看到的，用我的话来说更像是一种编译期间执行的动态类型，只要有满足PassConcept接口的东西就可以成为Pass。在后续的内容中会提到各种各样的满足PassConcept的类，目前先说基本的Pass。</p>
+<p>include/llvm/IR/PassManagerInternal.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> IRUnitT, <span class="keyword">typename</span> AnalysisManagerT, <span class="keyword">typename</span>... ExtraArgTs&gt;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">PassConcept</span> &#123;</span></span><br><span class="line">  <span class="keyword">virtual</span> ~<span class="built_in">PassConcept</span>() = <span class="keyword">default</span>;</span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> PreservedAnalyses <span class="title">run</span><span class="params">(IRUnitT &amp;IR, AnalysisManagerT &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">                                ExtraArgTs... ExtraArgs)</span> </span>= <span class="number">0</span>;</span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span></span></span><br><span class="line"><span class="function">  <span class="title">printPipeline</span><span class="params">(raw_ostream &amp;OS,</span></span></span><br><span class="line"><span class="params"><span class="function">                function_ref&lt;StringRef(StringRef)&gt; MapClassName2PassName)</span> </span>= <span class="number">0</span>;</span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> StringRef <span class="title">name</span><span class="params">()</span> <span class="keyword">const</span> </span>= <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/// Polymorphic method to to let a pass optionally exempted from skipping by</span></span><br><span class="line">  <span class="comment">/// PassInstrumentation.</span></span><br><span class="line">  <span class="comment">/// To opt-in, pass should implement `static bool isRequired()`. It&#x27;s no-op</span></span><br><span class="line">  <span class="comment">/// to have `isRequired` always return false since that is the default.</span></span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="title">isRequired</span><span class="params">()</span> <span class="keyword">const</span> </span>= <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>注意isRequired是可选的，不实现则会是默认false，处理这里则是在PassModel中</p>
+<p>大概了解一下Concept有什么接口之后我们来看Mixin</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-0/Untitled%201-5622778.png"
+                      alt="Untitled"
+                ></p>
+<p>图为各种继承了PassInfoMixin的Pass</p>
+<p>对于PassInfoMixin来说只有name以及printPipeline的部分，而我们编写的Pass是要补全run的部分。那么我们来看一下PassInfoMixin的声明部分，实际上利用CRTP的机制来获取PassInfoMixin的子类信息并且返回，同样做到了多态的效果</p>
+<p>include/llvm/IR/PassManager.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// A CRTP mix-in to automatically provide informational APIs needed for</span></span><br><span class="line"><span class="comment">/// passes.</span></span><br><span class="line"><span class="comment">///</span></span><br><span class="line"><span class="comment">/// This provides some boilerplate for types that are passes.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> DerivedT&gt; <span class="class"><span class="keyword">struct</span> <span class="title">PassInfoMixin</span> &#123;</span></span><br><span class="line">  <span class="comment">/// Gets the name of the pass we are mixed into.</span></span><br><span class="line">  <span class="function"><span class="keyword">static</span> StringRef <span class="title">name</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="built_in"><span class="keyword">static_assert</span></span>(std::is_base_of&lt;PassInfoMixin, DerivedT&gt;::value,</span><br><span class="line">                  <span class="string">&quot;Must pass the derived type as the template argument!&quot;</span>);</span><br><span class="line">    StringRef Name = getTypeName&lt;DerivedT&gt;();</span><br><span class="line">    Name.<span class="built_in">consume_front</span>(<span class="string">&quot;llvm::&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> Name;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">printPipeline</span><span class="params">(raw_ostream &amp;OS,</span></span></span><br><span class="line"><span class="params"><span class="function">                     function_ref&lt;StringRef(StringRef)&gt; MapClassName2PassName)</span> </span>&#123;</span><br><span class="line">    StringRef ClassName = DerivedT::<span class="built_in">name</span>();</span><br><span class="line">    <span class="keyword">auto</span> PassName = <span class="built_in">MapClassName2PassName</span>(ClassName);</span><br><span class="line">    OS &lt;&lt; PassName;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="区分Analysis"><a href="#区分Analysis" class="headerlink" title="区分Analysis"></a>区分Analysis</h2><p>对于LegacyPass来说要注意的是对于LegacyPass来说不论是Analysis还是Transform都是一个Pass，只是Analysis是一种ImmutablePass，在注册的时候也会需要这个信息。</p>
+<p>但是对于新Pass来说Analysis就是Analysis，并不是一种Pass。比如我们来看一个Analysis的签名</p>
+<p>include/llvm/Analysis/AssumptionCache.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">AssumptionAnalysis</span> :</span> <span class="keyword">public</span> AnalysisInfoMixin&lt;AssumptionAnalysis&gt; &#123;</span><br><span class="line">  <span class="keyword">friend</span> AnalysisInfoMixin&lt;AssumptionAnalysis&gt;;</span><br><span class="line">  <span class="keyword">static</span> AnalysisKey Key;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="keyword">using</span> Result = AssumptionCache;</span><br><span class="line">  <span class="function">AssumptionCache <span class="title">run</span><span class="params">(Function &amp;F, FunctionAnalysisManager &amp;)</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>很明显这个run的返回结果是不满足PassConcept的，Analysis有自己的一套AnalysisConcept</p>
+<h1 id="编写"><a href="#编写" class="headerlink" title="编写"></a>编写</h1><p>lib/Transforms/Scalar/FlattenCFGPass.cpp</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FlattenCFGLegacyPass</span> :</span> <span class="keyword">public</span> FunctionPass &#123;</span><br><span class="line">  <span class="keyword">static</span> <span class="keyword">char</span> ID; <span class="comment">// Pass identification, replacement for typeid</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">FlattenCFGLegacyPass</span>() : <span class="built_in">FunctionPass</span>(ID) &#123;</span><br><span class="line">    <span class="built_in">initializeFlattenCFGLegacyPassPass</span>(*PassRegistry::<span class="built_in">getPassRegistry</span>());</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="function"><span class="keyword">bool</span> <span class="title">runOnFunction</span><span class="params">(Function &amp;F)</span> <span class="keyword">override</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">getAnalysisUsage</span><span class="params">(AnalysisUsage &amp;AU)</span> <span class="keyword">const</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    AU.addRequired&lt;AAResultsWrapperPass&gt;();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  AliasAnalysis *AA;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">FlattenCFGLegacyPass::runOnFunction</span><span class="params">(Function &amp;F)</span> </span>&#123;</span><br><span class="line">  AA = &amp;getAnalysis&lt;AAResultsWrapperPass&gt;().<span class="built_in">getAAResults</span>();</span><br><span class="line">  <span class="keyword">bool</span> EverChanged = <span class="literal">false</span>;</span><br><span class="line">  <span class="comment">// iterativelyFlattenCFG can make some blocks dead.</span></span><br><span class="line">  <span class="keyword">while</span> (<span class="built_in">iterativelyFlattenCFG</span>(F, AA)) &#123;</span><br><span class="line">    <span class="built_in">removeUnreachableBlocks</span>(F);</span><br><span class="line">    EverChanged = <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> EverChanged;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">FlattenCFGPass</span> :</span> PassInfoMixin&lt;FlattenCFGPass&gt; &#123;</span><br><span class="line">  <span class="function">PreservedAnalyses <span class="title">run</span><span class="params">(Function &amp;F, FunctionAnalysisManager &amp;AM)</span></span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function">PreservedAnalyses <span class="title">FlattenCFGPass::run</span><span class="params">(Function &amp;F,</span></span></span><br><span class="line"><span class="params"><span class="function">                                      FunctionAnalysisManager &amp;AM)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">bool</span> EverChanged = <span class="literal">false</span>;</span><br><span class="line">  AliasAnalysis *AA = &amp;AM.getResult&lt;AAManager&gt;(F);</span><br><span class="line">  <span class="comment">// iterativelyFlattenCFG can make some blocks dead.</span></span><br><span class="line">  <span class="keyword">while</span> (<span class="built_in">iterativelyFlattenCFG</span>(F, AA)) &#123;</span><br><span class="line">    <span class="built_in">removeUnreachableBlocks</span>(F);</span><br><span class="line">    EverChanged = <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> EverChanged ? PreservedAnalyses::<span class="built_in">none</span>() : PreservedAnalyses::<span class="built_in">all</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="复杂的LegacyPass"><a href="#复杂的LegacyPass" class="headerlink" title="复杂的LegacyPass"></a>复杂的LegacyPass</h2><p>对比代码可以看到LegacyPass非常麻烦</p>
+<ol>
+<li>添加initializeXXXPass</li>
+<li>声明一个PassID</li>
+<li>用到的analysis还需要手动addRequired</li>
+</ol>
+<p>而新的Pass则不需要关心那么多其他的事情，只需要专注于编写实现就可以了</p>
+<h2 id="run"><a href="#run" class="headerlink" title="run"></a>run</h2><p>这里可以看到两者run的参数是有区别的，对于新的Pass来说还需要传递一个AnalysisManager</p>
+<p>而run中传进来的类型（被称为IRUnitT）以及AnalysisManager的类型共同体现了这个Pass是作用范围是什么（是一个Function又或是一个Module等等）</p>
+<p>对于返回的结果两者也不相同。LegacyPass返回的是 是否修改的bool值，对于新的Pass返回的是这个Pass不会影响到哪些Analysis</p>
+<h1 id="注册"><a href="#注册" class="headerlink" title="注册"></a>注册</h1><p>LegacyPass的注册方式是在一个全局的Registry变量中add每一个Pass的info</p>
+<p>lib/Transforms/Scalar/FlattenCFGPass.cpp</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">char</span> FlattenCFGLegacyPass::ID = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="built_in">INITIALIZE_PASS_BEGIN</span>(FlattenCFGLegacyPass, <span class="string">&quot;flattencfg&quot;</span>, <span class="string">&quot;Flatten the CFG&quot;</span>,</span><br><span class="line">                      <span class="literal">false</span>, <span class="literal">false</span>)</span><br><span class="line"><span class="built_in">INITIALIZE_PASS_DEPENDENCY</span>(AAResultsWrapperPass)</span><br><span class="line"><span class="built_in">INITIALIZE_PASS_END</span>(FlattenCFGLegacyPass, <span class="string">&quot;flattencfg&quot;</span>, <span class="string">&quot;Flatten the CFG&quot;</span>,</span><br><span class="line">                    <span class="literal">false</span>, <span class="literal">false</span>)</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INITIALIZE_PASS_BEGIN(passName, arg, name, cfg, analysis)              \</span></span><br><span class="line"><span class="meta">  static void *initialize##passName##PassOnce(PassRegistry &amp;Registry) &#123;</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INITIALIZE_PASS_DEPENDENCY(depName) initialize##depName##Pass(Registry);</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> INITIALIZE_AG_DEPENDENCY(depName)                                      \</span></span><br><span class="line"><span class="meta">  initialize##depName##AnalysisGroup(Registry);</span></span><br></pre></td></tr></table></figure>
+
+<p>展开宏是这个样子的，看到这个initialize函数是不是有点眼熟？这就是刚才在构造函数中实际调用的</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> *<span class="title">initializeFlattenCFGLegacyPassPassOnce</span><span class="params">(PassRegistry &amp;Registry)</span> </span>&#123;</span><br><span class="line">  <span class="built_in">initializeAAResultsWrapperPassPass</span>(Registry);</span><br><span class="line">  PassInfo *PI =</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">PassInfo</span>(<span class="string">&quot;Flatten the CFG&quot;</span>, <span class="string">&quot;flattencfg&quot;</span>, &amp;FlattenCFGLegacyPass::ID,</span><br><span class="line">                   PassInfo::<span class="built_in">NormalCtor_t</span>(callDefaultCtor&lt;FlattenCFGLegacyPass&gt;),</span><br><span class="line">                   <span class="literal">false</span>, <span class="literal">false</span>);</span><br><span class="line">  Registry.<span class="built_in">registerPass</span>(*PI, <span class="literal">true</span>);</span><br><span class="line">  <span class="keyword">return</span> PI;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">static</span> llvm::once_flag InitializeFlattenCFGLegacyPassPassFlag;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">llvm::initializeFlattenCFGLegacyPassPass</span><span class="params">(PassRegistry &amp;Registry)</span> </span>&#123;</span><br><span class="line">  llvm::<span class="built_in">call_once</span>(InitializeFlattenCFGLegacyPassPassFlag,</span><br><span class="line">                  initializeFlattenCFGLegacyPassPassOnce, std::<span class="built_in">ref</span>(Registry));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>宏的最后两个bool参数分别是 是否为CFGPass和AnalysisPass</p>
+<p>新的则是在lib/Passes/PassRegistry.def中使用这样的方式注册</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">FUNCTION_PASS</span>(<span class="string">&quot;flattencfg&quot;</span>, <span class="built_in">FlattenCFGPass</span>())</span><br></pre></td></tr></table></figure>
+
+<p>对于新的Pass来说不需要再添加选项区分是否为Analysis，而是通过采用了不同名称的宏来实现，比如说有这样一个用于注册Analysis的宏</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> FUNCTION_ANALYSIS(NAME, CREATE_PASS)</span></span><br></pre></td></tr></table></figure>
+
+<p>而宏的具体实现则是根据使用的上下文来实现。通过先define这个宏的具体实现再include这个def文件完成各种流程（我并不知道这个做法叫什么..）</p>
+<p>在lib/Passes/PassBuilder.cpp中有这样一段代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Error <span class="title">PassBuilder::parseFunctionPass</span><span class="params">(FunctionPassManager &amp;FPM,</span></span></span><br><span class="line"><span class="params"><span class="function">                                     <span class="keyword">const</span> PipelineElement &amp;E)</span> </span>&#123;</span><br><span class="line">  ...</span><br><span class="line"><span class="comment">// Now expand the basic registered passes from the .inc file.</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> FUNCTION_PASS(NAME, CREATE_PASS)                                       \</span></span><br><span class="line"><span class="meta">  <span class="meta-keyword">if</span> (Name == NAME) &#123;                                                          \</span></span><br><span class="line"><span class="meta">    FPM.addPass(CREATE_PASS);                                                  \</span></span><br><span class="line"><span class="meta">    return Error::success();                                                   \</span></span><br><span class="line"><span class="meta">  &#125;</span></span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>同时这个宏还会被用于一些其他的地方，比如说打印Pass名字</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">PassBuilder::printPassNames</span><span class="params">(raw_ostream &amp;OS)</span> </span>&#123;</span><br><span class="line">  ...</span><br><span class="line">	OS &lt;&lt; <span class="string">&quot;Function passes:\n&quot;</span>;</span><br><span class="line">	<span class="meta">#<span class="meta-keyword">define</span> FUNCTION_PASS(NAME, CREATE_PASS) printPassName(NAME, OS);</span></span><br><span class="line">	<span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&quot;PassRegistry.def&quot;</span></span></span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="元信息"><a href="#元信息" class="headerlink" title="元信息"></a>元信息</h1><h2 id="identifier"><a href="#identifier" class="headerlink" title="identifier"></a>identifier</h2><p>对于LegacyPass来说通过声明的静态成员变量来区分。上面的编写Pass的时候添加静态成员变量ID，之后在注册的宏内构建了PassInfo并且将整个ID传进去</p>
+<p>对于新的Pass我觉得是根据name来区分的。因为name是通过获取Pass的TypeName得到的。这一点对于Analysis也一样</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> DerivedT&gt; <span class="class"><span class="keyword">struct</span> <span class="title">PassInfoMixin</span> &#123;</span></span><br><span class="line">  <span class="comment">/// Gets the name of the pass we are mixed into.</span></span><br><span class="line">  <span class="function"><span class="keyword">static</span> StringRef <span class="title">name</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="built_in"><span class="keyword">static_assert</span></span>(std::is_base_of&lt;PassInfoMixin, DerivedT&gt;::value,</span><br><span class="line">                  <span class="string">&quot;Must pass the derived type as the template argument!&quot;</span>);</span><br><span class="line">    StringRef Name = getTypeName&lt;DerivedT&gt;();</span><br><span class="line">    Name.<span class="built_in">consume_front</span>(<span class="string">&quot;llvm::&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> Name;</span><br><span class="line">  &#125;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="获取"><a href="#获取" class="headerlink" title="获取"></a>获取</h2><p>对于LegacyPass来说PassInfo基本上都在PassInfo中了，而上面也提到注册的时候会将PassInfo塞到一个全局的Registry对象中，获取的话通过Registry对象的getPassInfo方法传入Id或者注册的时候填写的arg来获取到对应的PassInfo实例。</p>
+<p>include/llvm/PassInfo.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PassInfo</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="keyword">using</span> NormalCtor_t = Pass* (*)();</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  StringRef PassName;     <span class="comment">// Nice name for Pass</span></span><br><span class="line">  StringRef PassArgument; <span class="comment">// Command Line argument to run this pass</span></span><br><span class="line">  <span class="keyword">const</span> <span class="keyword">void</span> *PassID;</span><br><span class="line">  <span class="keyword">const</span> <span class="keyword">bool</span> IsCFGOnlyPass = <span class="literal">false</span>;      <span class="comment">// Pass only looks at the CFG.</span></span><br><span class="line">  <span class="keyword">const</span> <span class="keyword">bool</span> IsAnalysis;                 <span class="comment">// True if an analysis pass.</span></span><br><span class="line">  <span class="keyword">const</span> <span class="keyword">bool</span> IsAnalysisGroup;            <span class="comment">// True if an analysis group.</span></span><br><span class="line">  std::vector&lt;<span class="keyword">const</span> PassInfo *&gt; ItfImpl; <span class="comment">// Interfaces implemented by this pass</span></span><br><span class="line">  NormalCtor_t NormalCtor = <span class="literal">nullptr</span>;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在Registry获取PassInfo的里有这样的代码</p>
+<p>include/llvm/PassRegistry.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">const</span> PassInfo *<span class="title">PassRegistry::getPassInfo</span><span class="params">(<span class="keyword">const</span> <span class="keyword">void</span> *TI)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">  <span class="function">sys::SmartScopedReader&lt;<span class="literal">true</span>&gt; <span class="title">Guard</span><span class="params">(Lock)</span></span>;</span><br><span class="line">  <span class="keyword">return</span> PassInfoMap.<span class="built_in">lookup</span>(TI);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// PassInfoMap - Keep track of the PassInfo object for each registered pass.</span></span><br><span class="line"><span class="keyword">using</span> MapType = DenseMap&lt;<span class="keyword">const</span> <span class="keyword">void</span> *, <span class="keyword">const</span> PassInfo *&gt;;</span><br><span class="line">MapType PassInfoMap;</span><br></pre></td></tr></table></figure>
+
+<p>对于新的Pass来说原本的PassInfo中绝大部分信息都已经不再需要了，比如说是否为Analysis，是否为CFGOnly，ID等。PassInfo中有一个叫NormalCtor的成员，LegacyPass是通过PassInfo创建的因此需要保存构造Pass的方法，但新Pass这里采用了其他的做法，因此这个成员也是不需要的。</p>
+<p>唯一需要的就是name信息。由于Transform Pass和Analysis都是由ID区分的，在PassBuilder中也有isAnalysisPassName这样根据ID来帮助我们判断是什么的函数</p>
+<h1 id="简单区分"><a href="#简单区分" class="headerlink" title="简单区分"></a>简单区分</h1><p>由于同时存在两套机制，我在初次接触的时候也感到很困惑，之前想要获取新Pass元信息的时候还在尝试LegacyPass的方法</p>
+<p>在对整个结构不了解的时候想要区分一个Pass相关的内容是旧的还是新的可以通过这么两个思路</p>
+<ol>
+<li>通过所使用的类的声明位置，LegacyPass的基础设施相关头文件目前都放到了include/llvm的路径下，而新Pass的基础设施则是分散在include/llvm/IR/ 和include/llvm/Passes/下</li>
+<li>LegacyPass的名字都改为了XXXLegacyPass</li>
+</ol>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM Pass 其零：新的Pass机制</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-06-19 14:57:30</li>
+        <li>
+            本文链接：https://homura.live/2022/06/19/llvm-pass-0/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/05/21/driver-and-train/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">司机与列车</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">结构</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E5%9E%8B%E5%85%B3%E7%B3%BB%E9%93%BE"><span class="nav-number">1.1.</span> <span class="nav-text">类型关系链</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8C%BA%E5%88%86Analysis"><span class="nav-number">1.2.</span> <span class="nav-text">区分Analysis</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E5%86%99"><span class="nav-number">2.</span> <span class="nav-text">编写</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%8D%E6%9D%82%E7%9A%84LegacyPass"><span class="nav-number">2.1.</span> <span class="nav-text">复杂的LegacyPass</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#run"><span class="nav-number">2.2.</span> <span class="nav-text">run</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%B3%A8%E5%86%8C"><span class="nav-number">3.</span> <span class="nav-text">注册</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%83%E4%BF%A1%E6%81%AF"><span class="nav-number">4.</span> <span class="nav-text">元信息</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#identifier"><span class="nav-number">4.1.</span> <span class="nav-text">identifier</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96"><span class="nav-number">4.2.</span> <span class="nav-text">获取</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AE%80%E5%8D%95%E5%8C%BA%E5%88%86"><span class="nav-number">5.</span> <span class="nav-text">简单区分</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM Pass其一：PassManager |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="现身吧，青眼亚白龙！ 把他给我烧的一干二净。毁灭的焦热疾风弹   上一期我们讲到了每个Pass基本的结构，这期我们从PassManager开始讲述Pass从创建到执行的整个流程，以及涉及到的种种问题 声明include&#x2F;llvm&#x2F;IR&#x2F;PassManager.h 12345678template &lt;typename IRUnitT,          typename AnalysisMa">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM Pass其一：PassManager">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/06/26/llvm-pass-1/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="现身吧，青眼亚白龙！ 把他给我烧的一干二净。毁灭的焦热疾风弹   上一期我们讲到了每个Pass基本的结构，这期我们从PassManager开始讲述Pass从创建到执行的整个流程，以及涉及到的种种问题 声明include&#x2F;llvm&#x2F;IR&#x2F;PassManager.h 12345678template &lt;typename IRUnitT,          typename AnalysisMa">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-1/Untitled.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-1/Untitled%201.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-1/Untitled%202.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-1/Untitled%203.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-1/Untitled%204.png">
+<meta property="article:published_time" content="2022-06-26T11:51:06.000Z">
+<meta property="article:modified_time" content="2022-06-26T11:52:51.307Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="LLVM">
+<meta property="article:tag" content="Pass">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/llvm-pass-1/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM Pass其一：PassManager</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-06-26 19:51:06
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/LLVM/">LLVM</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Pass/">Pass</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>4.3k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>22 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-1/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">现身吧，青眼亚白龙！ 把他给我烧的一干二净。毁灭的焦热疾风弹</center> 
+
+<p>上一期我们讲到了每个Pass基本的结构，这期我们从PassManager开始讲述Pass从创建到执行的整个流程，以及涉及到的种种问题</p>
+<h1 id="声明"><a href="#声明" class="headerlink" title="声明"></a>声明</h1><p>include/llvm/IR/PassManager.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> IRUnitT,</span><br><span class="line">          <span class="keyword">typename</span> AnalysisManagerT = AnalysisManager&lt;IRUnitT&gt;,</span><br><span class="line">          <span class="keyword">typename</span>... ExtraArgTs&gt;</span><br><span class="line">class PassManager : <span class="keyword">public</span> PassInfoMixin&lt;</span><br><span class="line">                        PassManager&lt;IRUnitT, AnalysisManagerT, ExtraArgTs...&gt;&gt; &#123;</span><br><span class="line">  ...</span><br><span class="line">	std::vector&lt;std::unique_ptr&lt;PassConceptT&gt;&gt; Passes;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于声明中要注意的有一点：上一期我们提到继承了PassInfoMixin的类我们就可以视为是一个Pass（从语法角度来说），也就是说PassManager本身也是一个Pass</p>
+<p>接着来讲一下模板参数</p>
+<h2 id="IRUnit"><a href="#IRUnit" class="headerlink" title="IRUnit"></a>IRUnit</h2><p>对于每个Pass有其作用的范围，有的是作用在函数上的，有的是作用到一个CFG中的</p>
+<p>还记得上期里讲到新Pass是通过run传进去的参数来决定是作用到什么样的pass么</p>
+<p>AnalysisManagerT</p>
+<h1 id="添加一个Pass"><a href="#添加一个Pass" class="headerlink" title="添加一个Pass"></a>添加一个Pass</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">LLVM_ATTRIBUTE_MINSIZE</span><br><span class="line">    std::<span class="keyword">enable_if_t</span>&lt;!std::is_same&lt;PassT, PassManager&gt;::value&gt;</span><br><span class="line">    <span class="built_in">addPass</span>(PassT &amp;&amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">using</span> PassModelT =</span><br><span class="line">      detail::PassModel&lt;IRUnitT, PassT, PreservedAnalyses, AnalysisManagerT,</span><br><span class="line">                        ExtraArgTs...&gt;;</span><br><span class="line">  <span class="comment">// Do not use make_unique or emplace_back, they cause too many template</span></span><br><span class="line">  <span class="comment">// instantiations, causing terrible compile times.</span></span><br><span class="line">  Passes.<span class="built_in">push_back</span>(std::unique_ptr&lt;PassConceptT&gt;(</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">PassModelT</span>(std::forward&lt;PassT&gt;(Pass))));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们这里先不管enable_if_t的部分，参数也没什么可讲的，我们来看函数体的部分</p>
+<p>可以看到实际传给PassManager的其实是一个PassModelT的实例，而不是一个Pass</p>
+<h2 id="PassModel"><a href="#PassModel" class="headerlink" title="PassModel"></a>PassModel</h2><p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-1/Untitled%201.png"
+                      alt="Untitled"
+                ></p>
+<p>include/llvm/IR/PassManagerInternal.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> IRUnitT, <span class="keyword">typename</span> PassT, <span class="keyword">typename</span> PreservedAnalysesT,</span><br><span class="line">          <span class="keyword">typename</span> AnalysisManagerT, <span class="keyword">typename</span>... ExtraArgTs&gt;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">PassModel</span> :</span> PassConcept&lt;IRUnitT, AnalysisManagerT, ExtraArgTs...&gt; &#123;</span><br><span class="line">  ...</span><br><span class="line">	<span class="function">PreservedAnalysesT <span class="title">run</span><span class="params">(IRUnitT &amp;IR, AnalysisManagerT &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">                         ExtraArgTs... ExtraArgs)</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> Pass.<span class="built_in">run</span>(IR, AM, ExtraArgs...);</span><br><span class="line">  &#125;</span><br><span class="line">	PassT Pass;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>PassModel做的事情也很简单，最重要的就是运行保存的Pass实例。</p>
+<p>上期提到了实现Pass时isRequired是可选的。对于非required的pass也不需要手动编写一个返回false的函数，而秘密就在于这个函数中</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">using</span> <span class="keyword">has_required_t</span> = <span class="keyword">decltype</span>(std::declval&lt;T &amp;&gt;().<span class="built_in">isRequired</span>());</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">static</span> std::<span class="keyword">enable_if_t</span>&lt;is_detected&lt;<span class="keyword">has_required_t</span>, T&gt;::value, <span class="keyword">bool</span>&gt;</span><br><span class="line"><span class="built_in">passIsRequiredImpl</span>() &#123;</span><br><span class="line">  <span class="keyword">return</span> T::<span class="built_in">isRequired</span>();</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">static</span> std::<span class="keyword">enable_if_t</span>&lt;!is_detected&lt;<span class="keyword">has_required_t</span>, T&gt;::value, <span class="keyword">bool</span>&gt;</span><br><span class="line"><span class="built_in">passIsRequiredImpl</span>() &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">isRequired</span><span class="params">()</span> <span class="keyword">const</span> <span class="keyword">override</span> </span>&#123; <span class="keyword">return</span> passIsRequiredImpl&lt;PassT&gt;(); &#125;</span><br></pre></td></tr></table></figure>
+
+<p>而这部分类似的代码还存在于PassInstrumentation的代码中。对于PassInstrumentation来说接收的就是一个PassT，并不一定就是PassModel 。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line"><span class="keyword">using</span> <span class="keyword">has_required_t</span> = <span class="keyword">decltype</span>(std::declval&lt;PassT &amp;&gt;().<span class="built_in">isRequired</span>());</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line"><span class="keyword">static</span> std::<span class="keyword">enable_if_t</span>&lt;is_detected&lt;<span class="keyword">has_required_t</span>, PassT&gt;::value, <span class="keyword">bool</span>&gt;</span><br><span class="line"><span class="built_in">isRequired</span>(<span class="keyword">const</span> PassT &amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">return</span> Pass.<span class="built_in">isRequired</span>();</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line"><span class="keyword">static</span> std::<span class="keyword">enable_if_t</span>&lt;!is_detected&lt;<span class="keyword">has_required_t</span>, PassT&gt;::value, <span class="keyword">bool</span>&gt;</span><br><span class="line"><span class="built_in">isRequired</span>(<span class="keyword">const</span> PassT &amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="添加一个PassManager"><a href="#添加一个PassManager" class="headerlink" title="添加一个PassManager"></a>添加一个PassManager</h2><p>除了可以添加一个常规的Pass，还可以添加一个PassManager到一个PassManager中，听起来很奇怪，但是PassManager的行为也是一种Pass</p>
+<p>include/llvm/IR/PassManager.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">LLVM_ATTRIBUTE_MINSIZE</span><br><span class="line">    std::<span class="keyword">enable_if_t</span>&lt;std::is_same&lt;PassT, PassManager&gt;::value&gt;</span><br><span class="line">    <span class="built_in">addPass</span>(PassT &amp;&amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;P : Pass.Passes)</span><br><span class="line">    Passes.<span class="built_in">push_back</span>(std::<span class="built_in">move</span>(P));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里通过使用enable_if_t来判断这个PassT是否为PassManager。</p>
+<p>关于为什么要这么做，目前的PassManager run的部分没有处理嵌套的情况，注释中提到了</p>
+<blockquote>
+<p>cases rely on executing nested pass managers. Doing this could reduce implementation complexity and avoid potential invalidation issues that may happen with nested pass managers of the same type.</p>
+</blockquote>
+<p>大意就是减少实现复杂度以及减少问题</p>
+<h1 id="Run"><a href="#Run" class="headerlink" title="Run"></a>Run</h1><p>先来大概看一遍代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Run all of the passes in this manager over the given unit of IR.</span></span><br><span class="line"><span class="comment">/// ExtraArgs are passed to each pass.</span></span><br><span class="line"><span class="function">PreservedAnalyses <span class="title">run</span><span class="params">(IRUnitT &amp;IR, AnalysisManagerT &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">                      ExtraArgTs... ExtraArgs)</span> </span>&#123;</span><br><span class="line">  PreservedAnalyses PA = PreservedAnalyses::<span class="built_in">all</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Request PassInstrumentation from analysis manager, will use it to run</span></span><br><span class="line">  <span class="comment">// instrumenting callbacks for the passes later.</span></span><br><span class="line">  <span class="comment">// Here we use std::tuple wrapper over getResult which helps to extract</span></span><br><span class="line">  <span class="comment">// AnalysisManager&#x27;s arguments out of the whole ExtraArgs set.</span></span><br><span class="line">  PassInstrumentation PI =</span><br><span class="line">      detail::getAnalysisResult&lt;PassInstrumentationAnalysis&gt;(</span><br><span class="line">          AM, IR, std::tuple&lt;ExtraArgTs...&gt;(ExtraArgs...));</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">unsigned</span> Idx = <span class="number">0</span>, Size = Passes.<span class="built_in">size</span>(); Idx != Size; ++Idx) &#123;</span><br><span class="line">    <span class="keyword">auto</span> *P = Passes[Idx].<span class="built_in">get</span>();</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check the PassInstrumentation&#x27;s BeforePass callbacks before running the</span></span><br><span class="line">    <span class="comment">// pass, skip its execution completely if asked to (callback returns</span></span><br><span class="line">    <span class="comment">// false).</span></span><br><span class="line">    <span class="keyword">if</span> (!PI.runBeforePass&lt;IRUnitT&gt;(*P, IR))</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    PreservedAnalyses PassPA;</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="function">TimeTraceScope <span class="title">TimeScope</span><span class="params">(P-&gt;name(), IR.getName())</span></span>;</span><br><span class="line">      PassPA = P-&gt;<span class="built_in">run</span>(IR, AM, ExtraArgs...);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Call onto PassInstrumentation&#x27;s AfterPass callbacks immediately after</span></span><br><span class="line">    <span class="comment">// running the pass.</span></span><br><span class="line">    PI.runAfterPass&lt;IRUnitT&gt;(*P, IR, PassPA);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Update the analysis manager as each pass runs and potentially</span></span><br><span class="line">    <span class="comment">// invalidates analyses.</span></span><br><span class="line">    AM.<span class="built_in">invalidate</span>(IR, PassPA);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Finally, intersect the preserved analyses to compute the aggregate</span></span><br><span class="line">    <span class="comment">// preserved set for this pass manager.</span></span><br><span class="line">    PA.<span class="built_in">intersect</span>(std::<span class="built_in">move</span>(PassPA));</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Invalidation was handled after each pass in the above loop for the</span></span><br><span class="line">  <span class="comment">// current unit of IR. Therefore, the remaining analysis results in the</span></span><br><span class="line">  <span class="comment">// AnalysisManager are preserved. We mark this with a set so that we don&#x27;t</span></span><br><span class="line">  <span class="comment">// need to inspect each one individually.</span></span><br><span class="line">  PA.preserveSet&lt;AllAnalysesOn&lt;IRUnitT&gt;&gt;();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> PA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到这里从PassInstrumentationAnalysis获取了一个PassInstrumentation（简称PI），PI中存了各种各样的callback，在跑Pass的前后会执行对应的callback。</p>
+<p>这边的逻辑也比较简单，关键点在于Analysis与Instrumentation的各种callback相关的</p>
+<h2 id="对Analysis的影响"><a href="#对Analysis的影响" class="headerlink" title="对Analysis的影响"></a>对Analysis的影响</h2><p>我们之前已经讲过通过PreservedAnalyses来管理Pass会导致哪些Analysis的结果失效，在跑Pass后会将结果的PreservedAnalyses用于修正AnalysisManager里保存的分析结果，也就是在这里AnalysisManager（以下简称AM）会实际更新内部保存的信息</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">AM.<span class="built_in">invalidate</span>(IR, PassPA);</span><br></pre></td></tr></table></figure>
+
+<p>而在所有Pass跑完之后则preserve当前IRUnit类型的AnalysesSet，这里使用一个Set是为了避免和这个IRUnit类型的Analysis逐个比较。在最后preserve整个set的原因是在跑每个pass的时候都在不断的更新其中的AnalysisManager以及PreserveAnalyses信息，都跑完之后可以保证当前这个IRUnit类型的Analyses都确保是preserved的。</p>
+<p>我一开始对这里的写法感到奇怪，为什么都跑完了、修改过了还是preserved的。我最初的想法是被保存的Analysis，理解上更偏向于是被缓存了的Pass，但是仔细一想我觉得换一种说法来描述PreserveAnalyses就好理解了：PreserveAnalyses中记录的是在这之后能够正确获取结果的Analyses。也就是说跑完PassManager这个“Pass”之后所有的Analysis依然是能够正确获取的</p>
+<p>在编写自己Pass的时候要手动指定使得哪些Analysis失效，原因是因为你在这个Pass里面做过了修改并且没有更新AnalysisManager的信息，我觉得理论上来说如果每个人在Pass里面自己做了AM.invalidate的操作本质上是一样的，在这里只是PassManager帮你做了这个事情（这里不考虑这个做法是否有必要，只是讨论实现的本质）。那么如果要在Pass内部进行修改再做分析，也可以直接通过invalidate的操作更新AM之后再获取数据</p>
+<p>关于Analysis更详细的部分会在下一期讲述</p>
+<h2 id="runBeforePass"><a href="#runBeforePass" class="headerlink" title="runBeforePass"></a>runBeforePass</h2><p>include/llvm/IR/PassInstrumentation.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> IRUnitT, <span class="keyword">typename</span> PassT&gt;</span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">runBeforePass</span><span class="params">(<span class="keyword">const</span> PassT &amp;Pass, <span class="keyword">const</span> IRUnitT &amp;IR)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (!Callbacks)</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">bool</span> ShouldRun = <span class="literal">true</span>;</span><br><span class="line">  <span class="keyword">if</span> (!<span class="built_in">isRequired</span>(Pass)) &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;C : Callbacks-&gt;ShouldRunOptionalPassCallbacks)</span><br><span class="line">      ShouldRun &amp;= <span class="built_in">C</span>(Pass.<span class="built_in">name</span>(), llvm::<span class="built_in">Any</span>(&amp;IR));</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ShouldRun) &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;C : Callbacks-&gt;BeforeNonSkippedPassCallbacks)</span><br><span class="line">      <span class="built_in">C</span>(Pass.<span class="built_in">name</span>(), llvm::<span class="built_in">Any</span>(&amp;IR));</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;C : Callbacks-&gt;BeforeSkippedPassCallbacks)</span><br><span class="line">      <span class="built_in">C</span>(Pass.<span class="built_in">name</span>(), llvm::<span class="built_in">Any</span>(&amp;IR));</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> ShouldRun;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>runBeforePass除了执行一些常规callback之外，不同之处在于做了是否要执行当前pass的判断。如果并非required的pass则根据callback中的函数来确定是否运行当前pass</p>
+<p>而runAfterPass就是简单的执行所有callback，这里就不再赘述</p>
+<h1 id="更具体的PassManager"><a href="#更具体的PassManager" class="headerlink" title="更具体的PassManager"></a>更具体的PassManager</h1><p>讲完了基础的PassManager，我们再来看一下通过PassManager衍生出更加具体的PassManager都是怎样的。不过不管怎么衍生，关于执行的结果以及analysis处理以及callback这些的处理大致是一致的，只是加了一些对于某类IRUnit专用的处理操作</p>
+<p>主要有以下这么几种方式</p>
+<h2 id="类型别名"><a href="#类型别名" class="headerlink" title="类型别名"></a>类型别名</h2><p>根据IRUnit的不同，有这么几类PassManager</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-1/Untitled%202.png"
+                      alt="Untitled"
+                ></p>
+<p>代码中是这样的</p>
+<p>PassManager.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">using</span> ModulePassManager = PassManager&lt;Module&gt;;</span><br><span class="line"><span class="keyword">using</span> FunctionPassManager = PassManager&lt;Function&gt;;</span><br></pre></td></tr></table></figure>
+
+<p>这种没什么可讲的，就是简单的用了一个别名来标识</p>
+<h2 id="针对Loop特化的PassManager"><a href="#针对Loop特化的PassManager" class="headerlink" title="针对Loop特化的PassManager"></a>针对Loop特化的PassManager</h2><p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-1/Untitled%203.png"
+                      alt="Untitled"
+                ></p>
+<p>include/llvm/Transforms/Scalar/LoopPassManager.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Explicit specialization and instantiation declarations for the pass manager.</span></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"><span class="keyword">template</span> &lt;&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PassManager</span>&lt;</span>Loop, LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">                  LPMUpdater &amp;&gt;</span><br><span class="line">    : <span class="keyword">public</span> PassInfoMixin&lt;</span><br><span class="line">          PassManager&lt;Loop, LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">                      LPMUpdater &amp;&gt;&gt; &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="function"><span class="keyword">explicit</span> <span class="title">PassManager</span><span class="params">()</span> </span>= <span class="keyword">default</span>;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过成员可以看到多了一些Loop相关的处理</p>
+<h3 id="addPass"><a href="#addPass" class="headerlink" title="addPass"></a>addPass</h3><p>还是熟悉的enable_if，主要是根据参数是RepeatedPass还是普通Pass以及PassT是否满足HasRunOnLoopT产生了四种情况</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">LLVM_ATTRIBUTE_MINSIZE</span><br><span class="line">    std::<span class="keyword">enable_if_t</span>&lt;is_detected&lt;HasRunOnLoopT, PassT&gt;::value&gt;</span><br><span class="line">    <span class="built_in">addPass</span>(PassT &amp;&amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">using</span> LoopPassModelT =</span><br><span class="line">      detail::PassModel&lt;Loop, PassT, PreservedAnalyses, LoopAnalysisManager,</span><br><span class="line">                        LoopStandardAnalysisResults &amp;, LPMUpdater &amp;&gt;;</span><br><span class="line">  IsLoopNestPass.<span class="built_in">push_back</span>(<span class="literal">false</span>);</span><br><span class="line">  <span class="comment">// Do not use make_unique or emplace_back, they cause too many template</span></span><br><span class="line">  <span class="comment">// instantiations, causing terrible compile times.</span></span><br><span class="line">  LoopPasses.<span class="built_in">push_back</span>(std::unique_ptr&lt;LoopPassConceptT&gt;(</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">LoopPassModelT</span>(std::forward&lt;PassT&gt;(Pass))));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">LLVM_ATTRIBUTE_MINSIZE</span><br><span class="line">    std::<span class="keyword">enable_if_t</span>&lt;!is_detected&lt;HasRunOnLoopT, PassT&gt;::value&gt;</span><br><span class="line">    <span class="built_in">addPass</span>(PassT &amp;&amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">using</span> LoopNestPassModelT =</span><br><span class="line">      detail::PassModel&lt;LoopNest, PassT, PreservedAnalyses,</span><br><span class="line">                        LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">                        LPMUpdater &amp;&gt;;</span><br><span class="line">  IsLoopNestPass.<span class="built_in">push_back</span>(<span class="literal">true</span>);</span><br><span class="line">  <span class="comment">// Do not use make_unique or emplace_back, they cause too many template</span></span><br><span class="line">  <span class="comment">// instantiations, causing terrible compile times.</span></span><br><span class="line">  LoopNestPasses.<span class="built_in">push_back</span>(std::unique_ptr&lt;LoopNestPassConceptT&gt;(</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">LoopNestPassModelT</span>(std::forward&lt;PassT&gt;(Pass))));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Specializations of `addPass` for `RepeatedPass`. These are necessary since</span></span><br><span class="line"><span class="comment">// `RepeatedPass` has a templated `run` method that will result in incorrect</span></span><br><span class="line"><span class="comment">// detection of `HasRunOnLoopT`.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">LLVM_ATTRIBUTE_MINSIZE</span><br><span class="line">    std::<span class="keyword">enable_if_t</span>&lt;is_detected&lt;HasRunOnLoopT, PassT&gt;::value&gt;</span><br><span class="line">    <span class="built_in">addPass</span>(RepeatedPass&lt;PassT&gt; &amp;&amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">using</span> RepeatedLoopPassModelT =</span><br><span class="line">      detail::PassModel&lt;Loop, RepeatedPass&lt;PassT&gt;, PreservedAnalyses,</span><br><span class="line">                        LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">                        LPMUpdater &amp;&gt;;</span><br><span class="line">  IsLoopNestPass.<span class="built_in">push_back</span>(<span class="literal">false</span>);</span><br><span class="line">  <span class="comment">// Do not use make_unique or emplace_back, they cause too many template</span></span><br><span class="line">  <span class="comment">// instantiations, causing terrible compile times.</span></span><br><span class="line">  LoopPasses.<span class="built_in">push_back</span>(std::unique_ptr&lt;LoopPassConceptT&gt;(</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">RepeatedLoopPassModelT</span>(std::<span class="built_in">move</span>(Pass))));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">LLVM_ATTRIBUTE_MINSIZE</span><br><span class="line">    std::<span class="keyword">enable_if_t</span>&lt;!is_detected&lt;HasRunOnLoopT, PassT&gt;::value&gt;</span><br><span class="line">    <span class="built_in">addPass</span>(RepeatedPass&lt;PassT&gt; &amp;&amp;Pass) &#123;</span><br><span class="line">  <span class="keyword">using</span> RepeatedLoopNestPassModelT =</span><br><span class="line">      detail::PassModel&lt;LoopNest, RepeatedPass&lt;PassT&gt;, PreservedAnalyses,</span><br><span class="line">                        LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">                        LPMUpdater &amp;&gt;;</span><br><span class="line">  IsLoopNestPass.<span class="built_in">push_back</span>(<span class="literal">true</span>);</span><br><span class="line">  <span class="comment">// Do not use make_unique or emplace_back, they cause too many template</span></span><br><span class="line">  <span class="comment">// instantiations, causing terrible compile times.</span></span><br><span class="line">  LoopNestPasses.<span class="built_in">push_back</span>(std::unique_ptr&lt;LoopNestPassConceptT&gt;(</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">RepeatedLoopNestPassModelT</span>(std::<span class="built_in">move</span>(Pass))));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="run"><a href="#run" class="headerlink" title="run"></a>run</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Explicitly specialize the pass manager&#x27;s run method to handle loop nest</span></span><br><span class="line"><span class="comment">/// structure updates.</span></span><br><span class="line">PreservedAnalyses</span><br><span class="line">PassManager&lt;Loop, LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">            LPMUpdater &amp;&gt;::<span class="built_in">run</span>(Loop &amp;L, LoopAnalysisManager &amp;AM,</span><br><span class="line">                               LoopStandardAnalysisResults &amp;AR, LPMUpdater &amp;U) &#123;</span><br><span class="line">  <span class="comment">// Runs loop-nest passes only when the current loop is a top-level one.</span></span><br><span class="line">  PreservedAnalyses PA = (L.<span class="built_in">isOutermost</span>() &amp;&amp; !LoopNestPasses.<span class="built_in">empty</span>())</span><br><span class="line">                             ? <span class="built_in">runWithLoopNestPasses</span>(L, AM, AR, U)</span><br><span class="line">                             : <span class="built_in">runWithoutLoopNestPasses</span>(L, AM, AR, U);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Invalidation for the current loop should be handled above, and other loop</span></span><br><span class="line">  <span class="comment">// analysis results shouldn&#x27;t be impacted by runs over this loop. Therefore,</span></span><br><span class="line">  <span class="comment">// the remaining analysis results in the AnalysisManager are preserved. We</span></span><br><span class="line">  <span class="comment">// mark this with a set so that we don&#x27;t need to inspect each one</span></span><br><span class="line">  <span class="comment">// individually.</span></span><br><span class="line">  PA.preserveSet&lt;AllAnalysesOn&lt;Loop&gt;&gt;();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> PA;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// Run either a loop pass or a loop-nest pass. Returns `None` if</span></span><br><span class="line"><span class="comment">/// PassInstrumentation&#x27;s BeforePass returns false. Otherwise, returns the</span></span><br><span class="line"><span class="comment">/// preserved analyses of the pass.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> IRUnitT, <span class="keyword">typename</span> PassT&gt;</span><br><span class="line"><span class="function">Optional&lt;PreservedAnalyses&gt;</span></span><br><span class="line"><span class="function"><span class="title">runSinglePass</span><span class="params">(IRUnitT &amp;IR, PassT &amp;Pass, LoopAnalysisManager &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">              LoopStandardAnalysisResults &amp;AR, LPMUpdater &amp;U,</span></span></span><br><span class="line"><span class="params"><span class="function">              PassInstrumentation &amp;PI)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function">PreservedAnalyses <span class="title">runWithLoopNestPasses</span><span class="params">(Loop &amp;L, LoopAnalysisManager &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">                                        LoopStandardAnalysisResults &amp;AR,</span></span></span><br><span class="line"><span class="params"><span class="function">                                        LPMUpdater &amp;U)</span></span>;</span><br><span class="line"><span class="function">PreservedAnalyses <span class="title">runWithoutLoopNestPasses</span><span class="params">(Loop &amp;L, LoopAnalysisManager &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">                                           LoopStandardAnalysisResults &amp;AR,</span></span></span><br><span class="line"><span class="params"><span class="function">                                           LPMUpdater &amp;U)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>runSinglePass</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> IRUnitT, <span class="keyword">typename</span> PassT&gt;</span><br><span class="line"><span class="function">Optional&lt;PreservedAnalyses&gt; <span class="title">LoopPassManager::runSinglePass</span><span class="params">(</span></span></span><br><span class="line"><span class="params"><span class="function">    IRUnitT &amp;IR, PassT &amp;Pass, LoopAnalysisManager &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">    LoopStandardAnalysisResults &amp;AR, LPMUpdater &amp;U, PassInstrumentation &amp;PI)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// Get the loop in case of Loop pass and outermost loop in case of LoopNest</span></span><br><span class="line">  <span class="comment">// pass which is to be passed to BeforePass and AfterPass call backs.</span></span><br><span class="line">  <span class="keyword">const</span> Loop &amp;L = <span class="built_in">getLoopFromIR</span>(IR);</span><br><span class="line">  <span class="comment">// Check the PassInstrumentation&#x27;s BeforePass callbacks before running the</span></span><br><span class="line">  <span class="comment">// pass, skip its execution completely if asked to (callback returns false).</span></span><br><span class="line">  <span class="keyword">if</span> (!PI.runBeforePass&lt;Loop&gt;(*Pass, L))</span><br><span class="line">    <span class="keyword">return</span> None;</span><br><span class="line"></span><br><span class="line">  PreservedAnalyses PA;</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="function">TimeTraceScope <span class="title">TimeScope</span><span class="params">(Pass-&gt;name(), IR.getName())</span></span>;</span><br><span class="line">    PA = Pass-&gt;<span class="built_in">run</span>(IR, AM, AR, U);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// do not pass deleted Loop into the instrumentation</span></span><br><span class="line">  <span class="keyword">if</span> (U.<span class="built_in">skipCurrentLoop</span>())</span><br><span class="line">    PI.runAfterPassInvalidated&lt;IRUnitT&gt;(*Pass, PA);</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    PI.runAfterPass&lt;Loop&gt;(*Pass, L, PA);</span><br><span class="line">  <span class="keyword">return</span> PA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关系大概是这个样子的，这里就不贴其他的具体实现了，里面关于Analysis以及各种处理本质上都是类似的</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">  run --&gt; runWithLoopNestPasses --&gt; runSinglePass</span><br><span class="line">  run --&gt; runWithOutLoopNestPasses --&gt; runSinglePass</span><br></pre></td></tr></table></figure>
+
+<h3 id="别名"><a href="#别名" class="headerlink" title="别名"></a>别名</h3><p>最后也是使用了一个别名</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> PassManager&lt;Loop, LoopAnalysisManager, LoopStandardAnalysisResults &amp;,</span><br><span class="line">                    LPMUpdater &amp;&gt;</span><br><span class="line">    LoopPassManager;</span><br></pre></td></tr></table></figure>
+
+<h2 id="继承"><a href="#继承" class="headerlink" title="继承"></a>继承</h2><p>include/llvm/CodeGen/MachinePassManager.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// MachineFunctionPassManager adds/removes below features to/from the base</span></span><br><span class="line"><span class="comment">/// PassManager template instantiation.</span></span><br><span class="line"><span class="comment">///</span></span><br><span class="line"><span class="comment">/// - Support passes that implement doInitialization/doFinalization. This is for</span></span><br><span class="line"><span class="comment">///   machine function passes to work on module level constructs. One such pass</span></span><br><span class="line"><span class="comment">///   is AsmPrinter.</span></span><br><span class="line"><span class="comment">/// ...</span></span><br><span class="line"><span class="comment">/// - The base class `run` method is replaced by an alternative `run` method.</span></span><br><span class="line"><span class="comment">///   See details below.</span></span><br><span class="line"><span class="comment">///</span></span><br><span class="line"><span class="comment">/// - Support codegening in the SCC order. Users include interprocedural</span></span><br><span class="line"><span class="comment">///   register allocation (IPRA).</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MachineFunctionPassManager</span></span></span><br><span class="line"><span class="class">    :</span> <span class="keyword">public</span> PassManager&lt;MachineFunction, MachineFunctionAnalysisManager&gt; &#123;</span><br><span class="line">  <span class="keyword">using</span> Base = PassManager&lt;MachineFunction, MachineFunctionAnalysisManager&gt;;</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>MachineFunctionPassManager属于codegen的部分，而codegen的部分目前还未完全迁移到新的Pass架构中，因此为了兼容旧部分的内容做了一些特殊处理</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-1/Untitled%204.png"
+                      alt="Untitled"
+                ></p>
+<h3 id="addPass-1"><a href="#addPass-1" class="headerlink" title="addPass"></a>addPass</h3><p>在旧的Pass中有doInitialization以及doFinalization的部分，因此在addPass的时候同时会将init和final的Pass注册进去</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt; <span class="function"><span class="keyword">void</span> <span class="title">addPass</span><span class="params">(PassT &amp;&amp;Pass)</span> </span>&#123;</span><br><span class="line">  Base::<span class="built_in">addPass</span>(std::forward&lt;PassT&gt;(Pass));</span><br><span class="line">  PassConceptT *P = Passes.<span class="built_in">back</span>().<span class="built_in">get</span>();</span><br><span class="line">  addDoInitialization&lt;PassT&gt;(P);</span><br><span class="line">  addDoFinalization&lt;PassT&gt;(P);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Add machine module pass.</span></span><br><span class="line">  addRunOnModule&lt;PassT&gt;(P);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于addDoInitialization的处理是这样的，addDoFinalization以及addRunOnModule的函数也是类似的做法，只是更换了detected的条件，不再过多赘述。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">  std::<span class="keyword">enable_if_t</span>&lt;!is_detected&lt;<span class="keyword">has_init_t</span>, PassT&gt;::value&gt;</span><br><span class="line">  <span class="built_in">addDoInitialization</span>(PassConceptT *Pass) &#123;&#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> PassT&gt;</span><br><span class="line">  std::<span class="keyword">enable_if_t</span>&lt;is_detected&lt;<span class="keyword">has_init_t</span>, PassT&gt;::value&gt;</span><br><span class="line">  <span class="built_in">addDoInitialization</span>(PassConceptT *Pass) &#123;</span><br><span class="line">    <span class="keyword">using</span> PassModelT =</span><br><span class="line">        detail::PassModel&lt;MachineFunction, PassT, PreservedAnalyses,</span><br><span class="line">                          MachineFunctionAnalysisManager&gt;;</span><br><span class="line">    <span class="keyword">auto</span> *P = <span class="keyword">static_cast</span>&lt;PassModelT *&gt;(Pass);</span><br><span class="line">    InitializationFuncs.<span class="built_in">emplace_back</span>(</span><br><span class="line">        [=](Module &amp;M, MachineFunctionAnalysisManager &amp;MFAM) &#123;</span><br><span class="line">          <span class="keyword">return</span> P-&gt;Pass.<span class="built_in">doInitialization</span>(M, MFAM);</span><br><span class="line">        &#125;);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="run-1"><a href="#run-1" class="headerlink" title="run"></a>run</h3><p>之后在run的前后执行（这里省略绝大部分的细节），addDoInitialization以及addDoFinalization的部分在新的Pass架构中我觉得应当是要转换为callback的形式，就像之前的runBeforePass一样</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Error <span class="title">MachineFunctionPassManager::run</span><span class="params">(Module &amp;M,</span></span></span><br><span class="line"><span class="params"><span class="function">                                      MachineFunctionAnalysisManager &amp;MFAM)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="comment">// Add a PIC to verify machine functions.</span></span><br><span class="line">  <span class="keyword">if</span> (VerifyMachineFunction) &#123;</span><br><span class="line">    PassInstrumentation PI = MFAM.getResult&lt;PassInstrumentationAnalysis&gt;(M);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// No need to pop this callback later since MIR pipeline is flat which means</span></span><br><span class="line">    <span class="comment">// current pipeline is the top-level pipeline. Callbacks are not used after</span></span><br><span class="line">    <span class="comment">// current pipeline.</span></span><br><span class="line">    PI.<span class="built_in">pushBeforeNonSkippedPassCallback</span>([&amp;MFAM](StringRef PassID, Any IR) &#123;</span><br><span class="line">			...</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;F : InitializationFuncs) &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">auto</span> Err = <span class="built_in">F</span>(M, MFAM))</span><br><span class="line">      <span class="keyword">return</span> Err;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">do</span> &#123;</span><br><span class="line">    <span class="comment">// Run machine module passes</span></span><br><span class="line">    ...</span><br><span class="line">  &#125; <span class="keyword">while</span> (<span class="literal">true</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;F : FinalizationFuncs) &#123;</span><br><span class="line">    <span class="keyword">if</span> (<span class="keyword">auto</span> Err = <span class="built_in">F</span>(M, MFAM))</span><br><span class="line">      <span class="keyword">return</span> Err;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> Error::<span class="built_in">success</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="针对SCC特化了run的PassManager"><a href="#针对SCC特化了run的PassManager" class="headerlink" title="针对SCC特化了run的PassManager"></a>针对SCC特化了run的PassManager</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Explicit specialization and instantiation declarations for the pass manager.</span></span><br><span class="line"><span class="comment">// See the comments on the definition of the specialization for details on how</span></span><br><span class="line"><span class="comment">// it differs from the primary template.</span></span><br><span class="line"><span class="keyword">template</span> &lt;&gt;</span><br><span class="line">PreservedAnalyses</span><br><span class="line">PassManager&lt;LazyCallGraph::SCC, CGSCCAnalysisManager, LazyCallGraph &amp;,</span><br><span class="line">            CGSCCUpdateResult &amp;&gt;::<span class="built_in">run</span>(LazyCallGraph::SCC &amp;InitialC,</span><br><span class="line">                                      CGSCCAnalysisManager &amp;AM,</span><br><span class="line">                                      LazyCallGraph &amp;G, CGSCCUpdateResult &amp;UR);</span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">template</span> <span class="class"><span class="keyword">class</span> <span class="title">PassManager</span>&lt;</span>LazyCallGraph::SCC, CGSCCAnalysisManager,</span><br><span class="line">                                  LazyCallGraph &amp;, CGSCCUpdateResult &amp;&gt;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/// The CGSCC pass manager.</span></span><br><span class="line"><span class="comment">///</span></span><br><span class="line"><span class="comment">/// See the documentation for the PassManager template for details. It runs</span></span><br><span class="line"><span class="comment">/// a sequence of SCC passes over each SCC that the manager is run over. This</span></span><br><span class="line"><span class="comment">/// type serves as a convenient way to refer to this construct.</span></span><br><span class="line"><span class="keyword">using</span> CGSCCPassManager =</span><br><span class="line">    PassManager&lt;LazyCallGraph::SCC, CGSCCAnalysisManager, LazyCallGraph &amp;,</span><br><span class="line">                CGSCCUpdateResult &amp;&gt;;</span><br></pre></td></tr></table></figure>
+
+<p>SCC的PassManager只是特化了run的部分。在原来PassManager的基础上加了一些SCC相关的处理，这里出现了proxy这个东西，先忽视它，我们之后再介绍</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Explicitly specialize the pass manager run method to handle call graph</span></span><br><span class="line"><span class="comment">/// updates.</span></span><br><span class="line"><span class="keyword">template</span> &lt;&gt;</span><br><span class="line">PreservedAnalyses</span><br><span class="line">PassManager&lt;LazyCallGraph::SCC, CGSCCAnalysisManager, LazyCallGraph &amp;,</span><br><span class="line">            CGSCCUpdateResult &amp;&gt;::<span class="built_in">run</span>(LazyCallGraph::SCC &amp;InitialC,</span><br><span class="line">                                      CGSCCAnalysisManager &amp;AM,</span><br><span class="line">                                      LazyCallGraph &amp;G, CGSCCUpdateResult &amp;UR) &#123;</span><br><span class="line">  <span class="comment">// Request PassInstrumentation from analysis manager, will use it to run</span></span><br><span class="line">  <span class="comment">// instrumenting callbacks for the passes later.</span></span><br><span class="line">  PassInstrumentation PI =</span><br><span class="line">      AM.getResult&lt;PassInstrumentationAnalysis&gt;(InitialC, G);</span><br><span class="line"></span><br><span class="line">  PreservedAnalyses PA = PreservedAnalyses::<span class="built_in">all</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// The SCC may be refined while we are running passes over it, so set up</span></span><br><span class="line">  <span class="comment">// a pointer that we can update.</span></span><br><span class="line">  LazyCallGraph::SCC *C = &amp;InitialC;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Get Function analysis manager from its proxy.</span></span><br><span class="line">  FunctionAnalysisManager &amp;FAM =</span><br><span class="line">      AM.getCachedResult&lt;FunctionAnalysisManagerCGSCCProxy&gt;(*C)-&gt;<span class="built_in">getManager</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;Pass : Passes) &#123;</span><br><span class="line">    <span class="comment">// Check the PassInstrumentation&#x27;s BeforePass callbacks before running the</span></span><br><span class="line">    <span class="comment">// pass, skip its execution completely if asked to (callback returns false).</span></span><br><span class="line">    <span class="keyword">if</span> (!PI.<span class="built_in">runBeforePass</span>(*Pass, *C))</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    PreservedAnalyses PassPA;</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="function">TimeTraceScope <span class="title">TimeScope</span><span class="params">(Pass-&gt;name())</span></span>;</span><br><span class="line">      PassPA = Pass-&gt;<span class="built_in">run</span>(*C, AM, G, UR);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (UR.InvalidatedSCCs.<span class="built_in">count</span>(C))</span><br><span class="line">      PI.runAfterPassInvalidated&lt;LazyCallGraph::SCC&gt;(*Pass, PassPA);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      PI.runAfterPass&lt;LazyCallGraph::SCC&gt;(*Pass, *C, PassPA);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Update the SCC if necessary.</span></span><br><span class="line">    C = UR.UpdatedC ? UR.UpdatedC : C;</span><br><span class="line">    <span class="keyword">if</span> (UR.UpdatedC) &#123;</span><br><span class="line">      <span class="comment">// If C is updated, also create a proxy and update FAM inside the result.</span></span><br><span class="line">      <span class="keyword">auto</span> *ResultFAMCP =</span><br><span class="line">          &amp;AM.getResult&lt;FunctionAnalysisManagerCGSCCProxy&gt;(*C, G);</span><br><span class="line">      ResultFAMCP-&gt;<span class="built_in">updateFAM</span>(FAM);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If the CGSCC pass wasn&#x27;t able to provide a valid updated SCC, the</span></span><br><span class="line">    <span class="comment">// current SCC may simply need to be skipped if invalid.</span></span><br><span class="line">    <span class="keyword">if</span> (UR.InvalidatedSCCs.<span class="built_in">count</span>(C)) &#123;</span><br><span class="line">      <span class="built_in">LLVM_DEBUG</span>(<span class="built_in">dbgs</span>() &lt;&lt; <span class="string">&quot;Skipping invalidated root or island SCC!\n&quot;</span>);</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// Check that we didn&#x27;t miss any update scenario.</span></span><br><span class="line">    <span class="built_in">assert</span>(C-&gt;<span class="built_in">begin</span>() != C-&gt;<span class="built_in">end</span>() &amp;&amp; <span class="string">&quot;Cannot have an empty SCC!&quot;</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Update the analysis manager as each pass runs and potentially</span></span><br><span class="line">    <span class="comment">// invalidates analyses.</span></span><br><span class="line">    AM.<span class="built_in">invalidate</span>(*C, PassPA);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Finally, we intersect the final preserved analyses to compute the</span></span><br><span class="line">    <span class="comment">// aggregate preserved set for this pass manager.</span></span><br><span class="line">    PA.<span class="built_in">intersect</span>(std::<span class="built_in">move</span>(PassPA));</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Before we mark all of *this* SCC&#x27;s analyses as preserved below, intersect</span></span><br><span class="line">  <span class="comment">// this with the cross-SCC preserved analysis set. This is used to allow</span></span><br><span class="line">  <span class="comment">// CGSCC passes to mutate ancestor SCCs and still trigger proper invalidation</span></span><br><span class="line">  <span class="comment">// for them.</span></span><br><span class="line">  UR.CrossSCCPA.<span class="built_in">intersect</span>(PA);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Invalidation was handled after each pass in the above loop for the current</span></span><br><span class="line">  <span class="comment">// SCC. Therefore, the remaining analysis results in the AnalysisManager are</span></span><br><span class="line">  <span class="comment">// preserved. We mark this with a set so that we don&#x27;t need to inspect each</span></span><br><span class="line">  <span class="comment">// one individually.</span></span><br><span class="line">  PA.preserveSet&lt;AllAnalysesOn&lt;LazyCallGraph::SCC&gt;&gt;();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> PA;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="旧的PassManager体系"><a href="#旧的PassManager体系" class="headerlink" title="旧的PassManager体系"></a>旧的PassManager体系</h1><p>最后再简单讲一下我了解的旧PassManager的一些做法，不会涉及太多细节</p>
+<p>核心实现在PassManagerImpl中</p>
+<p>lib/IR/LegacyPassManager.cpp</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// PassManagerImpl manages MPPassManagers</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">PassManagerImpl</span> :</span> <span class="keyword">public</span> Pass,</span><br><span class="line">                        <span class="keyword">public</span> PMDataManager,</span><br><span class="line">                        <span class="keyword">public</span> PMTopLevelManager &#123;</span><br><span class="line">  <span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">anchor</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="keyword">static</span> <span class="keyword">char</span> ID;</span><br><span class="line">  <span class="function"><span class="keyword">explicit</span> <span class="title">PassManagerImpl</span><span class="params">()</span></span></span><br><span class="line"><span class="function">      : Pass(PT_PassManager, ID), PMTopLevelManager(new MPPassManager()) &#123;</span>&#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/// \copydoc PassManager::add()</span></span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">add</span><span class="params">(Pass *P)</span> </span>&#123;</span><br><span class="line">    <span class="built_in">schedulePass</span>(P);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/// createPrinterPass - Get a module printer pass.</span></span><br><span class="line">  <span class="function">Pass *<span class="title">createPrinterPass</span><span class="params">(raw_ostream &amp;O,</span></span></span><br><span class="line"><span class="params"><span class="function">                          <span class="keyword">const</span> std::string &amp;Banner)</span> <span class="keyword">const</span> <span class="keyword">override</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">createPrintModulePass</span>(O, Banner);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/// run - Execute all of the passes scheduled for execution.  Keep track of</span></span><br><span class="line">  <span class="comment">/// whether any of the passes modifies the module, and if so, return true.</span></span><br><span class="line">  <span class="function"><span class="keyword">bool</span> <span class="title">run</span><span class="params">(Module &amp;M)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">using</span> llvm::Pass::doInitialization;</span><br><span class="line">  <span class="keyword">using</span> llvm::Pass::doFinalization;</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>一个非常大的不同是LegacyPassManager（以下简称LegacyPM）每次添加Pass的时候需要进行一次schedule。LegacyPass中在Analysis内部保存Analysis的结果，而在schedule中管理Pass的顺序以及不再需要的Analysis的释放。</p>
+<p>然后我们来看一下run</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// run - Execute all of the passes scheduled for execution.  Keep track of</span></span><br><span class="line"><span class="comment">/// whether any of the passes modifies the module, and if so, return true.</span></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">PassManagerImpl::run</span><span class="params">(Module &amp;M)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">bool</span> Changed = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">dumpArguments</span>();</span><br><span class="line">  <span class="built_in">dumpPasses</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (ImmutablePass *ImPass : <span class="built_in">getImmutablePasses</span>())</span><br><span class="line">    Changed |= ImPass-&gt;<span class="built_in">doInitialization</span>(M);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">initializeAllAnalysisInfo</span>();</span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">unsigned</span> Index = <span class="number">0</span>; Index &lt; <span class="built_in">getNumContainedManagers</span>(); ++Index) &#123;</span><br><span class="line">    Changed |= <span class="built_in">getContainedManager</span>(Index)-&gt;<span class="built_in">runOnModule</span>(M);</span><br><span class="line">    M.<span class="built_in">getContext</span>().<span class="built_in">yield</span>();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (ImmutablePass *ImPass : <span class="built_in">getImmutablePasses</span>())</span><br><span class="line">    Changed |= ImPass-&gt;<span class="built_in">doFinalization</span>(M);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> Changed;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>run的前后会执行doInitialization和doFinalization，这两个函数名是不是很眼熟？就是我们上面提到MachinePassManager中提及的</p>
+<p>除了针对Module的PassManager还有一个针对Function的FunctionPassManager。对于FunctionPassManager来说也是需要每次addPass的时候进行schedule</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">FunctionPassManagerImpl::run</span><span class="params">(Function &amp;F)</span> </span>&#123;</span><br><span class="line">	<span class="keyword">bool</span> Changed = <span class="literal">false</span>;</span><br><span class="line">	</span><br><span class="line">	<span class="built_in">initializeAllAnalysisInfo</span>();</span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">unsigned</span> Index = <span class="number">0</span>; Index &lt; <span class="built_in">getNumContainedManagers</span>(); ++Index) &#123;</span><br><span class="line">	  Changed |= <span class="built_in">getContainedManager</span>(Index)-&gt;<span class="built_in">runOnFunction</span>(F);</span><br><span class="line">	  F.<span class="built_in">getContext</span>().<span class="built_in">yield</span>();</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">unsigned</span> Index = <span class="number">0</span>; Index &lt; <span class="built_in">getNumContainedManagers</span>(); ++Index)</span><br><span class="line">	  <span class="built_in">getContainedManager</span>(Index)-&gt;<span class="built_in">cleanup</span>();</span><br><span class="line">	</span><br><span class="line">	wasRun = <span class="literal">true</span>;</span><br><span class="line">	<span class="keyword">return</span> Changed;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM Pass其一：PassManager</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-06-26 19:51:06</li>
+        <li>
+            本文链接：https://homura.live/2022/06/26/llvm-pass-1/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/06/19/llvm-pass-0/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM Pass 其零：新的Pass机制</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A3%B0%E6%98%8E"><span class="nav-number">1.</span> <span class="nav-text">声明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#IRUnit"><span class="nav-number">1.1.</span> <span class="nav-text">IRUnit</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AAPass"><span class="nav-number">2.</span> <span class="nav-text">添加一个Pass</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#PassModel"><span class="nav-number">2.1.</span> <span class="nav-text">PassModel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B7%BB%E5%8A%A0%E4%B8%80%E4%B8%AAPassManager"><span class="nav-number">2.2.</span> <span class="nav-text">添加一个PassManager</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Run"><span class="nav-number">3.</span> <span class="nav-text">Run</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AF%B9Analysis%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-number">3.1.</span> <span class="nav-text">对Analysis的影响</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#runBeforePass"><span class="nav-number">3.2.</span> <span class="nav-text">runBeforePass</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9B%B4%E5%85%B7%E4%BD%93%E7%9A%84PassManager"><span class="nav-number">4.</span> <span class="nav-text">更具体的PassManager</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%B1%BB%E5%9E%8B%E5%88%AB%E5%90%8D"><span class="nav-number">4.1.</span> <span class="nav-text">类型别名</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%92%88%E5%AF%B9Loop%E7%89%B9%E5%8C%96%E7%9A%84PassManager"><span class="nav-number">4.2.</span> <span class="nav-text">针对Loop特化的PassManager</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#addPass"><span class="nav-number">4.2.1.</span> <span class="nav-text">addPass</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#run"><span class="nav-number">4.2.2.</span> <span class="nav-text">run</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%AB%E5%90%8D"><span class="nav-number">4.2.3.</span> <span class="nav-text">别名</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%A7%E6%89%BF"><span class="nav-number">4.3.</span> <span class="nav-text">继承</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#addPass-1"><span class="nav-number">4.3.1.</span> <span class="nav-text">addPass</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#run-1"><span class="nav-number">4.3.2.</span> <span class="nav-text">run</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%92%88%E5%AF%B9SCC%E7%89%B9%E5%8C%96%E4%BA%86run%E7%9A%84PassManager"><span class="nav-number">4.4.</span> <span class="nav-text">针对SCC特化了run的PassManager</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%97%A7%E7%9A%84PassManager%E4%BD%93%E7%B3%BB"><span class="nav-number">5.</span> <span class="nav-text">旧的PassManager体系</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

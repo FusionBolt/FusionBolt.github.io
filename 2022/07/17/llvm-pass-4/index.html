@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM Pass 其四：PassManager的改进与迁移现状 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="仪式召唤！降临吧，青眼混沌极龙！这样闹剧也就结束了，混沌的极限爆裂！    这一期我们来做一下之前遗漏的AM和PM的对比分析、新的PM机制相比legacy PM做了哪些改进以及LLVM中PM的现状 PassManager和AnalysisManager之前虽然单独讲过PassManager（简称PM）以及AnalysisManager（简称AM），但是没有将这两者放到一起对比，在这里我们简单对比">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM Pass 其四：PassManager的改进与迁移现状">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/07/17/llvm-pass-4/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="仪式召唤！降临吧，青眼混沌极龙！这样闹剧也就结束了，混沌的极限爆裂！    这一期我们来做一下之前遗漏的AM和PM的对比分析、新的PM机制相比legacy PM做了哪些改进以及LLVM中PM的现状 PassManager和AnalysisManager之前虽然单独讲过PassManager（简称PM）以及AnalysisManager（简称AM），但是没有将这两者放到一起对比，在这里我们简单对比">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/llvm-pass-4/Untitled.png">
+<meta property="article:published_time" content="2022-07-17T08:54:17.000Z">
+<meta property="article:modified_time" content="2022-07-17T08:55:26.664Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="LLVM">
+<meta property="article:tag" content="Pass">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/llvm-pass-4/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM Pass 其四：PassManager的改进与迁移现状</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-07-17 16:54:17
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/LLVM/">LLVM</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Pass/">Pass</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>3.3k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>14 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/llvm-pass-4/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">仪式召唤！降临吧，青眼混沌极龙！这样闹剧也就结束了，混沌的极限爆裂！
+</center> 
+
+<p>这一期我们来做一下之前遗漏的AM和PM的对比分析、新的PM机制相比legacy PM做了哪些改进以及LLVM中PM的现状</p>
+<h1 id="PassManager和AnalysisManager"><a href="#PassManager和AnalysisManager" class="headerlink" title="PassManager和AnalysisManager"></a>PassManager和AnalysisManager</h1><p>之前虽然单独讲过PassManager（简称PM）以及AnalysisManager（简称AM），但是没有将这两者放到一起对比，在这里我们简单对比一下PM、AM以及对应的Pass，通过对比我们能够更深入的理解普通Pass和Analysis的异同。这里算是一个回顾也就不再贴代码了，如果忘记了可以参考前面几篇，其中都包含了详细的代码</p>
+<h2 id="显然的相同点"><a href="#显然的相同点" class="headerlink" title="显然的相同点"></a>显然的相同点</h2><p>这里的相同点更多的是代码实现方式上，而不是Pass（这段统称Analysis和Pass为Pass）自身性质之间的差异</p>
+<p>Pass自身都采取了ConceptBase的实现方式，PM添加一个Pass的时候通过将这个Pass保存到一个相应的Model中，之后通过Model来执行Pass</p>
+<h2 id="addPass"><a href="#addPass" class="headerlink" title="addPass"></a>addPass</h2><p>Manager的使用首先从添加Pass开始，对于两者来说都是保存了一个XXXModel在Manager中，但是对于普通Pass来说传入的参数是一个Pass的实例，而一个Analysis传入的是一个AnalysisBuilder，也就说Analysis的构建实际上是通过这个builder延迟执行的，如果这个Analysis存在的话则不会再重复构造</p>
+<p>这样的差异是由于对于一个Analysis来说只需要存有一个实例即可，每次做分析都会找到这个analysis进行分析，同时analysis不需要考虑顺序的问题，在普通Pass需要的时候进来找到对应Pass跑就可以了。对于普通Pass则会添加多个实例到整个流程中，普通Pass的执行顺序是依靠于添加的Pass实例的顺序</p>
+<p>还有一个差异是PM允许添加一个作为Pass的PM（换个说法PM也是一个符合条件的Pass），实际的行为则是将另一个PM的所有pass添加进来，这和上面提到的传参方式的差异本质是相同的</p>
+<h2 id="执行Pass"><a href="#执行Pass" class="headerlink" title="执行Pass"></a>执行Pass</h2><p>PM执行的入口是run，这里没什么特别的，只要不是被指定skip的pass都会执行（执行Pass之前会有callback进行判断）</p>
+<p>AM执行的入口是getResult，由于AM不仅需要保存实例还需要缓存之前分析的结果，因此每次getResult都需要分析是否存在缓存再决定是否执行Analysis，也就是说并非一定会执行。</p>
+<h1 id="新PM改进了什么"><a href="#新PM改进了什么" class="headerlink" title="新PM改进了什么"></a>新PM改进了什么</h1><p>接下来的内容以这个链接内容的解读为主，许多地方会讲的比较粗略，不明白的请优先参考原文</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://blog.llvm.org/posts/2021-03-26-the-new-pass-manager/" >https://blog.llvm.org/posts/2021-03-26-the-new-pass-manager/<i class="fas fa-external-link-alt"></i></a></p>
+<p>这个链接中主要提到了这么几个问题</p>
+<h2 id="Pass和Analysis分离"><a href="#Pass和Analysis分离" class="headerlink" title="Pass和Analysis分离"></a>Pass和Analysis分离</h2><p>在legacy Pass架构中普通Pass和Analysis都是相同的Pass，而在新架构中从类型以及实际执行上区分开了两者</p>
+<blockquote>
+<p>With the legacy PM, each pass declares which analyses it requires and preserves, and the pass manager schedules those analyses as passes to be run if they aren’t currently cached or have been invalidated. Declaring ahead of time which analyses a pass may need is unnecessary boilerplate, and a pass might not end up using all analyses in all cases.</p>
+</blockquote>
+<p>legacy Pass主要有以下这么两类问题</p>
+<ol>
+<li><p>执行不必要的分析</p>
+<p>执行Pass的时候可能还没到需要信息的地方就提前停下了，也就是说这些Analysis并没有被用上，又或者说根据分支结构有些修改没有执行（即不会影响某些分析结果），会导致实际没有修改的部分的分析又重新跑了一遍</p>
+</li>
+<li><p>Pass编写上十分麻烦</p>
+<ol>
+<li>手动指定依赖的analysis又蠢又麻烦</li>
+<li>还要写各种构造函数初始化</li>
+</ol>
+</li>
+</ol>
+<p>除了作者提到的这些之外，我觉得还有两个重要的点</p>
+<ol>
+<li><p>Pass的顺序</p>
+<p>这里的顺序主要还是指的普通Pass和Analysis之间。在legacy PM中主要是通过每次addPass的时候进行一次schedule来解决普通Pass依赖analysis的情况，而在新Pass中则是需要的时候再根据是否有缓存再实际跑分析，不需要考虑analysis应该什么时候执行的问题</p>
+</li>
+<li><p>新的Pass很大程度的简化了各个和Pass相关部分的实现。不需要再手动指定是否为Analysis或者CFGPass了，直接通过类型来做区分而不是记录在PassInfo中，Pass自身的元信息记录内容以及记录方式都简化了许多，而用到这些信息的代码也会精简很多</p>
+</li>
+</ol>
+<h2 id="获取Analysis信息"><a href="#获取Analysis信息" class="headerlink" title="获取Analysis信息"></a>获取Analysis信息</h2><blockquote>
+<p>Since the legacy PM modelled analyses as passes to be scheduled and run, we can’t efficiently access analyses to arbitrary functions.For a function analysis, the corresponding analysis pass will only contain the info for the current function, which is created during the latest run of the analysis pass. We can manually create analyses for other functions, but they won’t be cached anywhere</p>
+</blockquote>
+<p>这里主要还是说legacy PM中analysis视为一个普通pass的话无法缓存结果。这些都是通过AM管理analysis以及缓存结果来实现的。AM最重要的意义我认为一个是不需要再通过各种schedule的方式来管理执行analysis的时间，另一个则是缓存机制来减少不必要的分析</p>
+<h2 id="CGSCC-Pass"><a href="#CGSCC-Pass" class="headerlink" title="CGSCC Pass"></a>CGSCC Pass</h2><p>这部分我不太了解，目前还没有了解过CGSCC相关的代码，直接看一下原文吧</p>
+<blockquote>
+<p>However, the legacy CGSCC pass manager only stored the functions in the current SCC in memory and did not have a persistent call graph data structure to use as keys to cache analyses. So we need to keep the whole graph in memory to have something to use as a key. And if we have a persistent call graph, we need to make sure it is up to date if passes change its structure.</p>
+</blockquote>
+<h2 id="Pass结构关系"><a href="#Pass结构关系" class="headerlink" title="Pass结构关系"></a>Pass结构关系</h2><blockquote>
+<p>When adding passes to the legacy pass manager, the nesting of different pass types is implicit.For example, adding function passes after a module pass implicitly creates a function pass manager over a contiguous list of function passes.</p>
+</blockquote>
+<p>对于legacy PM来说每次添加的Pass都是一个Pass基类，看不到任何类型之间的关系</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">PassManager::add</span><span class="params">(Pass *P)</span> </span>&#123;</span><br><span class="line">  PM-&gt;<span class="built_in">add</span>(P);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// PM-&gt;add</span></span><br><span class="line"><span class="comment">/// \copydoc PassManager::add()</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">add</span><span class="params">(Pass *P)</span> </span>&#123;</span><br><span class="line">  <span class="built_in">schedulePass</span>(P);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>而在新pm中normal pass都是有着严格的类型限制，PM和Pass级别不同的时候使用各种adaptor显式转换的，而analysis则是通过各种proxy来处理</p>
+<p>这是上期里我们看过的图，这就是整个PM中保存的Pass结构</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">flowchart TD</span><br><span class="line">    R(ModulePassManager)</span><br><span class="line">    R--&gt;MP(ModulePass)</span><br><span class="line">    R--&gt;FP(ModuleToFunctionPassAdaptor)</span><br><span class="line">    FP--&gt;FPS(FunctionPass)</span><br><span class="line">    R--&gt;FPTemp(ModuleToFunctionPassAdaptor)</span><br><span class="line">    FPTemp--&gt;LPP(FunctionToLoopPassAdator)</span><br><span class="line">    LPP--&gt;LPPS(LoopPass)</span><br></pre></td></tr></table></figure>
+
+<h2 id="避免过多的全局变量"><a href="#避免过多的全局变量" class="headerlink" title="避免过多的全局变量"></a>避免过多的全局变量</h2><blockquote>
+<p>The legacy pass manager relies on many global flags and registries. This is supported by macros generating functions and variables to initialize passes, and any users of the legacy pass manager must make sure to call a function to initialize these passes. But we need some way for a pass manager builder to be aware of all passes for testing purposes.</p>
+</blockquote>
+<p>在旧的Pass架构中存在过多的全局变量与registries，每个Pass都需要通过宏来注册，进而产生全局变量以及initialize函数。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> *<span class="title">initializeFlattenCFGLegacyPassPassOnce</span><span class="params">(PassRegistry &amp;Registry)</span> </span>&#123;</span><br><span class="line">  <span class="built_in">initializeAAResultsWrapperPassPass</span>(Registry);</span><br><span class="line">  PassInfo *PI =</span><br><span class="line">      <span class="keyword">new</span> <span class="built_in">PassInfo</span>(<span class="string">&quot;Flatten the CFG&quot;</span>, <span class="string">&quot;flattencfg&quot;</span>, &amp;FlattenCFGLegacyPass::ID,</span><br><span class="line">                   PassInfo::<span class="built_in">NormalCtor_t</span>(callDefaultCtor&lt;FlattenCFGLegacyPass&gt;),</span><br><span class="line">                   <span class="literal">false</span>, <span class="literal">false</span>);</span><br><span class="line">  Registry.<span class="built_in">registerPass</span>(*PI, <span class="literal">true</span>);</span><br><span class="line">  <span class="keyword">return</span> PI;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">static</span> llvm::once_flag InitializeFlattenCFGLegacyPassPassFlag;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">llvm::initializeFlattenCFGLegacyPassPass</span><span class="params">(PassRegistry &amp;Registry)</span> </span>&#123;</span><br><span class="line">  llvm::<span class="built_in">call_once</span>(InitializeFlattenCFGLegacyPassPassFlag,</span><br><span class="line">                  initializeFlattenCFGLegacyPassPassOnce, std::<span class="built_in">ref</span>(Registry));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在新的架构中通过传递PassManager以及使用PassBuilder统一来注册Pass到PM中来解决这个问题（实际LLVMRunPasses的情况）</p>
+<h2 id="out-of-tree-passes"><a href="#out-of-tree-passes" class="headerlink" title="out of tree passes"></a>out of tree passes</h2><p>我对legacy的注册out of tree passes的情况不太了解，看官方的example中是</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Legacy PM Registration */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> llvm::RegisterStandardPasses <span class="title">RegisterBye</span><span class="params">(</span></span></span><br><span class="line"><span class="params"><span class="function">    llvm::PassManagerBuilder::EP_VectorizerStart,</span></span></span><br><span class="line"><span class="params"><span class="function">    [](<span class="keyword">const</span> llvm::PassManagerBuilder &amp;Builder,</span></span></span><br><span class="line"><span class="params"><span class="function">       llvm::legacy::PassManagerBase &amp;PM) &#123; PM.add(<span class="keyword">new</span> LegacyBye()); &#125;)</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> llvm::RegisterStandardPasses <span class="title">RegisterByeLTO</span><span class="params">(</span></span></span><br><span class="line"><span class="params"><span class="function">    llvm::PassManagerBuilder::EP_ModuleOptimizerEarly,</span></span></span><br><span class="line"><span class="params"><span class="function">    [](<span class="keyword">const</span> llvm::PassManagerBuilder &amp;Builder,</span></span></span><br><span class="line"><span class="params"><span class="function">       llvm::legacy::PassManagerBase &amp;PM) &#123; PM.add(<span class="keyword">new</span> LegacyBye()); &#125;)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>新 PM的注册</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* New PM Registration */</span></span><br><span class="line"><span class="function">llvm::PassPluginLibraryInfo <span class="title">getByePluginInfo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> &#123;LLVM_PLUGIN_API_VERSION, <span class="string">&quot;Bye&quot;</span>, LLVM_VERSION_STRING,</span><br><span class="line">          [](PassBuilder &amp;PB) &#123;</span><br><span class="line">            PB.<span class="built_in">registerVectorizerStartEPCallback</span>(</span><br><span class="line">                [](llvm::FunctionPassManager &amp;PM, OptimizationLevel Level) &#123;</span><br><span class="line">                  PM.<span class="built_in">addPass</span>(<span class="built_in">Bye</span>());</span><br><span class="line">                &#125;);</span><br><span class="line">            PB.<span class="built_in">registerPipelineParsingCallback</span>(</span><br><span class="line">                [](StringRef Name, llvm::FunctionPassManager &amp;PM,</span><br><span class="line">                   ArrayRef&lt;llvm::PassBuilder::PipelineElement&gt;) &#123;</span><br><span class="line">                  <span class="keyword">if</span> (Name == <span class="string">&quot;goodbye&quot;</span>) &#123;</span><br><span class="line">                    PM.<span class="built_in">addPass</span>(<span class="built_in">Bye</span>());</span><br><span class="line">                    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">                  &#125;</span><br><span class="line">                  <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">                &#125;);</span><br><span class="line">          &#125;&#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> LLVM_BYE_LINK_INTO_TOOLS</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> LLVM_ATTRIBUTE_WEAK ::<span class="function">llvm::PassPluginLibraryInfo</span></span><br><span class="line"><span class="function"><span class="title">llvmGetPassPluginInfo</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">getByePluginInfo</span>();</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>这个简单的例子看起来写的更麻烦的了，复杂的情况使用callback的形式或许会更方便实现。比起写法上来说，更大的差异是不再需要一大堆global成员了，以及legacy中还要对LTO以及非LTO做处理，但是对于新PM来说LTO也是依靠的PassBuilder来注册Pass，也就是说不需要再对两处进行注册。</p>
+<p>新PM的注册是通过在PassBuiler中注册callback形式实现的。在文章中提到了这样一句</p>
+<blockquote>
+<p>Although there is a global list of functions, there is no mutable global state since each pass manager builder can parse pass pipelines without going through a global registry.</p>
+</blockquote>
+<h2 id="parallelize"><a href="#parallelize" class="headerlink" title="parallelize"></a>parallelize</h2><p>这篇文章的后面提到了并行相关的问题。对于SCC的Pass来说是比较容易并行的，但是对于其他的就不一样了。比如说这里</p>
+<blockquote>
+<p>Some passes only use analyses if they are cached, so parallelization can <strong>cause non-determinism since a module analysis may or may not exist based on other parallel pipelines</strong>.The new PM <strong>only allows function passes to access cached module analyses and does not allow running them</strong>. This has the downside of needing to make sure that certain higher-level analyses are present before running a lower-level pipeline, e.g. making sure GlobalsAA has been computed before running a function pipeline.</p>
+</blockquote>
+<p>一个Module的analysis可能基于其他并行的pipeline，所以会导致不确定性。因此新的PM只允许获取cached的module analyses。比如说上期提到的ModuleAnalysisManagerFunctionProxy并非直接getResult获取结果，而是直接getCachedResult。我觉得这里说的可能更类似于多线程读一个只读变量的情况，但是我不知道自己的理解是否存在问题，如有不对还请指正</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> AnalysisT&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">getModuleAAResultImpl</span><span class="params">(Function &amp;F, FunctionAnalysisManager &amp;AM,</span></span></span><br><span class="line"><span class="params"><span class="function">                                  AAResults &amp;AAResults)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">auto</span> &amp;MAMProxy = AM.getResult&lt;ModuleAnalysisManagerFunctionProxy&gt;(F);</span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">auto</span> *R =</span><br><span class="line">          MAMProxy.<span class="keyword">template</span> getCachedResult&lt;AnalysisT&gt;(*F.<span class="built_in">getParent</span>())) &#123;</span><br><span class="line">    AAResults.<span class="built_in">addAAResult</span>(*R);</span><br><span class="line">    MAMProxy</span><br><span class="line">        .<span class="keyword">template</span> registerOuterAnalysisInvalidation&lt;AnalysisT, AAManager&gt;();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="现状"><a href="#现状" class="headerlink" title="现状"></a>现状</h1><p>注：以下内容的实效性不强</p>
+<h2 id="部分迁移"><a href="#部分迁移" class="headerlink" title="部分迁移"></a>部分迁移</h2><blockquote>
+<p>Currently the new PM applies only to the middle-end optimization pipeline working with LLVM IR. The backend codegen pipeline still works only with the legacy PM, mostly because most codegen passes don’t work on LLVM IR, but rather machine IR (MIR), and nobody has yet put in the time to create the new PM infrastructure for MIR passes and to migrate all of the backends to use the new PM. Migrating to the new PM for the codegen pipeline likely won’t unlock performance gains since there are almost no interprocedural codegen passes. However, it would clean up a lot of technical debt.</p>
+</blockquote>
+<p>根据这段所讲，目前codegen的部分还没有完成迁移，只做了少部分的处理。但是许多Pass依然是旧的形式，现在的代码中也能看到许多为了兼容legacy Pass的形式</p>
+<p>在旧的架构中codegen是通过加到legacy PM中的</p>
+<p>以下代码来自llvm的教程</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">legacy::PassManager pass;</span><br><span class="line"><span class="keyword">auto</span> FileType = CGFT_ObjectFile;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (TheTargetMachine-&gt;<span class="built_in">addPassesToEmitFile</span>(pass, dest, <span class="literal">nullptr</span>, FileType)) &#123;</span><br><span class="line">  <span class="built_in">errs</span>() &lt;&lt; <span class="string">&quot;TheTargetMachine can&#x27;t emit a file of this type&quot;</span>;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">pass.<span class="built_in">run</span>(*TheModule);</span><br></pre></td></tr></table></figure>
+
+<p>LLVM目前的CodeGen这里的PassBuilder基本成形（新架构注册Pass相关的转换为了PassBuilder的形式）</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Derived&gt;</span><br><span class="line">Error CodeGenPassBuilder&lt;Derived&gt;::<span class="built_in">buildPipeline</span>(</span><br><span class="line">    ModulePassManager &amp;MPM, MachineFunctionPassManager &amp;MFPM,</span><br><span class="line">    raw_pwrite_stream &amp;Out, raw_pwrite_stream *DwoOut,</span><br><span class="line">    CodeGenFileType FileType) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="function">AddIRPass <span class="title">addIRPass</span><span class="params">(MPM, Opt.DebugPM)</span></span>;</span><br><span class="line">  <span class="built_in">addISelPasses</span>(addIRPass);</span><br><span class="line"></span><br><span class="line">  <span class="function">AddMachinePass <span class="title">addPass</span><span class="params">(MFPM)</span></span>;</span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">auto</span> Err = <span class="built_in">addCoreISelPasses</span>(addPass))</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">move</span>(Err);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">auto</span> Err = <span class="built_in">derived</span>().<span class="built_in">addMachinePasses</span>(addPass))</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">move</span>(Err);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">derived</span>().<span class="built_in">addAsmPrinter</span>(</span><br><span class="line">      addPass, [<span class="keyword">this</span>, &amp;Out, DwoOut, FileType](MCContext &amp;Ctx) &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">this</span>-&gt;TM.<span class="built_in">createMCStreamer</span>(Out, DwoOut, FileType, Ctx);</span><br><span class="line">      &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">addPass</span>(<span class="built_in">FreeMachineFunctionPass</span>());</span><br><span class="line">  <span class="keyword">return</span> Error::<span class="built_in">success</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>而这些addPass的变量我觉得是一种为了兼容临时过渡的形式，在使用的时候是这样的</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> Derived&gt;</span><br><span class="line"><span class="keyword">void</span> CodeGenPassBuilder&lt;Derived&gt;::<span class="built_in">addISelPasses</span>(AddIRPass &amp;addPass) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">if</span> (TM.<span class="built_in">useEmulatedTLS</span>())</span><br><span class="line">    <span class="built_in">addPass</span>(<span class="built_in">LowerEmuTLSPass</span>());</span><br><span class="line"></span><br><span class="line">  <span class="built_in">addPass</span>(<span class="built_in">PreISelIntrinsicLoweringPass</span>());</span><br><span class="line"></span><br><span class="line">  <span class="built_in">derived</span>().<span class="built_in">addIRPasses</span>(addPass);</span><br><span class="line">  <span class="built_in">derived</span>().<span class="built_in">addCodeGenPrepare</span>(addPass);</span><br><span class="line">  <span class="built_in">addPassesToHandleExceptions</span>(addPass);</span><br><span class="line">  <span class="built_in">derived</span>().<span class="built_in">addISelPrepare</span>(addPass);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="deprecated"><a href="#deprecated" class="headerlink" title="deprecated"></a>deprecated</h2><p>在LLVM14的Release Notes中看到</p>
+<blockquote>
+<p>Using the legacy pass manager for the optimization pipeline is deprecated and will be removed after LLVM 14. In the meantime, only minimal effort will be made to maintain the legacy pass manager for the optimization pipeline.</p>
+</blockquote>
+<p>看起来的意思是LLVM15都要移植完并且删除，LLVM15的文档还在施工初期，其中也并没有什么有价值的信息，codegen这部分不知道会不会也要全部移植完</p>
+<h2 id="test"><a href="#test" class="headerlink" title="test"></a>test</h2><p>除了核心功能之外，还有一些Test目前依然是使用Legacy PM的形式</p>
+<p>比如说TimePassesTest中这段测试的代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Clear and generate report again.</span></span><br><span class="line">TimePassesStr.<span class="built_in">clear</span>();</span><br><span class="line"><span class="built_in">reportAndResetTimings</span>(&amp;ReportStream);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Since we did not run any passes since last print, report should be empty.</span></span><br><span class="line"><span class="built_in">EXPECT_TRUE</span>(TimePassesStr.<span class="built_in">empty</span>());</span><br><span class="line"></span><br><span class="line"><span class="comment">// Now run just a single pass to populate timers again.</span></span><br><span class="line">legacy::PassManager PM2;</span><br><span class="line">PM2.<span class="built_in">add</span>(<span class="keyword">new</span> llvm::<span class="built_in">Pass2</span>());</span><br><span class="line">PM2.<span class="built_in">run</span>(M);</span><br></pre></td></tr></table></figure>
+
+<h1 id="本系列结束"><a href="#本系列结束" class="headerlink" title="本系列结束"></a>本系列结束</h1><p>正如本文开始的召唤台词“这样闹剧也就结束了”所说，这个系列到此也就结束了，在这里扯点感想啥的吧。结束的比预想的要早，一开始列出的大纲有一些不是很大的组件都被合并进了各期中。一共五期，也就意味着过去了28天，真的是不知不觉就过去了…</p>
+<p>内容上我不可能讲的面面俱到，但是我想如果你读完了这个系列的话会对整个新PM的结构，各个组件之间的关系有了一个了解。如果你还存有什么疑惑或者想法欢迎和我进行交流。</p>
+<p>后续一定会开新的系列，欢迎持续关注我的博客/推特。之后的方向不出意外应该就是Pass里的具体实现，可能会从某一个DefaultPipeline为线索开始。更新频率不敢保证，就我这段时间学习的过程来说，Pass内部实现的代码非常长，加上相关联的知识点也非常多</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM Pass 其四：PassManager的改进与迁移现状</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-07-17 16:54:17</li>
+        <li>
+            本文链接：https://homura.live/2022/07/17/llvm-pass-4/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/07/10/llvm-pass-3/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM Pass 其三：PassBuilder</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+            <div class="comment-container">
+                <div class="comments-container">
+    <div id="comment-anchor"></div>
+    <div class="comment-area-title">
+        <i class="fas fa-comments">&nbsp;评论</i>
+    </div>
+    
+
+        
+            
+    <div class="valine-container">
+        <script data-pjax
+                src="//cdn.jsdelivr.net/npm/valine@latest/dist/Valine.min.js"></script>
+        <div id="vcomments"></div>
+        <script data-pjax>
+            function loadValine() {
+                new Valine({
+                    el: '#vcomments',
+                    appId: 'GgKArodH4nvO7GwLme58UA9d-MdYXbMMI',
+                    appKey: 'RUqlCVwFcwl8pGhmvXHnekWi',
+                    meta: ['nick', 'mail', 'link'],
+                    avatar: 'wavatar',
+                    enableQQ: true,
+                    placeholder: '想说些什么？',
+                    lang: 'zh-CN'.toLowerCase()
+                });
+
+                function getAuthor(language) {
+                    switch (language) {
+                        case 'en':
+                            return 'Author';
+                        case 'zh-CN':
+                            return '博主';
+                        default:
+                            return 'Master';
+                    }
+                }
+
+                // Add "Author" identify
+                const getValineDomTimer = setInterval(() => {
+                    const vcards = document.querySelectorAll('#vcomments .vcards .vcard');
+                    if (vcards.length > 0) {
+                        let author = 'Homura';
+
+                        if (author) {
+                            for (let vcard of vcards) {
+                                const vnick_dom = vcard.querySelector('.vhead .vnick');
+                                const vnick = vnick_dom.innerHTML;
+                                if (vnick === author) {
+                                    vnick_dom.innerHTML = `${vnick} <span class="author">${getAuthor(KEEP.hexo_config.language)}</span>`
+                                }
+                            }
+                        }
+                        clearInterval(getValineDomTimer);
+                    } else {
+                        clearInterval(getValineDomTimer);
+                    }
+                }, 2000);
+            }
+
+            if ('true') {
+                const loadValineTimeout = setTimeout(() => {
+                    loadValine();
+                    clearTimeout(loadValineTimeout);
+                }, 1000);
+            } else {
+                window.addEventListener('DOMContentLoaded', loadValine);
+            }
+        </script>
+    </div>
+
+
+
+        
+    
+</div>
+
+            </div>
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+            <li class="go-comment">
+                <i class="fas fa-comment"></i>
+            </li>
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#PassManager%E5%92%8CAnalysisManager"><span class="nav-number">1.</span> <span class="nav-text">PassManager和AnalysisManager</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%98%BE%E7%84%B6%E7%9A%84%E7%9B%B8%E5%90%8C%E7%82%B9"><span class="nav-number">1.1.</span> <span class="nav-text">显然的相同点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#addPass"><span class="nav-number">1.2.</span> <span class="nav-text">addPass</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A7%E8%A1%8CPass"><span class="nav-number">1.3.</span> <span class="nav-text">执行Pass</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%B0PM%E6%94%B9%E8%BF%9B%E4%BA%86%E4%BB%80%E4%B9%88"><span class="nav-number">2.</span> <span class="nav-text">新PM改进了什么</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Pass%E5%92%8CAnalysis%E5%88%86%E7%A6%BB"><span class="nav-number">2.1.</span> <span class="nav-text">Pass和Analysis分离</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96Analysis%E4%BF%A1%E6%81%AF"><span class="nav-number">2.2.</span> <span class="nav-text">获取Analysis信息</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CGSCC-Pass"><span class="nav-number">2.3.</span> <span class="nav-text">CGSCC Pass</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pass%E7%BB%93%E6%9E%84%E5%85%B3%E7%B3%BB"><span class="nav-number">2.4.</span> <span class="nav-text">Pass结构关系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%81%BF%E5%85%8D%E8%BF%87%E5%A4%9A%E7%9A%84%E5%85%A8%E5%B1%80%E5%8F%98%E9%87%8F"><span class="nav-number">2.5.</span> <span class="nav-text">避免过多的全局变量</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#out-of-tree-passes"><span class="nav-number">2.6.</span> <span class="nav-text">out of tree passes</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#parallelize"><span class="nav-number">2.7.</span> <span class="nav-text">parallelize</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%8E%B0%E7%8A%B6"><span class="nav-number">3.</span> <span class="nav-text">现状</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%83%A8%E5%88%86%E8%BF%81%E7%A7%BB"><span class="nav-number">3.1.</span> <span class="nav-text">部分迁移</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#deprecated"><span class="nav-number">3.2.</span> <span class="nav-text">deprecated</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#test"><span class="nav-number">3.3.</span> <span class="nav-text">test</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%AC%E7%B3%BB%E5%88%97%E7%BB%93%E6%9D%9F"><span class="nav-number">4.</span> <span class="nav-text">本系列结束</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -211,6 +211,94 @@
                 
 
                 <h3 class="home-article-title">
+                    <a href="/2022/05/08/rc-lang-dev-18/">
+                        Rc-lang开发周记18 简单类型推导
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        
+不要小看我，这种程度我也可以做得出！非pixiv 
+
+本周主要都在了解MIR相关，但是还存有非常多的问题，因此先来讲一下之前写的TypeInfer的内容
+我将Infer的过程分为了两部分。第一部分是最纯粹的类型推导，第二部分是实际将ast转换为带有...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun May 08 2022 11:17:10 GMT+0800">2022-05-08</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/05/08/rc-lang-dev-18/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2022/05/01/rc-lang-dev-17/">
+                        Rc-lang开发周记17 一点AST检查
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        
+聪明如我怎么会写出ast有错误的代码 pixiv:69589494 
+
+先说一声五一快乐！久违的长假，之后会花一些时间把其他一些写到一半的博客整理出来
+本来想要好好做一下检查相关以及类型推导的工作，但是目前来说我更需要先学习优化方面的知识，因此关于...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun May 01 2022 10:37:41 GMT+0800">2022-05-01</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/05/01/rc-lang-dev-17/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
                     <a href="/2022/04/26/rc-lang-dev-16/">
                         Rc-lang开发周记16 Rust源码学习之初识类型
                     </a>
@@ -566,97 +654,6 @@ Parser的一些问题换行由于是由换行来分句，我觉得一个头疼�
     </div>
 
     <a href="/2022/03/20/rc-lang-dev-12/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/03/13/rc-lang-dev-11/">
-                        Rc-lang开发周记11 重构与Lexer
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        本周一开始重构了一下vm的部分代码，之后基本上都是在用新语言重写parser的部分。
-重构vm目前代码很少，做的重构主要是将一些东西抽象拆分出来
-这是之前vm的成员变量
-1234567std::shared_ptr&lt;VMInstVisitor&...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Mar 13 2022 11:08:42 GMT+0800">2022-03-13</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/03/13/rc-lang-dev-11/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/03/05/rc-lang-dev-10/">
-                        Rc-lang开发周记10 分支与循环
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        开头忏悔，上周因为年会出去玩了三天没写多少东西，加上回来太累了，也就咕了一周，本周会把上周的东西一起写进来
-本周更新的内容主要是修复之前的问题以及处理了分支循环
-继承与成员变量首先是上周遗留的继承的情况下成员变量id会有问题，我们先来看一下成员变量相...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sat Mar 05 2022 11:56:29 GMT+0800">2022-03-05</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                        <li>
-                            &gt; 
-                            <a href="/categories/VM/">VM</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/03/05/rc-lang-dev-10/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
 </div>
 
             </li>

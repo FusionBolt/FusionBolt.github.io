@@ -35,7 +35,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://fusionbolt.github.io/images/xv6-riscv-os-0/30933181.jpg">
 <meta property="article:published_time" content="2022-11-13T13:32:18.000Z">
-<meta property="article:modified_time" content="2022-11-13T13:45:16.328Z">
+<meta property="article:modified_time" content="2022-11-13T13:46:24.684Z">
 <meta property="article:author" content="Homura">
 <meta property="article:tag" content="xv6-riscv">
 <meta property="article:tag" content="mini-riscv-os">
@@ -333,7 +333,7 @@
 <blockquote>
 <p>A RISC-V compatible core might support multiple RISC-V-compatible hardware threads, or harts, through<br>multithreading.</p>
 </blockquote>
-<p>这里的代码判断如果hart id不是0就跳到park这个循环中。实质上是只开启了一个核</p>
+<p>这里的代码判断如果hart id不是0就跳到park这个循环中。实质上是只开启了一个hart</p>
 <p>xv6-riscv/kernel/entry.S</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"># qemu -kernel loads the kernel at 0x80000000</span><br><span class="line">        # and causes each hart (i.e. CPU) to jump there.</span><br><span class="line">        # kernel.ld causes the following code to</span><br><span class="line">        # be placed at 0x80000000.</span><br><span class="line">.section .text</span><br><span class="line">.global _entry</span><br><span class="line">_entry:</span><br><span class="line">        # set up a stack for C.</span><br><span class="line">        # stack0 is declared in start.c,</span><br><span class="line">        # with a 4096-byte stack per CPU.</span><br><span class="line">        # sp = stack0 + (hartid * 4096)</span><br><span class="line">        la sp, stack0</span><br><span class="line">        li a0, 1024*4</span><br><span class="line">        csrr a1, mhartid</span><br><span class="line">        addi a1, a1, 1</span><br><span class="line">        mul a0, a0, a1</span><br><span class="line">        add sp, sp, a0</span><br><span class="line">        # jump to start() in start.c</span><br><span class="line">        call start</span><br><span class="line">spin:</span><br><span class="line">        j spin</span><br></pre></td></tr></table></figure>
 

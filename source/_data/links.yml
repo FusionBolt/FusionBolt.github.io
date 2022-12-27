@@ -1,24 +1,50 @@
+- name: 梅子青
+  link: https://tianxianzi.me
+  avatar: /images/avatar/mier.jpeg
+
 - name: 毛利
   link: https://mouri.moe
-  description: 大贤者
+  # description: 大贤者
   avatar: /images/avatar/mouri.jpeg
 
 - name: 夏幻
   link: https://madoka.moe/wordpress/
-  description: 夏幻今天有新女装了吗
+  # description: 夏幻今天有新女装了吗
   avatar: /images/avatar/natsu.jpeg
 
 - name: 露比
   link: https://drown.party/
-  description: 露比露比露比露
+  # description: 露比露比露比露
   avatar: /images/avatar/ruby.jpeg
 
 - name: MATEIX
   link: https://matrixkook.github.io
-  description: rustc爱好者
+  # description: rustc爱好者
   avatar: /images/avatar/MATEIX.jpeg
 
 - name: Manjusaka
   link: https://www.manjusaka.blog
-  description: 每周都能看到丰富多彩的周报
+  # description: 每周都能看到丰富多彩的周报
   avatar: /images/avatar/manjusaka.jpeg
+
+- name: STRRL
+  link: https://strrl.dev
+  # description:
+  avatar: /images/avatar/STRRL.jpeg
+
+- name: 新一
+  link: https://a-wing.top/
+  # description:
+  avatar: /images/avatar/xinyi.jpeg
+
+- name: pseudoyu
+  link: https://www.pseudoyu.com/zh/
+  avatar: /images/avatar/pseudoyu.jpeg
+
+- name: unmadebed
+  link: https://unmadebed.io/
+  avatar: /images/avatar/unmadebed.jpeg
+
+- name: ai
+  link: https://ahxxm.com
+  avatar: /images/avatar/ai.jpeg

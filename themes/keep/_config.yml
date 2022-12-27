@@ -64,6 +64,7 @@ social_contact:
     twitter: https://twitter.com/RealAkemiHomura        # your twitter URL
     email: RealFusionBolt@gmail.com          # your email
     telegram: https://t.me/RealAkemiHomura 
+    instagram: https://www.instagram.com/realakemihomura/
 
 
 # ---------------------------------------------------------------------------------------
@@ -172,7 +173,7 @@ local_search:
 # Comment plugin
 # ---------------------------------------------------------------------------------------
 comment:
-  enable: true
+  enable: false
   use: valine  # values: valine | gitalk | twikoo
 
   # Valine

@@ -5,13 +5,20 @@ date: 2021-04-01 15:44:55
 
 # 关于我
 
-这是一个笨笨的但是什么都想学的人，目前也在尝试学习各种各样的东西。这是一个有些怕生，但是依然想要认识各种各样朋友的人
+这是一个笨笨的但是什么都想学的人，有些怕生但是依然想要认识各种各样朋友的人
 
-本职工作是ai compiler，业余时间在研究各种编译器的实现以及试着做自己的玩具编译器，最近还会拿琐碎的时间尝试一点点SwiftUI
+本职工作是 ai compiler，业余时间在研究 LLVM 以及各种编译器的实现以及试着做自己的玩具编译器
+玩具编译器代码: https://github.com/FusionBolt/Rc-lang
 
-除了写代码之外还在试着学习钢琴和摄影，希望以后自己也能熟练掌握这些并且能够创作出些什么东西。有的时候还会读一些书，有一个自己的tg读书频道，读书或者一些其他想法都会塞进去 https://t.me/homura_grand_archives
+想要拥有更多的可能性不想被局限在哪里，除了写代码之外还在试着学习钢琴和摄影，希望以后自己也能熟练掌握这些并且能够创作出些什么东西。在Ins上偶尔会发一些照片 https://www.instagram.com/realakemihomura/
 
-除了首页的联系方式，还可以通过QQ:2805307972，欢迎交流～
+有的时候还会读一些书，有一个自己的 telegram 读书频道，读书或者一些其他想法都会塞进去 https://t.me/homura_grand_archives
+
+# 联系方式
+Telegram: https://t.me/RealAkemiHomura
+Github: https://github.com/FusionBolt
+Twitter: https://twitter.com/RealAkemiHomura
+QQ: 2805307972
 
 # 关于博客
 

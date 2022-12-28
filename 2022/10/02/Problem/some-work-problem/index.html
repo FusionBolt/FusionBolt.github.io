@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            工作踩坑小结 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="前些时间工作中踩到的坑做个简单小总结，第一次搞裸机与交叉编译，本次内容也以此为主。 编译一开始闹了一个小乌龙，工具链支持到c++17的标准，但是同事之前指定了14的标准，差点就要把filesystem相关的代码全改掉了。但是后来依然编译不过，在需要系统调用的标准库处报了错误，这才想到裸机并没有这种东西，最后还是加条件判断宏全部处理掉了… 链接修复问题裸机的启动代码中有一些汇编，其中JAL跳转指令在">
+<meta property="og:type" content="article">
+<meta property="og:title" content="工作踩坑小结">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/10/02/Problem/some-work-problem/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="前些时间工作中踩到的坑做个简单小总结，第一次搞裸机与交叉编译，本次内容也以此为主。 编译一开始闹了一个小乌龙，工具链支持到c++17的标准，但是同事之前指定了14的标准，差点就要把filesystem相关的代码全改掉了。但是后来依然编译不过，在需要系统调用的标准库处报了错误，这才想到裸机并没有这种东西，最后还是加条件判断宏全部处理掉了… 链接修复问题裸机的启动代码中有一些汇编，其中JAL跳转指令在">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/some-work-problem/Untitled.png">
+<meta property="article:published_time" content="2022-10-02T09:26:12.000Z">
+<meta property="article:modified_time" content="2022-10-02T09:27:44.010Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Link">
+<meta property="article:tag" content="CrossCompiling">
+<meta property="article:tag" content="Conda">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/some-work-problem/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">工作踩坑小结</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-10-02 17:26:12
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Debug/">Debug</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Link/">Link</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/CrossCompiling/">CrossCompiling</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Conda/">Conda</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>976 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>3 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>前些时间工作中踩到的坑做个简单小总结，第一次搞裸机与交叉编译，本次内容也以此为主。</p>
+<h1 id="编译"><a href="#编译" class="headerlink" title="编译"></a>编译</h1><p>一开始闹了一个小乌龙，工具链支持到c++17的标准，但是同事之前指定了14的标准，差点就要把filesystem相关的代码全改掉了。但是后来依然编译不过，在需要系统调用的标准库处报了错误，这才想到裸机并没有这种东西，最后还是加条件判断宏全部处理掉了…</p>
+<h1 id="链接"><a href="#链接" class="headerlink" title="链接"></a>链接</h1><h2 id="修复问题"><a href="#修复问题" class="headerlink" title="修复问题"></a>修复问题</h2><p>裸机的启动代码中有一些汇编，其中JAL跳转指令在链接的时候报了错</p>
+<p>startup.S:120:(.text+0xbe): relocation truncated to fit: R_RISCV_JAL against symbol `SystemInit’ defined in .text.SystemInit section in</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://stackoverflow.com/questions/10486116/what-does-this-gcc-error-relocation-truncated-to-fit-mean" >https://stackoverflow.com/questions/10486116/what-does-this-gcc-error-relocation-truncated-to-fit-mean<i class="fas fa-external-link-alt"></i></a></p>
+<p>先说结论，JAL指令的立即数字段的长度是固定的，而所要跳转的地址超出了JAL这个字段所能代表的长度。</p>
+<p>最初猜想是否和我的lib大小有关系，尝试删掉了部分代码缩小了接近一半的体积后果然可行。但是依靠这种方法解决是不可行的，代码体积无法再简化了，而且以后lib体积只会增大。参考链接中设置mcmodel，然而依然报错。</p>
+<p>接着尝试修改链接顺序，因为符号的顺序是和链接的顺序相关的，想要将对应的符号放到链接的最前面，但是需要跳转到我的lib中的符号，又不方便再去调整lib中的顺序。</p>
+<p>最后在同事的提醒下修改了链接脚本，将这些报错的text section放到了最前面。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">.text : &#123;</span><br><span class="line">  . = ALIGN(0x8) ;</span><br><span class="line">  __stext = . ;</span><br><span class="line">  KEEP(*startup.o(*.text*))</span><br><span class="line">  KEEP(*startup.o(*.vectors*))</span><br><span class="line">  /* avoid link failed when lib too large */</span><br><span class="line">  *(.text.SystemInit)</span><br><span class="line">  *(.text.trap_c)</span><br><span class="line">  *(.text.vTaskSwitchContext)</span><br><span class="line">  *(.text.startup.main)</span><br><span class="line">	*(.text)</span><br><span class="line">  *(.text*)</span><br><span class="line">  *(.text.*)</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="conda的环境问题"><a href="#conda的环境问题" class="headerlink" title="conda的环境问题"></a>conda的环境问题</h1><p>在使用某个python库的时候提示了Could not find a suitable hostfxr library，一直以为hostfxr相关的库版本错了，直到我点进这个源码看</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">load_hostfxr</span>(<span class="params">dotnet_root: <span class="built_in">str</span></span>):</span></span><br><span class="line">    hostfxr_name = _get_dll_name(<span class="string">&quot;hostfxr&quot;</span>)</span><br><span class="line">    hostfxr_path = os.path.join(dotnet_root, <span class="string">&quot;host&quot;</span>, <span class="string">&quot;fxr&quot;</span>, <span class="string">&quot;?.*&quot;</span>, hostfxr_name)</span><br><span class="line">    <span class="keyword">for</span> hostfxr_path <span class="keyword">in</span> <span class="built_in">reversed</span>(<span class="built_in">sorted</span>(glob.glob(hostfxr_path))):</span><br><span class="line">        <span class="built_in">print</span>(hostfxr_path)</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">return</span> ffi.dlopen(hostfxr_path)</span><br><span class="line">        <span class="keyword">except</span> Exception <span class="keyword">as</span> error:</span><br><span class="line">            <span class="keyword">pass</span></span><br><span class="line">    <span class="keyword">raise</span> RuntimeError(<span class="string">f&quot;Could not find a suitable hostfxr library in <span class="subst">&#123;dotnet_root&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>一看血压直接拉满，抛了异常一律视为没找到。手动改成打印错误信息才发现是dlopen的时候所加载的glibcxx版本不对，由于是在conda环境下因此去修改conda的链接。不是第一次被conda坑了…</p>
+<h1 id="优化与调试"><a href="#优化与调试" class="headerlink" title="优化与调试"></a>优化与调试</h1><p>这算是我第一次实际遇到因为优化产生的问题。由于最近在调试内存分配相关模块的问题，我想要手动malloc/new一块内存复现问题。此处为代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test_malloc</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="keyword">int</span> *a = <span class="built_in">malloc</span>(<span class="number">16</span>);</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;na\n&quot;</span>);</span><br><span class="line">	<span class="keyword">int</span> *b = <span class="built_in">malloc</span>(<span class="number">32</span>);</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;nb\n&quot;</span>);</span><br><span class="line">	<span class="built_in">free</span>(a);</span><br><span class="line">	<span class="keyword">int</span> *c = <span class="built_in">malloc</span>(<span class="number">16</span>);</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;nc\n&quot;</span>);</span><br><span class="line">	<span class="built_in">free</span>(c);</span><br><span class="line">	<span class="keyword">int</span> *d = <span class="built_in">malloc</span>(<span class="number">32</span>);</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">&quot;nd\n&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>由于用的是裸机专用的工具链，因此内存的分配和释放都会调用工具链中的代码，我在其中打了log，但是发现new的时候并没有打印log。</p>
+<p>没有调试器，想了半天怎么也想不明白，最后查看反汇编发现画风是这样的</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/some-work-problem/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<p>指定编译选项的部分都是其他同事编写的，我一开始也没往这里想。看了半天最后发现原来malloc被优化掉了。b和d很直接，是unused的代码，但是a和c都被free了却依然被优化掉。</p>
+<p>关于这个问题好奇搜了一下，搜到这个回答</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://stackoverflow.com/questions/17899497/malloc-and-gcc-optimization-2" >https://stackoverflow.com/questions/17899497/malloc-and-gcc-optimization-2<i class="fas fa-external-link-alt"></i></a></p>
+<p>the optimizer knows malloc and considers it is a function with no side-effects，多半是编译器内部针对特定符号编写的优化</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：工作踩坑小结</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-10-02 17:26:12</li>
+        <li>
+            本文链接：https://homura.live/2022/10/02/Problem/some-work-problem/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/10/15/Reading/a-happy-death-albert-camus/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">快乐的死</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/10/02/Problem/nuttx-mm-in-64/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">NuttX mm模块在64位环境下的问题</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E8%AF%91"><span class="nav-number">1.</span> <span class="nav-text">编译</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%93%BE%E6%8E%A5"><span class="nav-number">2.</span> <span class="nav-text">链接</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%AE%E5%A4%8D%E9%97%AE%E9%A2%98"><span class="nav-number">2.1.</span> <span class="nav-text">修复问题</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#conda%E7%9A%84%E7%8E%AF%E5%A2%83%E9%97%AE%E9%A2%98"><span class="nav-number">3.</span> <span class="nav-text">conda的环境问题</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E4%B8%8E%E8%B0%83%E8%AF%95"><span class="nav-number">4.</span> <span class="nav-text">优化与调试</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            NuttX mm模块在64位环境下的问题 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="随手记录一下最近折磨了我很久的一个问题。最近在基于某一套裸机工具链做交叉编译并且在某个模拟器上执行代码，模拟器上几乎没法断点，没法用调试器，只能手工加log的方式。加上打log本身非常拖累运行速度，几乎一秒一个字符，所以这个问题来来回回拖了好几天才解决。 提供的工具链中内存分配和释放相关的代码是基于开源的nuttx做了一点点修改，不涉及代码隐私问题，因此这里也会直接贴对应的代码。nuttx是为32">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NuttX mm模块在64位环境下的问题">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/10/02/Problem/nuttx-mm-in-64/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="随手记录一下最近折磨了我很久的一个问题。最近在基于某一套裸机工具链做交叉编译并且在某个模拟器上执行代码，模拟器上几乎没法断点，没法用调试器，只能手工加log的方式。加上打log本身非常拖累运行速度，几乎一秒一个字符，所以这个问题来来回回拖了好几天才解决。 提供的工具链中内存分配和释放相关的代码是基于开源的nuttx做了一点点修改，不涉及代码隐私问题，因此这里也会直接贴对应的代码。nuttx是为32">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-10-02T08:03:03.000Z">
+<meta property="article:modified_time" content="2022-10-02T08:08:51.683Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Memory">
+<meta property="article:tag" content="Baremetal">
+<meta property="article:tag" content="NuttX">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">NuttX mm模块在64位环境下的问题</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-10-02 16:03:03
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Debug/">Debug</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Memory/">Memory</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Baremetal/">Baremetal</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/NuttX/">NuttX</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.7k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>12 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>随手记录一下最近折磨了我很久的一个问题。最近在基于某一套裸机工具链做交叉编译并且在某个模拟器上执行代码，模拟器上几乎没法断点，没法用调试器，只能手工加log的方式。加上打log本身非常拖累运行速度，几乎一秒一个字符，所以这个问题来来回回拖了好几天才解决。</p>
+<p>提供的工具链中内存分配和释放相关的代码是基于开源的nuttx做了一点点修改，不涉及代码隐私问题，因此这里也会直接贴对应的代码。nuttx是为32位设计的系统，直接拿来64位的环境自然会有不少问题。</p>
+<p>nuttx源码</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/projectara/nuttx/tree/master/nuttx/include/nuttx/mm" >https://github.com/projectara/nuttx/tree/master/nuttx/include/nuttx/mm<i class="fas fa-external-link-alt"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/projectara/nuttx/tree/master/nuttx/mm/mm_heap" >https://github.com/projectara/nuttx/tree/master/nuttx/mm/mm_heap<i class="fas fa-external-link-alt"></i></a></p>
+<h1 id="最小可复现代码与初定位"><a href="#最小可复现代码与初定位" class="headerlink" title="最小可复现代码与初定位"></a>最小可复现代码与初定位</h1><p>模拟器上执行代码的时候遇到vector的第三次push_back就会死循环在某个地方，写了一个vector push_back的用例来测试，依然会死循环卡住。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test_vector_pushback</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  std::vector&lt;<span class="keyword">int</span>&gt; v;</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;p 1\n&quot;</span>);</span><br><span class="line">  v.<span class="built_in">push_back</span>(<span class="number">1</span>);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;p 2\n&quot;</span>);</span><br><span class="line">  v.<span class="built_in">push_back</span>(<span class="number">2</span>);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;p 3\n&quot;</span>);</span><br><span class="line">  v.<span class="built_in">push_back</span>(<span class="number">3</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这是最简单的用例，自然不可能是我代码写错了。后来想到模拟器或许能dump pc，拿到pc后再去反汇编代码中看（全部都是静态链接塞进去），发现在这里死循环了</p>
+<p>mm_mallinfo.c</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (node = heap-&gt;mm_heapstart[region];</span><br><span class="line">           node &lt; heap-&gt;mm_heapend[region];</span><br><span class="line">     node = (struct mm_allocnode_s *)((<span class="keyword">char</span> *)node + node-&gt;size))</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">//  printf(&quot;node=%p size=%d pre=%d (%c)\n&quot;, node,</span></span><br><span class="line">	<span class="comment">//         node-&gt;size, (node-&gt;preceding &amp; ~MM_ALLOC_BIT),</span></span><br><span class="line">	<span class="comment">//         (node-&gt;preceding &amp; MM_ALLOC_BIT) ? &#x27;A&#x27; : &#x27;F&#x27;);</span></span><br><span class="line">  <span class="keyword">if</span> ((node-&gt;preceding &amp; MM_ALLOC_BIT) != <span class="number">0</span>)</span><br><span class="line">  &#123;</span><br><span class="line">    uordblks += node-&gt;size;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">  &#123;</span><br><span class="line">    ordblks++;</span><br><span class="line">    fordblks += node-&gt;size;</span><br><span class="line">    <span class="keyword">if</span> (node-&gt;size &gt; mxordblk)</span><br><span class="line">    &#123;</span><br><span class="line">      mxordblk = node-&gt;size;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>看到这个for循环的更新和判断条件，第一反应想到的就是size在某个地方为0了，导致不断在原地打转，因此我打印了heap的start和end，以及开启了循环内的打印</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">heapstart:<span class="number">00000000001</span>C9B30</span><br><span class="line">heapend:<span class="number">000000001</span>EFFFFE8</span><br><span class="line">...</span><br><span class="line">node=<span class="number">00000000001</span>CAF08 size=<span class="number">0000000000000410</span> pre=<span class="number">00000000000011</span>D0 (A)</span><br><span class="line">node=<span class="number">00000000001</span>CB318 size=<span class="number">0000000000000010</span> pre=<span class="number">0000000000000410</span> (F)</span><br><span class="line">node=<span class="number">00000000001</span>CB328 size=<span class="number">00000000001</span>C75C8 pre=<span class="number">0000000000000000</span> (F)</span><br><span class="line">node=<span class="number">00000000003928F</span>0 size=<span class="number">0000000000000000</span> pre=<span class="number">0000000000000000</span> (F)</span><br></pre></td></tr></table></figure>
+
+<p>可以看到遍历到某个node的时候size就变成了空。但我这个时候注意力全都放在了size为空这件事情上，因为这个工程同事之前接触到free出错的情况，就让同事来帮忙看，这才意识到原来0 size node之前的node的size和pre也都不对劲。</p>
+<p>之后通过打各种log，将直接产生问题的地方定位到了free中，同时也就能在出错之前打印出原本正确的node信息。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">node=<span class="number">00000000001</span>CAF08 size=<span class="number">0000000000000410</span> pre=<span class="number">00000000000011</span>D0 (A)</span><br><span class="line">node=<span class="number">00000000001</span>CB318 size=<span class="number">0000000000000010</span> pre=<span class="number">0000000000000410</span> (A)</span><br><span class="line">node=<span class="number">00000000001</span>CB328 size=<span class="number">0000000000000010</span> pre=<span class="number">0000000000000010</span> (A)</span><br><span class="line">node=<span class="number">00000000001</span>CB338 size=<span class="number">000000001</span>EE34CB0 pre=<span class="number">0000000000000010</span> (F)</span><br></pre></td></tr></table></figure>
+
+<p>注意这里坏掉的是1CB328，也就是倒数第二个结点</p>
+<p>再看一下关于free的主要逻辑。源代码比较长，由于在这个例子中未进行merge，因此省略了对应的逻辑。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">mm_free</span><span class="params">(struct mm_heap_s *heap, <span class="keyword">void</span> *mem, <span class="keyword">void</span> *caller)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">node</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">prev</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">next</span>;</span></span><br><span class="line"></span><br><span class="line">  (<span class="keyword">void</span>)caller;</span><br><span class="line">  <span class="comment">//mvdbg(&quot;Freeing %p\n&quot;, mem);</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Protect against attempts to free a NULL reference */</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!mem)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  ...</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Map the memory chunk into a free node */</span></span><br><span class="line"></span><br><span class="line">  node = (struct mm_freenode_s *)((<span class="keyword">uint64_t</span>)mem - SIZEOF_MM_ALLOCNODE);</span><br><span class="line">  node-&gt;preceding &amp;= ~MM_ALLOC_BIT;</span><br><span class="line">  ...</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Add the merged node to the nodelist */</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">mm_addfreechunk</span>(heap, node);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里很明显关键在于mm_addfreechunk。但是在看这个函数之前，我们先看一下heap和各种node是怎样的。</p>
+<h1 id="heap与node"><a href="#heap与node" class="headerlink" title="heap与node"></a>heap与node</h1><p>heap的成员很多，我们在这里只放出我们这里需要关注的几个。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mm_heap_s</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_allocnode_s</span> *<span class="title">mm_heapstart</span>[<span class="title">CONFIG_MM_REGIONS</span>];</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_allocnode_s</span> *<span class="title">mm_heapend</span>[<span class="title">CONFIG_MM_REGIONS</span>];</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> <span class="title">mm_nodelist</span>[<span class="title">MM_NNODES</span>];</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>之后我们先来看一下初始化全局堆的地方</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">mm_heap_initialize</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">mm_initialize</span>(&amp;g_mmheap, &amp;__heap_start, (<span class="keyword">uint64_t</span>)(&amp;__heap_end) - (<span class="keyword">uint64_t</span>)(&amp;__heap_start));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">mm_initialize</span><span class="params">(struct mm_heap_s *heap, <span class="keyword">void</span> *heapstart,</span></span></span><br><span class="line"><span class="params"><span class="function">                   <span class="keyword">size_t</span> heapsize)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="keyword">int</span> i;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//mlldbg(&quot;Heap: start=%p size=%u\n&quot;, heapstart, heapsize);</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* The following two lines have cause problems for some older ZiLog</span></span><br><span class="line"><span class="comment">   * compilers in the past (but not the more recent).  Life is easier if we</span></span><br><span class="line"><span class="comment">   * just the suppress them altogther for those tools.</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> __ZILOG__</span></span><br><span class="line">  <span class="comment">//CHECK_ALLOCNODE_SIZE;</span></span><br><span class="line">  <span class="comment">//CHECK_FREENODE_SIZE;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Set up global variables */</span></span><br><span class="line"></span><br><span class="line">  heap-&gt;mm_heapsize = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> CONFIG_MM_REGIONS &gt; 1</span></span><br><span class="line">  heap-&gt;mm_nregions = <span class="number">0</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Initialize the node array */</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">memset</span>(heap-&gt;mm_nodelist, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(struct mm_freenode_s) * MM_NNODES);</span><br><span class="line">  <span class="keyword">for</span> (i = <span class="number">1</span>; i &lt; MM_NNODES; i++)</span><br><span class="line">    &#123;</span><br><span class="line">      heap-&gt;mm_nodelist[i<span class="number">-1</span>].flink = &amp;heap-&gt;mm_nodelist[i];</span><br><span class="line">      heap-&gt;mm_nodelist[i].blink   = &amp;heap-&gt;mm_nodelist[i<span class="number">-1</span>];</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Initialize the malloc semaphore to one (to support one-at-</span></span><br><span class="line"><span class="comment">   * a-time access to private data sets).</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">mm_seminitialize</span>(heap);</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Add the initial region of memory to the heap */</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">mm_addregion</span>(heap, heapstart, heapsize);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>初始化nodelist，添加一个region。（目前的代码中只有一个region</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">mm_addregion</span><span class="params">(struct mm_heap_s *heap, <span class="keyword">void</span> *heapstart,</span></span></span><br><span class="line"><span class="params"><span class="function">                  <span class="keyword">size_t</span> heapsize)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">node</span>;</span></span><br><span class="line">  <span class="keyword">uintptr_t</span> heapbase;</span><br><span class="line">  <span class="keyword">uintptr_t</span> heapend;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> CONFIG_MM_REGIONS &gt; 1</span></span><br><span class="line">  <span class="keyword">int</span> IDX = heap-&gt;mm_nregions;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="meta"># <span class="meta-keyword">define</span> IDX 0</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* If the MCU handles wide addresses but the memory manager is configured</span></span><br><span class="line"><span class="comment">   * for a small heap, then verify that the caller is  not doing something</span></span><br><span class="line"><span class="comment">   * crazy.</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(CONFIG_MM_SMALL) &amp;&amp; !defined(CONFIG_SMALL_MEMORY)</span></span><br><span class="line">  <span class="comment">//DEBUGASSERT(heapsize &lt;= MMSIZE_MAX+1);</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Adjust the provide heap start and size so that they are both aligned</span></span><br><span class="line"><span class="comment">   * with the MM_MIN_CHUNK size.</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line"></span><br><span class="line">  heapbase = <span class="built_in">MM_ALIGN_UP</span>((<span class="keyword">uintptr_t</span>)heapstart);</span><br><span class="line">  heapend  = <span class="built_in">MM_ALIGN_DOWN</span>((<span class="keyword">uintptr_t</span>)heapstart + (<span class="keyword">uintptr_t</span>)heapsize);</span><br><span class="line">  heapsize = heapend - heapbase;</span><br><span class="line"></span><br><span class="line">  <span class="comment">//mlldbg(&quot;Region %d: base=%p size=%u\n&quot;, IDX+1, heapstart, heapsize);</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Add the size of this region to the total size of the heap */</span></span><br><span class="line"></span><br><span class="line">  heap-&gt;mm_heapsize += heapsize;</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Create two &quot;allocated&quot; guard nodes at the beginning and end of</span></span><br><span class="line"><span class="comment">   * the heap.  These only serve to keep us from allocating outside</span></span><br><span class="line"><span class="comment">   * of the heap.</span></span><br><span class="line"><span class="comment">   *</span></span><br><span class="line"><span class="comment">   * And create one free node between the guard nodes that contains</span></span><br><span class="line"><span class="comment">   * all available memory.</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line"></span><br><span class="line">  heap-&gt;mm_heapstart[IDX]            = (struct mm_allocnode_s *)heapbase;</span><br><span class="line">  heap-&gt;mm_heapstart[IDX]-&gt;size      = SIZEOF_MM_ALLOCNODE;</span><br><span class="line">  heap-&gt;mm_heapstart[IDX]-&gt;preceding = MM_ALLOC_BIT;</span><br><span class="line"></span><br><span class="line">  node                        = (struct mm_freenode_s *)(heapbase + SIZEOF_MM_ALLOCNODE);</span><br><span class="line">  node-&gt;size                  = heapsize - <span class="number">2</span>*SIZEOF_MM_ALLOCNODE;</span><br><span class="line">  node-&gt;preceding             = SIZEOF_MM_ALLOCNODE;</span><br><span class="line"></span><br><span class="line">  heap-&gt;mm_heapend[IDX]              = (struct mm_allocnode_s *)(heapend - SIZEOF_MM_ALLOCNODE);</span><br><span class="line">  heap-&gt;mm_heapend[IDX]-&gt;size        = SIZEOF_MM_ALLOCNODE;</span><br><span class="line">  heap-&gt;mm_heapend[IDX]-&gt;preceding   = node-&gt;size | MM_ALLOC_BIT;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">undef</span> IDX</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> CONFIG_MM_REGIONS &gt; 1</span></span><br><span class="line">  heap-&gt;mm_nregions++;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Add the single, large free node to the nodelist */</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">mm_addfreechunk</span>(heap, node);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>heapstart和heapend分别保存了一个指向heap开始和结尾的allocnode的地址，初始化的时候中间有一个非常大的空闲的freenode，而随着之后内存的分配，中间会有越来越多的node。</p>
+<p>注意allocnode和freenode的异同</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mm_allocnode_s</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="keyword">mmsize_t</span> size;           <span class="comment">/* Size of this chunk */</span></span><br><span class="line">  <span class="keyword">mmsize_t</span> preceding;      <span class="comment">/* Size of the preceding chunk */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="keyword">mmsize_t</span> size;                   <span class="comment">/* Size of this chunk */</span></span><br><span class="line">  <span class="keyword">mmsize_t</span> preceding;              <span class="comment">/* Size of the preceding chunk */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">flink</span>;</span> <span class="comment">/* Supports a doubly linked list */</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">blink</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>显而易见，allocnode和freenode存储的时候都是以一个size和preceding开始，只是free的后面还会跟两个指针。</p>
+<p>其中的preceding保存了前一个chunk的size，同时也标记了当前的块是被分配的状态还是被释放的状态，allocnode和freenode的处理方式都是不相同的。</p>
+<p>我们再回到初始化的部分，可以看到start和end的size是SIZEOF_MM_ALLOCNODE，中间空闲的node size为heapsize - 2 * SIZEOF_MM_ALLOCNODE，也就是说<strong>这个size是算入了保存内存信息的空间</strong>。</p>
+<h1 id="mm-addfreechunk"><a href="#mm-addfreechunk" class="headerlink" title="mm_addfreechunk"></a>mm_addfreechunk</h1><p>我们再回来看mm_addfreechunk。我在这个函的前后从heapstart开始出发采用size递增的方式遍历，经过addfreechunk之后就开始死循环了。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">mm_addfreechunk</span><span class="params">(struct mm_heap_s *heap, struct mm_freenode_s *node)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">next</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">prev</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Convert the size to a nodelist index */</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">int</span> ndx = <span class="built_in">mm_size2ndx</span>(node-&gt;size);</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Now put the new node int the next */</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (prev = &amp;heap-&gt;mm_nodelist[ndx], next = heap-&gt;mm_nodelist[ndx].flink;</span><br><span class="line">       next &amp;&amp; next-&gt;size &amp;&amp; next-&gt;size &lt; node-&gt;size;</span><br><span class="line">       prev = next, next = next-&gt;flink);</span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Does it go in mid next or at the end? */</span></span><br><span class="line"></span><br><span class="line">  prev-&gt;flink = node;</span><br><span class="line">  node-&gt;blink = prev;</span><br><span class="line">  node-&gt;flink = next;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (next)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="comment">/* The new node goes between prev and next */</span></span><br><span class="line"></span><br><span class="line">      next-&gt;blink = node;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个函数逻辑也比较简单，找到对应的节点，修改flink和blink，只是看着这段逻辑很难想到为什么会引起那么奇怪的问题。</p>
+<p>不过我一开始以错误的思路打下了一个log反而利于我想明白问题。最初理解node排布之后，我手动采用了node + size的方式访问到了这种方式访问到的最后一个node。我在mm_addfreechunk之前获取了最后一个node，并在前后打印该node的信息，发现并没有什么异常。后来晚上回家的路上突然意识到这样打印是有问题的，mm_addfreechunk会改变连接关系。但是这后来给了我一个提示，原来end node所在的地址没有被写掉。</p>
+<h1 id="内存排布与解决方案"><a href="#内存排布与解决方案" class="headerlink" title="内存排布与解决方案"></a>内存排布与解决方案</h1><p>最后我开始画了内存图，想明白了原因。</p>
+<p>回看最早出现死循环的地方，每次循环的递增是通过node = (struct mm_allocnode_s *)((char *)node + node-&gt;size))来做的，也就是说所有的node是排布在heapstart和heapend中间</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">start     <span class="number">328</span>            <span class="number">338</span>            free                 end</span><br><span class="line">|size|prec|size|prec|data|size|prec|data|size|prec|data      |size|prec|</span><br></pre></td></tr></table></figure>
+
+<p>倒数第二个结点(338)坏掉，是因为倒数第三个结点(328)数据写越界了。这块空间被释放掉以后那么起始地址就会被视为一个freenode，在后面mm_addfreechunk修改对应的flink和blink的时候，由于除了size和preceding的数据大小小于了两个指针的大小，因此覆写了下一个内存块开头的部分。</p>
+<p>那么我们实际上需要保证每次分配给数据的大小需要大于等于两个指针的大小。</p>
+<p>mm_malloc.c</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> *<span class="title">mm_malloc</span><span class="params">(struct mm_heap_s *heap, <span class="keyword">size_t</span> size, <span class="keyword">void</span> *caller)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">mm_freenode_s</span> *<span class="title">node</span>;</span></span><br><span class="line">  <span class="keyword">void</span> *ret = <span class="literal">NULL</span>;</span><br><span class="line">  <span class="keyword">int</span> ndx;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(CONFIG_MM_DETECT_ERROR)</span></span><br><span class="line">  <span class="keyword">size_t</span> real_size;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Handle bad sizes */</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (size &lt; <span class="number">1</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(CONFIG_MM_DETECT_ERROR)</span></span><br><span class="line">  size = (size + <span class="number">3</span>) &amp; ~<span class="number">3</span>;</span><br><span class="line">  real_size = size;</span><br><span class="line">  size += MDBG_SZ_HEAD + MDBG_SZ_TAIL;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="comment">/* Adjust the size to account for (1) the size of the allocated node and</span></span><br><span class="line"><span class="comment">   * (2) to make sure that it is an even multiple of our granule size.</span></span><br><span class="line"><span class="comment">   */</span></span><br><span class="line"></span><br><span class="line">  size = <span class="built_in">MM_ALIGN_UP</span>(size + SIZEOF_MM_ALLOCNODE);</span><br></pre></td></tr></table></figure>
+
+<p>这里最后实际alloc的size是MM_ALIGN_UP以后的大小</p>
+<p>mm.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(CONFIG_MM_SMALL) &amp;&amp; UINTPTR_MAX &lt;= UINT32_MAX</span></span><br><span class="line"><span class="comment">/* Two byte offsets; Pointers may be 2 or 4 bytes;</span></span><br><span class="line"><span class="comment"> * sizeof(struct mm_freenode_s) is 8 or 12 bytes.</span></span><br><span class="line"><span class="comment"> * REVISIT: We could do better on machines with 16-bit addressing.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> MM_MIN_SHIFT    4  <span class="comment">/* 16 bytes */</span></span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> MM_MAX_SHIFT   15  <span class="comment">/* 32 Kb */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(CONFIG_HAVE_LONG_LONG)</span></span><br><span class="line"><span class="comment">/* Four byte offsets; Pointers may be 4 or 8 bytes</span></span><br><span class="line"><span class="comment"> * sizeof(struct mm_freenode_s) is 16 or 24 bytes.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">if</span> UINTPTR_MAX &lt;= UINT32_MAX</span></span><br><span class="line"><span class="meta">#    <span class="meta-keyword">define</span> MM_MIN_SHIFT  4  <span class="comment">/* 16 bytes */</span></span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">elif</span> UINTPTR_MAX &lt;= UINT64_MAX</span></span><br><span class="line"><span class="meta">#    <span class="meta-keyword">define</span> MM_MIN_SHIFT  5  <span class="comment">/* 32 bytes */</span></span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> MM_MAX_SHIFT   22  <span class="comment">/*  4 Mb */</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="comment">/* Four byte offsets; Pointers must be 4 bytes.</span></span><br><span class="line"><span class="comment"> * sizeof(struct mm_freenode_s) is 16 bytes.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> MM_MIN_SHIFT    4  <span class="comment">/* 16 bytes */</span></span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> MM_MAX_SHIFT   22  <span class="comment">/*  4 Mb */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* All other definitions derive from these two */</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MM_MIN_CHUNK     (1 &lt;&lt; MM_MIN_SHIFT)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MM_MAX_CHUNK     (1 &lt;&lt; MM_MAX_SHIFT)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MM_NNODES        (MM_MAX_SHIFT - MM_MIN_SHIFT + 1)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MM_GRAN_MASK     (MM_MIN_CHUNK-1)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MM_ALIGN_UP(a)   (((a) + MM_GRAN_MASK) &amp; ~MM_GRAN_MASK)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> MM_ALIGN_DOWN(a) ((a) &amp; ~MM_GRAN_MASK)</span></span><br></pre></td></tr></table></figure>
+
+<p>根据这里的代码可以得知我们只需要修改对应的MM_MIN_SHIFT即可解决问题</p>
+<p>解决问题以后发现在这段代码的正上方也有相关的注释</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Chunk Header Definitions *************************************************/</span></span><br><span class="line"><span class="comment">/* These definitions define the characteristics of allocator</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * MM_MIN_SHIFT is used to define MM_MIN_CHUNK.</span></span><br><span class="line"><span class="comment"> * MM_MIN_CHUNK - is the smallest physical chunk that can</span></span><br><span class="line"><span class="comment"> *   be allocated.  It must be at least a large as</span></span><br><span class="line"><span class="comment"> *   sizeof(struct mm_freenode_s).  Larger values may</span></span><br><span class="line"><span class="comment"> *   improve performance slightly, but will waste memory</span></span><br><span class="line"><span class="comment"> *   due to quantization losses.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * MM_MAX_SHIFT is used to define MM_MAX_CHUNK</span></span><br><span class="line"><span class="comment"> * MM_MAX_CHUNK is the largest, contiguous chunk of memory</span></span><br><span class="line"><span class="comment"> *   that can be allocated.  It can range from 16-bytes to</span></span><br><span class="line"><span class="comment"> *   4Gb.  Larger values of MM_MAX_SHIFT can cause larger</span></span><br><span class="line"><span class="comment"> *   data structure sizes and, perhaps, minor performance</span></span><br><span class="line"><span class="comment"> *   losses.</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure>
+
+<p>这个文件访问了很多次，但是每次都是为了访问特定的声明和定义，没有在意到其他地方的注释。不过自己潜入代码中去了解，自己去思考原因也算是一个增加经验的机会。就算提早看到了这个注释可能因为缺少很多信息也不会想到</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：NuttX mm模块在64位环境下的问题</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-10-02 16:03:03</li>
+        <li>
+            本文链接：https://homura.live/2022/10/02/Problem/nuttx-mm-in-64/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/10/02/Problem/some-work-problem/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">工作踩坑小结</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/09/17/Life/TourTheSummerPalace/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">游颐和园</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%9C%80%E5%B0%8F%E5%8F%AF%E5%A4%8D%E7%8E%B0%E4%BB%A3%E7%A0%81%E4%B8%8E%E5%88%9D%E5%AE%9A%E4%BD%8D"><span class="nav-number">1.</span> <span class="nav-text">最小可复现代码与初定位</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#heap%E4%B8%8Enode"><span class="nav-number">2.</span> <span class="nav-text">heap与node</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#mm-addfreechunk"><span class="nav-number">3.</span> <span class="nav-text">mm_addfreechunk</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%8E%92%E5%B8%83%E4%B8%8E%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"><span class="nav-number">4.</span> <span class="nav-text">内存排布与解决方案</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

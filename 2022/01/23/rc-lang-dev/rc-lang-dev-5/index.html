@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            Rc-lang开发周记5 函数其二&amp;OOP其一 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="本周要做的第一件事情当然是把之前写的脏代码全部干掉！神清气爽 那么就让我们进入本周的正题。最近几周的代码可能会较少而且内容非常碎片，时间短缺且这块内容跨度非常大，需要参考其他已有实现，再加上第一次做并不熟悉正处于开荒期，更多的是学习于思考相关的知识。 函数在VM的实现回顾之前没有提及函数相关的内容在vm是怎么实现的，所以这里首先提及这个话题 函数的实现无外乎就是调用与返回的情况，这里再多加一个关于">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Rc-lang开发周记5 函数其二&amp;OOP其一">
+<meta property="og:url" content="https://fusionbolt.github.io/2022/01/23/rc-lang-dev/rc-lang-dev-5/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="本周要做的第一件事情当然是把之前写的脏代码全部干掉！神清气爽 那么就让我们进入本周的正题。最近几周的代码可能会较少而且内容非常碎片，时间短缺且这块内容跨度非常大，需要参考其他已有实现，再加上第一次做并不熟悉正处于开荒期，更多的是学习于思考相关的知识。 函数在VM的实现回顾之前没有提及函数相关的内容在vm是怎么实现的，所以这里首先提及这个话题 函数的实现无外乎就是调用与返回的情况，这里再多加一个关于">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-01-23T03:28:49.000Z">
+<meta property="article:modified_time" content="2022-02-12T03:46:52.152Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Rc-lang">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">Rc-lang开发周记5 函数其二&amp;OOP其一</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2022-01-23 11:28:49
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        &gt; <a href="/categories/VM/">VM</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Rc-lang/">Rc-lang</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.9k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>11 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>本周要做的第一件事情当然是把之前写的脏代码全部干掉！神清气爽</p>
+<p>那么就让我们进入本周的正题。最近几周的代码可能会较少而且内容非常碎片，时间短缺且这块内容跨度非常大，需要参考其他已有实现，再加上第一次做并不熟悉正处于开荒期，更多的是学习于思考相关的知识。</p>
+<h1 id="函数在VM的实现"><a href="#函数在VM的实现" class="headerlink" title="函数在VM的实现"></a>函数在VM的实现</h1><h2 id="回顾"><a href="#回顾" class="headerlink" title="回顾"></a>回顾</h2><p>之前没有提及函数相关的内容在vm是怎么实现的，所以这里首先提及这个话题</p>
+<p>函数的实现无外乎就是调用与返回的情况，这里再多加一个关于getlocal和setlocal以及计算的实现部分。</p>
+<p>先来简单回顾一下我们的栈上的信息</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">--------------------</span><br><span class="line">       tmp var</span><br><span class="line">--------------------</span><br><span class="line">      local var           f1</span><br><span class="line">-------------------- </span><br><span class="line">        args</span><br><span class="line">--------------------  ----------------</span><br><span class="line">       tmp var</span><br><span class="line">--------------------</span><br><span class="line">      local var           main</span><br><span class="line">-------------------- </span><br><span class="line">        args</span><br><span class="line">--------------------</span><br></pre></td></tr></table></figure>
+
+<p>除了这些再来看一下我们的栈帧</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">StackFrame</span></span></span><br><span class="line">&#123;</span><br><span class="line">    std::shared_ptr&lt;StackFrame&gt; _prev;</span><br><span class="line">    char *_base;</span><br><span class="line">    size_t _ret_addr;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>关于这些成员都是因为什么需要增加的，请回顾上期内容</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://homura.live/2022/01/16/rc-lang-dev-4/" >Rc-lang开发周记4 函数其一 | Homura’s Blog<i class="fas fa-external-link-alt"></i></a></p>
+<h2 id="具体实现"><a href="#具体实现" class="headerlink" title="具体实现"></a>具体实现</h2><h3 id="call"><a href="#call" class="headerlink" title="call"></a>call</h3><ol>
+<li><p>去符号表找符号</p>
+<p>这一步在vm中处理，找到符号的话将信息传递给栈来做第二步</p>
+</li>
+<li><p>栈处理</p>
+</li>
+<li><p>更新pc</p>
+</li>
+</ol>
+<p>着重讲一下栈的处理</p>
+<ol>
+<li><p>设置当前栈帧基址</p>
+<p>由于目前参数是在call之前push的（这个push一定紧接着call），因此需要先将stack_top指针移动到第0个参数的位置，得出基址</p>
+</li>
+<li><p>分配局部变量空间</p>
+<p>根据局部变量的数量再将栈基址向上移动</p>
+</li>
+<li><p>创建新的栈帧</p>
+</li>
+</ol>
+<p>实现代码，都在eval_stack.h中</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">begin_call</span><span class="params">(<span class="keyword">size_t</span> argc, <span class="keyword">size_t</span> locals, <span class="keyword">size_t</span> ret_addr)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 1.set stack base</span></span><br><span class="line">    <span class="keyword">auto</span> *base = <span class="built_in">get_args_begin</span>(argc);</span><br><span class="line">    <span class="comment">// 2.alloc local var space</span></span><br><span class="line">    _stack_top = <span class="built_in">stack_move</span>(base, <span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(locals));</span><br><span class="line">    <span class="comment">// 3.create new stack frame</span></span><br><span class="line">    _frame = std::make_shared&lt;StackFrame&gt;(_frame, base, ret_addr);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">char</span> *<span class="title">get_args_begin</span><span class="params">(<span class="keyword">size_t</span> argc)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> _stack_top - argc * WordLength;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">char</span> *<span class="title">stack_move</span><span class="params">(<span class="keyword">char</span> *stack_pos, <span class="keyword">int</span> offset)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> stack_pos + offset * WordLength;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于WordLength</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">constexpr</span> <span class="keyword">static</span> <span class="keyword">size_t</span> WordLength = <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="keyword">int</span>);</span><br></pre></td></tr></table></figure>
+
+<h3 id="return"><a href="#return" class="headerlink" title="return"></a>return</h3><ol>
+<li><p>获取返回值</p>
+<p>由于在函数体内计算的时候最后会将返回值push到栈顶，那么这里需要先pop将值取出来</p>
+</li>
+<li><p>栈帧回退</p>
+</li>
+<li><p>重置pc</p>
+</li>
+<li><p>返回值放到栈顶</p>
+</li>
+</ol>
+<p>这个返回值有点折腾…目前就先这个样子</p>
+<p>这里也是着重讲一下栈帧回退</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">end_call</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> ret_addr = _frame-&gt;<span class="built_in">ret_addr</span>();</span><br><span class="line">    _stack_top = <span class="built_in">stack_move</span>(_frame-&gt;<span class="built_in">base</span>(), <span class="number">-1</span>);</span><br><span class="line">    _frame = _frame-&gt;<span class="built_in">prev</span>();</span><br><span class="line">    <span class="keyword">return</span> ret_addr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="getlocal-setlocal"><a href="#getlocal-setlocal" class="headerlink" title="getlocal/setlocal"></a>getlocal/setlocal</h3><p>就是简单的从当前栈基址添加偏移量</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">get_local</span><span class="params">(<span class="keyword">size_t</span> offset)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> *<span class="built_in">get_base_offset</span>(<span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(offset));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">set_local</span><span class="params">(<span class="keyword">size_t</span> offset, <span class="keyword">int</span> value)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    *<span class="built_in">get_base_offset</span>(<span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(offset)) = value;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> *<span class="title">get_base_offset</span><span class="params">(<span class="keyword">int</span> offset)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">get_offset_pos</span>(_frame-&gt;<span class="built_in">base</span>(), offset);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="运算"><a href="#运算" class="headerlink" title="运算"></a>运算</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> Callable&gt;</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">exec</span><span class="params">(Callable &amp;&amp;f)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">auto</span> new_v = <span class="built_in">f</span>(<span class="built_in">pop</span>(), <span class="built_in">pop</span>());</span><br><span class="line">    <span class="built_in">push</span>(new_v);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>函数最基本的功能完成了，那我们该做创建对象相关的部分了。</p>
+<h1 id="从常见的类开始"><a href="#从常见的类开始" class="headerlink" title="从常见的类开始"></a>从常见的类开始</h1><p>我们从一个常见的类的例子开始引入我们的问题</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Foo</span></span></span><br><span class="line">	<span class="keyword">attr_reader</span> <span class="symbol">:a</span></span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">def</span> <span class="title">initialize</span><span class="params">(a)</span></span></span><br><span class="line">    <span class="variable">@a</span> = a</span><br><span class="line">	<span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">def</span> <span class="title">add</span><span class="params">(b)</span></span></span><br><span class="line">		<span class="variable">@a</span> + b</span><br><span class="line">	<span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>这个类很简单，一个成员变量、一个构造函数和一个实例方法。</p>
+<p>在我们想要使用这个类之前，我们需要在编译期间先解析这个类的信息</p>
+<h2 id="解析成员"><a href="#解析成员" class="headerlink" title="解析成员"></a>解析成员</h2><p>创建一个类表。保存了所有定义的类的定义，以及可以作为一个类型查询表。</p>
+<p>这个解析的过程一度想要直接从Ruby抄一套类似的，但是工作量会非常大，因为需要到基类查找方法，牵扯到继承等各种问题</p>
+<p>目前类的ast结构</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ClassDefine</span></span></span><br><span class="line">	<span class="keyword">attr_reader</span> <span class="symbol">:name</span>, <span class="symbol">:define</span>, <span class="symbol">:parent</span>, <span class="symbol">:fun_list</span>, <span class="symbol">:var_list</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>这个定义中define是之前做的对于现在来说是不必要的内容，但是我目前时间有限不太敢动，怕前面的东西都乱套了，留个todo再说。parent是因为之前ast解释器的部分做了继承，但是目前vm这边还没有开始做，也就先不管它</p>
+<p>对于成员函数全部翻译一遍，重命名一下符号，而对于成员变量，直接将信息添加到对应的表中即可。所以目前ClassTable是这样的</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ClassTable</span></span></span><br><span class="line">  <span class="keyword">attr_accessor</span> <span class="symbol">:instance_methods</span>, <span class="symbol">:instance_vars</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span></span></span><br><span class="line">    <span class="variable">@instance_methods</span> = &#123;&#125;</span><br><span class="line">    <span class="variable">@instance_vars</span> = &#123;&#125;</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">add_instance_method</span><span class="params">(name, define)</span></span></span><br><span class="line">    <span class="variable">@instance_methods</span>[name] = define</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">add_instance_var</span><span class="params">(name, define)</span></span></span><br><span class="line">    <span class="variable">@instance_vars</span>[name] = define</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>除了解析信息，还需要在运行的时候创建这个类的对象。创建对象则分为两步</p>
+<ol>
+<li>分配内存</li>
+<li>初始化</li>
+</ol>
+<h2 id="分配内存"><a href="#分配内存" class="headerlink" title="分配内存"></a>分配内存</h2><p>关于分配内存我们需要知道</p>
+<ol>
+<li>为了知道所分配空间的大小，首先需要获取类型信息。那么该如何获取类型信息以及类型信息怎么存放，存在哪里</li>
+</ol>
+<p>目前不考虑元编程的地方，所以这些信息都是编译期间可知的。假设要做更多元编程的内容，那么需要将一部分的内容放到运行时处理。按照我的理解来说，到时候将类型信息传递给vm，以及添加一些指令专门用于做元编程（这样指令种类会增加很多）。但这仅限于我粗浅的理解，更详细的还是要等到我做的时候再考虑。</p>
+<ol>
+<li>如何计算空间大小</li>
+</ol>
+<p>这个时候可能会出现一个最简单不过的想法，直接将所有成员大小都加起来不就好了。但是如果这样做，地址无法对齐，在vm那边取是很麻烦的事情。关于对齐暂时也不考虑，目前只考虑数据全为一个字长的整型数字，因此产生的对象也只会有带有这样成员的数字。还有会遇到空对象的情况，没有任何成员函数该怎么办（关于空对象，下文会单独提一下）</p>
+<p>除了基本的空间大小，还需要考虑留有GC信息的头部。这个就牵扯到下一个问题</p>
+<ol>
+<li>数据保存的格式</li>
+</ol>
+<p>GC需要保存哪些对象信息，这些信息又是如何保存的。关于这一点在后面的Ruby的Object实现中会略微提及</p>
+<p>GC相关的更多内容要等到之后实现的时候再更详细的提及了</p>
+<p>关于这里实际上还有更多复杂的话题，比如说递归数据类型，Union等，这些也都以后做的时候再来讨论</p>
+<h2 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h2><h3 id="生成方法"><a href="#生成方法" class="headerlink" title="生成方法"></a>生成方法</h3><p>这里涉及到了一个问题，一个最简单的Foo对象并没有构造函数，那么我们需要先在ast的阶段生成对应的“无参”构造函数。</p>
+<h3 id="调用"><a href="#调用" class="headerlink" title="调用"></a>调用</h3><p>调用这里本质上是一个方法查找机制，目前想先做最简单的，后面按需添加。直接去对应的this指针，找到对应类的信息，然后再从类表中进行查找，还没做实现，大概会到下周的内容中</p>
+<p>同时这个方法也是作为一个成员函数被调用（尽管是外部不可见的），这里就顺便讲调用成员函数的做法</p>
+<p>首先考虑调用成员函数的时候就需要引入this指针了，这个属于固定在栈内的内容，所以我把它放到了栈帧的结构中，而不是栈的实际数据中。</p>
+<h3 id="一些语言this相关"><a href="#一些语言this相关" class="headerlink" title="一些语言this相关"></a>一些语言this相关</h3><p>说到this指针，我想到了两个语言</p>
+<p>第一个是Python，因为Python是需要显式传递self的</p>
+<p>另一个是C#，C#的extension机制大概是这个样子，通过这种方式来给某个类添加类函数，我没有深究过后面的实现机制，但我想大概是解析到这里就给符号表中的这个类添加一个成员函数吧</p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">class</span> <span class="title">SomeClassExtension</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">method</span>(<span class="params"><span class="keyword">this</span> SomeClass instance, args</span>)</span></span><br><span class="line"><span class="function">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>Ruby本身也有一些相似的对象，定义类函数的时候会需要self。不过这里的self的含义变成了这个类，而不是某个实例成员</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Foo</span></span></span><br><span class="line">	def <span class="keyword">self</span>.f</span><br><span class="line">	<span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="特殊情况"><a href="#特殊情况" class="headerlink" title="特殊情况"></a>特殊情况</h1><h2 id="无成员变量类"><a href="#无成员变量类" class="headerlink" title="无成员变量类"></a>无成员变量类</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Helper</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">add</span><span class="params">(a, b)</span></span></span><br><span class="line">    a + b</span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+
+<p>这种情况最大的问题在于对象空间大小的问题。目前我已知的做法有如下几种</p>
+<p>C++中对于类似的类在实例化的时候会有一个一字节的空间占用，为的是区分地址</p>
+<p>而Rust则有一个叫ZeroSizedTypes的东东，在谷歌搜索的时候搜索到了这样一段代码</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> std::mem::size_of;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span>  <span class="title">main</span></span>() &#123;</span><br><span class="line">   <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, size_of::&lt;()&gt;());</span><br><span class="line">   <span class="built_in">println!</span>(<span class="string">&quot;&#123;&#125;&quot;</span>, size_of::&lt;[(); <span class="number">100</span>]&gt;());</span><br><span class="line">   <span class="keyword">let</span> boxed_unit = <span class="built_in">Box</span>::new(());</span><br><span class="line">   <span class="built_in">println!</span>(<span class="string">&quot;&#123;:p&#125;&quot;</span>, boxed_unit); </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">作者：zqliang</span><br><span class="line">链接：https:<span class="comment">//ld246.com/article/1539826769170</span></span><br><span class="line">来源：链滴</span><br><span class="line">协议：CC BY-SA <span class="number">4.0</span> https:<span class="comment">//creativecommons.org/licenses/by-sa/4.0/</span></span><br></pre></td></tr></table></figure>
+
+<p>运行结果</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0</span></span><br><span class="line"><span class="number">0</span></span><br><span class="line"><span class="number">0x1</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看到Rust不像C++一样会有一字节的空间占用</p>
+<p>带有GC的语言通常是会有一个header的开销（header用于存储类型以及GC信息），成员域部分会因实际实现不同而不同</p>
+<p>对于Ruby来说Object是这个样子的。因此对象即便为空也会有下面这个union的开销</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">RObject</span></span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">RBasic</span></span> basic;</span><br><span class="line">    <span class="class"><span class="keyword">union</span> </span></span><br><span class="line"><span class="class">    &#123;</span></span><br><span class="line">        <span class="class"><span class="keyword">struct</span> &#123;</span>...&#125; heap; <span class="comment">//省略</span></span><br><span class="line">        Value ary[ROBJECT_EMBED_LEN_MAX];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="Ruby的类与函数"><a href="#Ruby的类与函数" class="headerlink" title="Ruby的类与函数"></a>Ruby的类与函数</h1><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">f1</span></span></span><br><span class="line">	<span class="number">9</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">S</span></span></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">initialize</span></span></span><br><span class="line">    <span class="number">9</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">def</span> <span class="title">f1</span></span></span><br><span class="line">    <span class="number">9</span></span><br><span class="line">  <span class="keyword">end</span></span><br><span class="line"><span class="keyword">end</span></span><br><span class="line">m = <span class="number">1</span></span><br><span class="line">a = S.new()</span><br></pre></td></tr></table></figure>
+
+<h2 id="成员函数和“普通函数”"><a href="#成员函数和“普通函数”" class="headerlink" title="成员函数和“普通函数”"></a>成员函数和“普通函数”</h2><h3 id="定义对比"><a href="#定义对比" class="headerlink" title="定义对比"></a>定义对比</h3><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">== <span class="symbol">disasm:</span> #&lt;ISeq:f1@&lt;compiled&gt;<span class="symbol">:</span><span class="number">1</span> (<span class="number">1</span>,<span class="number">0</span>)-(<span class="number">3</span>,<span class="number">3</span>)&gt; (<span class="symbol">catch:</span> FALSE)</span><br><span class="line"><span class="number">0000</span> putobject                              <span class="number">9</span>                         (   <span class="number">2</span>)[LiCa]</span><br><span class="line"><span class="number">0002</span> leave                                                            (   <span class="number">3</span>)[Re]</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">== <span class="symbol">disasm:</span> #&lt;ISeq:initialize@&lt;compiled&gt;<span class="symbol">:</span><span class="number">5</span> (<span class="number">5</span>,<span class="number">2</span>)-(<span class="number">7</span>,<span class="number">5</span>)&gt; (<span class="symbol">catch:</span> FALSE)</span><br><span class="line"><span class="number">0000</span> putobject                              <span class="number">9</span>                         (   <span class="number">6</span>)[LiCa]</span><br><span class="line"><span class="number">0002</span> leave                                                            (   <span class="number">7</span>)[Re]</span><br></pre></td></tr></table></figure>
+
+<p>可以看到编译出的函数没什么不同。我想这是因为Ruby的一切皆对象的缘故。哪怕只是一个单独的函数，也是定义在Kernel中，本质上还是一个成员函数。</p>
+<p>而这个initialize也是和普通的成员函数是一致的，特别之处只是会在Object的new中被调用，甚至和普通成员函数一样可以被外部调用</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">== <span class="symbol">disasm:</span> #&lt;ISeq:f1@&lt;compiled&gt;<span class="symbol">:</span><span class="number">9</span> (<span class="number">9</span>,<span class="number">2</span>)-(<span class="number">11</span>,<span class="number">5</span>)&gt; (<span class="symbol">catch:</span> FALSE)</span><br><span class="line"><span class="number">0000</span> putobject                              <span class="number">9</span>                         (  <span class="number">10</span>)[LiCa]</span><br><span class="line"><span class="number">0002</span> leave                                                            (  <span class="number">11</span>)[Re]</span><br></pre></td></tr></table></figure>
+
+<h3 id="调用方式"><a href="#调用方式" class="headerlink" title="调用方式"></a>调用方式</h3><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0011</span> putself                                                          (   <span class="number">9</span>)[Li]</span><br><span class="line"><span class="number">0012</span> opt_send_without_block                 &lt;calldata!<span class="symbol">mid:</span>f1, <span class="symbol">argc:</span><span class="number">0</span>, FCALL<span class="params">|VCALL|</span>ARGS_SIMPLE&gt;</span><br></pre></td></tr></table></figure>
+
+<h2 id="定义类"><a href="#定义类" class="headerlink" title="定义类"></a>定义类</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0003</span> putspecialobject                       <span class="number">3</span>                         (   <span class="number">3</span>)[Li]</span><br><span class="line"><span class="number">0005</span> putnil</span><br><span class="line"><span class="number">0006</span> defineclass                            <span class="symbol">:S</span>, &lt;<span class="class"><span class="keyword">class</span>:<span class="title">S</span>&gt;, 0</span></span><br><span class="line"><span class="number">0010</span> pop</span><br></pre></td></tr></table></figure>
+
+<p>这里可以看到，Ruby中类也是和method一样是通过特殊的vm指令进行动态定义的</p>
+<p>编译出的类定义的内容</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">== <span class="symbol">disasm:</span> #&lt;ISeq:&lt;class:S&gt;@&lt;compiled&gt;<span class="symbol">:</span><span class="number">4</span> (<span class="number">4</span>,<span class="number">0</span>)-(<span class="number">12</span>,<span class="number">3</span>)&gt; (<span class="symbol">catch:</span> FALSE)</span><br><span class="line"><span class="number">0000</span> definemethod                           <span class="symbol">:initialize</span>, initialize   (   <span class="number">5</span>)[LiCl]</span><br><span class="line"><span class="number">0003</span> definemethod                           <span class="symbol">:f1</span>, f1                   (   <span class="number">9</span>)[Li]</span><br><span class="line"><span class="number">0006</span> putobject                              <span class="symbol">:f1</span></span><br><span class="line">0008 leave</span><br></pre></td></tr></table></figure>
+
+<h2 id="调用构造函数的全部流程流程"><a href="#调用构造函数的全部流程流程" class="headerlink" title="调用构造函数的全部流程流程"></a>调用构造函数的全部流程流程</h2><figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">0016</span> opt_getinlinecache                     <span class="number">25</span>, &lt;<span class="symbol">is:</span><span class="number">0</span>&gt;                (   <span class="number">9</span>)[Li]</span><br><span class="line">0019 putobject                              <span class="literal">true</span></span><br><span class="line"><span class="number">0021</span> getconstant                            <span class="symbol">:S</span></span><br><span class="line"><span class="number">0023</span> opt_setinlinecache                     &lt;<span class="symbol">is:</span><span class="number">0</span>&gt;</span><br><span class="line"><span class="number">0025</span> opt_send_without_block                 &lt;calldata!<span class="symbol">mid:</span>new, <span class="symbol">argc:</span><span class="number">0</span>, ARGS_SIMPLE&gt;</span><br><span class="line"><span class="number">0027</span> dup</span><br><span class="line">0028 setlocal_WC_0                          a@<span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>除去前面的优化和后面的赋值操作，可以发现new对象的时候实际调用还是在new上而不是所谓的构造函数。可以从这里一定程度的看到Ruby创建对象的实现：Ruby在创建对象的时候是会先调用隐含的new函数（继承自Object），而这个new函数的默认实现会调用allocate，之后调用对应的initialize方法，最后再将new出来的对象返回。关于这个知识点在之前做TypeStruct的时候也提及过，有兴趣的可以去看一下</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://homura.live/2022/01/09/rc-lang-dev-3/" >Rc-lang开发周记3 生成C++代码 | Homura’s Blog<i class="fas fa-external-link-alt"></i></a></p>
+<h1 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h1><p>Ruby原理剖析</p>
+<p>垃圾回收的算法与实现</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：Rc-lang开发周记5 函数其二&amp;OOP其一</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2022-01-23 11:28:49</li>
+        <li>
+            本文链接：https://homura.live/2022/01/23/rc-lang-dev/rc-lang-dev-5/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2022/01/30/rc-lang-dev/rc-lang-dev-6/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记6 OOP其二</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/01/16/rc-lang-dev/rc-lang-dev-4/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">Rc-lang开发周记4 函数其一</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2022&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E5%9C%A8VM%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.</span> <span class="nav-text">函数在VM的实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%9B%9E%E9%A1%BE"><span class="nav-number">1.1.</span> <span class="nav-text">回顾</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.2.</span> <span class="nav-text">具体实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#call"><span class="nav-number">1.2.1.</span> <span class="nav-text">call</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#return"><span class="nav-number">1.2.2.</span> <span class="nav-text">return</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#getlocal-setlocal"><span class="nav-number">1.2.3.</span> <span class="nav-text">getlocal&#x2F;setlocal</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BF%90%E7%AE%97"><span class="nav-number">1.2.4.</span> <span class="nav-text">运算</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%8E%E5%B8%B8%E8%A7%81%E7%9A%84%E7%B1%BB%E5%BC%80%E5%A7%8B"><span class="nav-number">2.</span> <span class="nav-text">从常见的类开始</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A7%A3%E6%9E%90%E6%88%90%E5%91%98"><span class="nav-number">2.1.</span> <span class="nav-text">解析成员</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%86%E9%85%8D%E5%86%85%E5%AD%98"><span class="nav-number">2.2.</span> <span class="nav-text">分配内存</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="nav-number">2.3.</span> <span class="nav-text">初始化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%94%9F%E6%88%90%E6%96%B9%E6%B3%95"><span class="nav-number">2.3.1.</span> <span class="nav-text">生成方法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E7%94%A8"><span class="nav-number">2.3.2.</span> <span class="nav-text">调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%80%E4%BA%9B%E8%AF%AD%E8%A8%80this%E7%9B%B8%E5%85%B3"><span class="nav-number">2.3.3.</span> <span class="nav-text">一些语言this相关</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%89%B9%E6%AE%8A%E6%83%85%E5%86%B5"><span class="nav-number">3.</span> <span class="nav-text">特殊情况</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%97%A0%E6%88%90%E5%91%98%E5%8F%98%E9%87%8F%E7%B1%BB"><span class="nav-number">3.1.</span> <span class="nav-text">无成员变量类</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Ruby%E7%9A%84%E7%B1%BB%E4%B8%8E%E5%87%BD%E6%95%B0"><span class="nav-number">4.</span> <span class="nav-text">Ruby的类与函数</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0%E5%92%8C%E2%80%9C%E6%99%AE%E9%80%9A%E5%87%BD%E6%95%B0%E2%80%9D"><span class="nav-number">4.1.</span> <span class="nav-text">成员函数和“普通函数”</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89%E5%AF%B9%E6%AF%94"><span class="nav-number">4.1.1.</span> <span class="nav-text">定义对比</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%B0%83%E7%94%A8%E6%96%B9%E5%BC%8F"><span class="nav-number">4.1.2.</span> <span class="nav-text">调用方式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9A%E4%B9%89%E7%B1%BB"><span class="nav-number">4.2.</span> <span class="nav-text">定义类</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B0%83%E7%94%A8%E6%9E%84%E9%80%A0%E5%87%BD%E6%95%B0%E7%9A%84%E5%85%A8%E9%83%A8%E6%B5%81%E7%A8%8B%E6%B5%81%E7%A8%8B"><span class="nav-number">4.3.</span> <span class="nav-text">调用构造函数的全部流程流程</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"><span class="nav-number">5.</span> <span class="nav-text">参考资料</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

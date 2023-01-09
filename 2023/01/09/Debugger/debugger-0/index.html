@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            调试器之工作原理 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="调试器之工作原理之前对于调试器并没有什么了解，对于很多问题也没什么头脑，比如说attach是怎么做到的，怎么实现运行时断点的。今天来简单了解一下调试器部分功能的工作原理。 断点对于调试来说第一步是要下断点。断点本质是到了指定位置后中断当前的进程，进入对应的中断处理程序。（信号的本质是软中断，这里、统一称发生了中断） 根据实现方式的不同分为如下三类。 软件断点当cpu执行了特定调试指令后会发出一个中">
+<meta property="og:type" content="article">
+<meta property="og:title" content="调试器之工作原理">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/01/09/Debugger/debugger-0/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="调试器之工作原理之前对于调试器并没有什么了解，对于很多问题也没什么头脑，比如说attach是怎么做到的，怎么实现运行时断点的。今天来简单了解一下调试器部分功能的工作原理。 断点对于调试来说第一步是要下断点。断点本质是到了指定位置后中断当前的进程，进入对应的中断处理程序。（信号的本质是软中断，这里、统一称发生了中断） 根据实现方式的不同分为如下三类。 软件断点当cpu执行了特定调试指令后会发出一个中">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-09T15:27:58.000Z">
+<meta property="article:modified_time" content="2023-01-09T15:30:36.502Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="ptrace">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">调试器之工作原理</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-01-09 23:27:58
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Debugger/">Debugger</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/ptrace/">ptrace</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.1k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>4 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <h1 id="调试器之工作原理"><a href="#调试器之工作原理" class="headerlink" title="调试器之工作原理"></a>调试器之工作原理</h1><p>之前对于调试器并没有什么了解，对于很多问题也没什么头脑，比如说attach是怎么做到的，怎么实现运行时断点的。今天来简单了解一下调试器部分功能的工作原理。</p>
+<h1 id="断点"><a href="#断点" class="headerlink" title="断点"></a>断点</h1><p>对于调试来说第一步是要下断点。断点本质是到了指定位置后中断当前的进程，进入对应的中断处理程序。（信号的本质是软中断，这里、统一称发生了中断）</p>
+<p>根据实现方式的不同分为如下三类。</p>
+<h2 id="软件断点"><a href="#软件断点" class="headerlink" title="软件断点"></a>软件断点</h2><p>当cpu执行了特定调试指令后会发出一个中断，而软件断点要做的就是在对应的pc位置“插入”断点指令，说是插入，实际上是修改原指令，触发中断后再写回。</p>
+<p>以x86的INT3指令为例，在一个位置设置断点后会保存该位置的原指令，之后在该位置写入INT3，当执行到这条指令的时候发生软中断，内核向子进程发送SIGTRAP信号，之后这个信号转发给父进程，此时再用保存的指令替换之前写入的INT3指令等待中断恢复。</p>
+<h2 id="硬件断点"><a href="#硬件断点" class="headerlink" title="硬件断点"></a>硬件断点</h2><p>某些cpu包含调试用的寄存器，通过设置对应的值来控制对应产生中断的pc位置以及一些其他信息。</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/X86_debug_register" >x86 debug register - Wikipedia<i class="fas fa-external-link-alt"></i></a></p>
+<p>cpu在执行代码之前会先确定要执行的地址是否保存在中断寄存器中，同时确认访问的地址是否处于设置了硬件断点的区域内，满足条件后会触发INT1中断。</p>
+<h2 id="内存断点"><a href="#内存断点" class="headerlink" title="内存断点"></a>内存断点</h2><p>通过设置对应内存位置所在页为guard page，对保护页访问则会触发异常，之后页面恢复访问前的状态。</p>
+<h1 id="ptrace"><a href="#ptrace" class="headerlink" title="ptrace"></a>ptrace</h1><p>Linux中我们可以直接通过ptrace来打断点、读取信息或者是单步执行等。</p>
+<p>关于ptrace的文档：<a class="link"   target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/ptrace.2.html" >https://man7.org/linux/man-pages/man2/ptrace.2.html<i class="fas fa-external-link-alt"></i></a></p>
+<h2 id="直接调试"><a href="#直接调试" class="headerlink" title="直接调试"></a>直接调试</h2><p>首先我们来看一下用法示例</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/ptrace.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;linux/user.h&gt;</span> </span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;   <span class="keyword">pid_t</span> child;</span><br><span class="line">    <span class="keyword">long</span> orig_eax;</span><br><span class="line">    child = fork();</span><br><span class="line">    <span class="keyword">if</span>(child == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">ptrace</span>(PTRACE_TRACEME, <span class="number">0</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">        <span class="built_in">execl</span>(<span class="string">&quot;/bin/ls&quot;</span>, <span class="string">&quot;ls&quot;</span>, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="built_in">wait</span>(<span class="literal">NULL</span>);</span><br><span class="line">        orig_eax = <span class="built_in">ptrace</span>(PTRACE_PEEKUSER,child, <span class="number">4</span> * ORIG_EAX,<span class="literal">NULL</span>);</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;The child made a &quot;</span><span class="string">&quot;system call %ld\n&quot;</span>, orig_eax);</span><br><span class="line">        <span class="built_in">ptrace</span>(PTRACE_CONT, child, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>被调试的程序通过ptrace(PTRACE_TRACEME)来设定自身是被trace的对象，接着通过execl来执行对应的命令行程序，此时执行的程序作为调试器的子进程。</p>
+<p>而调试器进程本身则是通过wait去等待子进程停下来，等wait返回后就可以查看子进程的信息或者对子进程进行操作。对于ptrace使用方面来说最重要的是选择合适的__ptrace_request，大多数调试器常见的功能都能通过设置这个参数来实现，比如说单步。</p>
+<p>这个项目使用ptrace实现了许多debug的基础功能</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/Kakaluoto/ptraceDebugger" >https://github.com/Kakaluoto/ptraceDebugger<i class="fas fa-external-link-alt"></i></a></p>
+<h2 id="attach"><a href="#attach" class="headerlink" title="attach"></a>attach</h2><p>通过设置__ptrace_request为PTRACE_ATTACH或者PTRACE_SEIZE还可以调试一个当前已经启动的进程。</p>
+<p>对于常规的调试和attach的本质区别自然是进程间的关系，直接调试中调试器进程和被调试进程互为父子进程，而attach时两者是独立的，也因此有的时候attch会需要管理员权限。</p>
+<h1 id="其他系统"><a href="#其他系统" class="headerlink" title="其他系统"></a>其他系统</h1><p>以上ptrace的实现都是基于Linux的api来讲的，macOS的ptrace的request缺少非常多基本功能，比如说读取寄存器的值。如果想要在mac下实现可以参考如下链接，如果是arm的Mac则这里很多接口仍然过时。（我反正不想折腾了，有这时间多看下Linux的不香吗）</p>
+<p><a class="link"   target="_blank" rel="noopener" href="http://uninformed.org/index.cgi?v=4&a=3&p=14" >Uninformed - vol 4 article 3<i class="fas fa-external-link-alt"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://www.spaceflint.com/?p=150" >Using ptrace on OS X<i class="fas fa-external-link-alt"></i></a></p>
+<p>而对于windows来说则是提供了另一套完全不同的api，有兴趣的可以自行了解。</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-engine-and-extension-apis" >Debugger Programming Extension APIs - Windows drivers<i class="fas fa-external-link-alt"></i></a></p>
+<h1 id="后续"><a href="#后续" class="headerlink" title="后续"></a>后续</h1><p>这一期的内容都是一些非常容易搜到的基础知识，如果不鸽的话调试器后面会继续深入学习，造一个自己的debugger之类的。大概也会作为一个系列更新，可能深入的方向有如下几个</p>
+<ol>
+<li>ptrace的具体实现细节代码</li>
+<li>debug信息的格式以及源码级调试</li>
+<li>lldb的学习</li>
+</ol>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：调试器之工作原理</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-01-09 23:27:58</li>
+        <li>
+            本文链接：https://homura.live/2023/01/09/Debugger/debugger-0/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2022/12/31/Summary/summary-2022/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">2022年终总结</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E5%99%A8%E4%B9%8B%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">调试器之工作原理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%AD%E7%82%B9"><span class="nav-number">2.</span> <span class="nav-text">断点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BD%AF%E4%BB%B6%E6%96%AD%E7%82%B9"><span class="nav-number">2.1.</span> <span class="nav-text">软件断点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A1%AC%E4%BB%B6%E6%96%AD%E7%82%B9"><span class="nav-number">2.2.</span> <span class="nav-text">硬件断点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%96%AD%E7%82%B9"><span class="nav-number">2.3.</span> <span class="nav-text">内存断点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ptrace"><span class="nav-number">3.</span> <span class="nav-text">ptrace</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B4%E6%8E%A5%E8%B0%83%E8%AF%95"><span class="nav-number">3.1.</span> <span class="nav-text">直接调试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#attach"><span class="nav-number">3.2.</span> <span class="nav-text">attach</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E7%B3%BB%E7%BB%9F"><span class="nav-number">4.</span> <span class="nav-text">其他系统</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%8E%E7%BB%AD"><span class="nav-number">5.</span> <span class="nav-text">后续</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -6,7 +6,7 @@
   <link href="https://fusionbolt.github.io/atom.xml" rel="self"/>
   
   <link href="https://fusionbolt.github.io/"/>
-  <updated>2023-01-09T15:30:36.502Z</updated>
+  <updated>2023-01-17T12:27:42.292Z</updated>
   <id>https://fusionbolt.github.io/</id>
   
   <author>
@@ -15,6 +15,31 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>链接器起始篇</title>
+    <link href="https://fusionbolt.github.io/2023/01/17/linker/linker-init/"/>
+    <id>https://fusionbolt.github.io/2023/01/17/linker/linker-init/</id>
+    <published>2023-01-17T12:31:34.000Z</published>
+    <updated>2023-01-17T12:27:42.292Z</updated>
+    
+    <content type="html"><![CDATA[<p><img                       lazyload                     src="/images/loading.svg"                     data-src="/images/linker-init/Untitled.jpeg"                      alt="Untitled"                ></p><p>又开始不务正业乱开新坑了。接下来会通过阅读mold的源码来学习如何实现一个ELF链接器，有精力也会再跟着plct的这个课程学习实现一个简单的RV ELF链接器，可能会跟着将代码换一门语言翻译一遍，将这个学习过程中遇到的知识点记录到博客中。如果坑能开到后面的话我还会针对这门课程实现的链接器在功能上与mold的进行比较，一门教学用的链接器和真正实用的链接器在功能上有哪些差别。</p><p><a class="link"   href="https://github.com/rui314/mold" >https://github.com/rui314/mold<i class="fas fa-external-link-alt"></i></a></p><p><a class="link"   href="https://ksco.cc/rvld/" >index<i class="fas fa-external-link-alt"></i></a></p><p>从未了解过链接器实现的我，在跟着mold源码和这门课程之前，先来写一下根据我现有的知识去设想一个链接器内部应该大致有哪些功能。（本期内容不是教程，只是我个人对知识的回忆，因此很多地方都会缺很多东西）同时回忆过后对比检查理解的问题，在差不多理解整体运作过程的情况下学习会更有效一些。</p><h1 id="链接器做了什么"><a href="#链接器做了什么" class="headerlink" title="链接器做了什么"></a>链接器做了什么</h1><ol><li>链接器做的事情是将多个编译器生成的目标文件的内容合到一起</li><li>处理符号。在编译期间要求编译生成的目标文件中每个符号小于等于一个定义，在链接的时候链接器负责找到未定义的符号的地址，重复符号的解决（如果是弱符号则根据规则选取其中一个定义，如果非弱符号则需要报错）</li></ol><h1 id="目标文件"><a href="#目标文件" class="headerlink" title="目标文件"></a>目标文件</h1><p>要合并目标文件那么我们要知道目标文件的内容是什么样的（这里我们仅探讨ELF的格式）。先不查阅文档，想一下目标文件大概会有什么内容。</p><h2 id="段"><a href="#段" class="headerlink" title="段"></a>段</h2><p>首先是对于我们写代码的时候经常提到的一些段，比如说代码段、数据段、BSS段、堆、栈等等。这些段本身只是一串数据，那么我们需要一个位置存放起始位置和数据长度。而其中的各种段名以及各种符号名也需要一个位置保存，因此目标文件中还需要有一个符号段用于保存各种用于链接使用的符号。（strip是否就是去掉这里）我们知道debug模式生成的代码包含debug信息，而这些信息对于elf来说是写在内部的，因此里面还需要有保存调试信息的段。</p><h2 id="文件头"><a href="#文件头" class="headerlink" title="文件头"></a>文件头</h2><p>类似于段段起始和长度这种</p><p>寻找保存具体信息的信息需要放到一个文件头中，除此之外文件头中还需要一些魔数来标识文件类型。</p><h2 id="符号表"><a href="#符号表" class="headerlink" title="符号表"></a>符号表</h2><p>保存所有代码中符号的相关信息（而不是段名的符号），最容易想到的就是地址，其次上面提到了符号的强弱。</p><h1 id="行为控制"><a href="#行为控制" class="headerlink" title="行为控制"></a>行为控制</h1><p>而更精细控制这些行为的方式一个是命令行参数，另一个是链接脚本。由于系统中内置了默认的链接脚本，我们日常很少会接触到这些。读取链接脚本也是链接器很重要的一个功能。</p><h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>回顾下来，链接器主要的功能如下</p><ol><li>读取目标文件ELF文件头</li><li>读取链接脚本并且按照链接脚本控制链接行为</li><li>符号解析</li><li>合并段</li><li>生成对应的ELF文件</li></ol><p>而plct课程的大纲如下</p><p>第一课：搭建开发环境、初始化项目、开始读取 ELF 文件</p><p>第二课：继续读取 ELF 文件</p><p>第三课：解析链接器参数</p><p>第四课：解析静态链接库文件</p><p>第五课：解析未定义符号，移除未使用文件</p><p>第六课：处理 Mergeable Sections</p><p>第七课：开始写文件</p><p>第八课：处理 Output Sections</p><p>第九课：继续处理 Output Sections</p><p>第十课：Phdr 和 Merged Sections</p><p>第十一课：处理重定向，课程回顾</p><p>可以说做的功能大致类似，之后就会先从mold的源码开始开新系列了。</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;&lt;img  
+                     lazyload
+                     src=&quot;/images/loading.svg&quot;
+                     data-src=&quot;/images/linker-init/Un</summary>
+      
+    
+    
+    
+    <category term="Linker" scheme="https://fusionbolt.github.io/categories/Linker/"/>
+    
+    
+  </entry>
   
   <entry>
     <title>调试器之工作原理</title>
@@ -521,31 +546,6 @@
     
     
     <category term="Podcast" scheme="https://fusionbolt.github.io/tags/Podcast/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Rc-lang开发周记 一些变动</title>
-    <link href="https://fusionbolt.github.io/2022/05/15/rc-lang-dev/rc-lang-change/"/>
-    <id>https://fusionbolt.github.io/2022/05/15/rc-lang-dev/rc-lang-change/</id>
-    <published>2022-05-15T14:42:50.000Z</published>
-    <updated>2022-05-15T14:44:21.653Z</updated>
-    
-    <content type="html"><![CDATA[<p>关于开发周记周更这件事情现在继续做的必要性我开始产生了疑问。</p><p>首先我写这个一方面是为了养成写博客的习惯，另一方面则是为了促进我形成写代码的习惯。然而随着我不断的做这样的事情，需要学习分析其他编译器实现的次数越来越多。这并非是因为我不继续做下去而要放弃，反而是我想要更好的做这件事情。这些分析的结果我更倾向于转换为其他系列的博客，因此我决定不再周更开发周记。</p><p>当然并不是说后面完全不更新了，如果我代码开始写新的内容一定会更新的，同时之后写的新内容一定会关联到对应一期分析的博客。至于分析的内容，当我了解完成一个阶段以后会对这些内容进行一个整理并且发布到我的博客。更新频率未必会周更，视我学习的进度而定，主要是想要尽可能保证内容的完整与连贯，有一些内容还是放在一起写会比较合适。</p>]]></content>
-    
-    
-      
-      
-    <summary type="html">&lt;p&gt;关于开发周记周更这件事情现在继续做的必要性我开始产生了疑问。&lt;/p&gt;
-&lt;p&gt;首先我写这个一方面是为了养成写博客的习惯，另一方面则是为了促进我形成写代码的习惯。然而随着我不断的做这样的事情，需要学习分析其他编译器实现的次数越来越多。这并非是因为我不继续做下去而要放弃，反而是我</summary>
-      
-    
-    
-    
-    <category term="Compiler" scheme="https://fusionbolt.github.io/categories/Compiler/"/>
-    
-    
-    <category term="Rc-lang" scheme="https://fusionbolt.github.io/tags/Rc-lang/"/>
     
   </entry>
   

@@ -9,7 +9,7 @@
     
     <title>
         
-            调试器之工作原理 |
+            链接器起始篇 |
         
         Homura&#39;s Blog
     </title>
@@ -26,18 +26,19 @@
     KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
     KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
   </script>
-    <meta name="description" content="调试器之工作原理之前对于调试器并没有什么了解，对于很多问题也没什么头脑，比如说attach是怎么做到的，怎么实现运行时断点的。今天来简单了解一下调试器部分功能的工作原理。 断点对于调试来说第一步是要下断点。断点本质是到了指定位置后中断当前的进程，进入对应的中断处理程序。（信号的本质是软中断，这里、统一称发生了中断） 根据实现方式的不同分为如下三类。 软件断点当cpu执行了特定调试指令后会发出一个中">
+    <meta name="description" content="又开始不务正业乱开新坑了。接下来会通过阅读mold的源码来学习如何实现一个ELF链接器，有精力也会再跟着plct的这个课程学习实现一个简单的RV ELF链接器，可能会跟着将代码换一门语言翻译一遍，将这个学习过程中遇到的知识点记录到博客中。如果坑能开到后面的话我还会针对这门课程实现的链接器在功能上与mold的进行比较，一门教学用的链接器和真正实用的链接器在功能上有哪些差别。 https:&#x2F;&#x2F;git">
 <meta property="og:type" content="article">
-<meta property="og:title" content="调试器之工作原理">
-<meta property="og:url" content="https://fusionbolt.github.io/2023/01/09/Debugger/debugger-0/index.html">
+<meta property="og:title" content="链接器起始篇">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/01/17/linker/linker-init/index.html">
 <meta property="og:site_name" content="Homura&#39;s Blog">
-<meta property="og:description" content="调试器之工作原理之前对于调试器并没有什么了解，对于很多问题也没什么头脑，比如说attach是怎么做到的，怎么实现运行时断点的。今天来简单了解一下调试器部分功能的工作原理。 断点对于调试来说第一步是要下断点。断点本质是到了指定位置后中断当前的进程，进入对应的中断处理程序。（信号的本质是软中断，这里、统一称发生了中断） 根据实现方式的不同分为如下三类。 软件断点当cpu执行了特定调试指令后会发出一个中">
+<meta property="og:description" content="又开始不务正业乱开新坑了。接下来会通过阅读mold的源码来学习如何实现一个ELF链接器，有精力也会再跟着plct的这个课程学习实现一个简单的RV ELF链接器，可能会跟着将代码换一门语言翻译一遍，将这个学习过程中遇到的知识点记录到博客中。如果坑能开到后面的话我还会针对这门课程实现的链接器在功能上与mold的进行比较，一门教学用的链接器和真正实用的链接器在功能上有哪些差别。 https:&#x2F;&#x2F;git">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2023-01-09T15:27:58.000Z">
-<meta property="article:modified_time" content="2023-01-09T15:30:36.502Z">
+<meta property="og:image" content="https://fusionbolt.github.io/images/linker-init/Untitled.jpeg">
+<meta property="article:published_time" content="2023-01-17T12:31:34.000Z">
+<meta property="article:modified_time" content="2023-01-17T12:27:42.292Z">
 <meta property="article:author" content="Homura">
-<meta property="article:tag" content="ptrace">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/linker-init/Untitled.jpeg">
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
@@ -214,7 +215,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">调试器之工作原理</span>
+            <span class="title-hover-animation">链接器起始篇</span>
         </div>
 
         
@@ -232,7 +233,7 @@
                     <div class="meta-info">
                         <div class="article-meta-info">
     <span class="article-date article-meta-item">
-        <i class="fas fa-edit"></i>&nbsp;2023-01-09 23:27:58
+        <i class="fas fa-edit"></i>&nbsp;2023-01-17 20:31:34
     </span>
     
         <span class="article-categories article-meta-item">
@@ -240,23 +241,12 @@
             <ul>
                 
                     <li>
-                        <a href="/categories/Debugger/">Debugger</a>&nbsp;
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
                     </li>
                 
             </ul>
         </span>
     
-    
-        <span class="article-tags article-meta-item">
-            <i class="fas fa-tags"></i>&nbsp;
-            <ul>
-                
-                    <li>
-                        <a href="/tags/ptrace/">ptrace</a>&nbsp;
-                    </li>
-                
-            </ul>
-        </span>
     
 
     
@@ -267,7 +257,7 @@
     
     
         <span class="article-min2read article-meta-item">
-            <i class="fas fa-clock"></i>&nbsp;<span>4 分钟</span>
+            <i class="fas fa-clock"></i>&nbsp;<span>3 分钟</span>
         </span>
     
     
@@ -283,37 +273,47 @@
         
 
         <div class="article-content markdown-body">
-            <h1 id="调试器之工作原理"><a href="#调试器之工作原理" class="headerlink" title="调试器之工作原理"></a>调试器之工作原理</h1><p>之前对于调试器并没有什么了解，对于很多问题也没什么头脑，比如说attach是怎么做到的，怎么实现运行时断点的。今天来简单了解一下调试器部分功能的工作原理。</p>
-<h1 id="断点"><a href="#断点" class="headerlink" title="断点"></a>断点</h1><p>对于调试来说第一步是要下断点。断点本质是到了指定位置后中断当前的进程，进入对应的中断处理程序。（信号的本质是软中断，这里、统一称发生了中断）</p>
-<p>根据实现方式的不同分为如下三类。</p>
-<h2 id="软件断点"><a href="#软件断点" class="headerlink" title="软件断点"></a>软件断点</h2><p>当cpu执行了特定调试指令后会发出一个中断，而软件断点要做的就是在对应的pc位置“插入”断点指令，说是插入，实际上是修改原指令，触发中断后再写回。</p>
-<p>以x86的INT3指令为例，在一个位置设置断点后会保存该位置的原指令，之后在该位置写入INT3，当执行到这条指令的时候发生软中断，内核向子进程发送SIGTRAP信号，之后这个信号转发给父进程，此时再用保存的指令替换之前写入的INT3指令等待中断恢复。</p>
-<h2 id="硬件断点"><a href="#硬件断点" class="headerlink" title="硬件断点"></a>硬件断点</h2><p>某些cpu包含调试用的寄存器，通过设置对应的值来控制对应产生中断的pc位置以及一些其他信息。</p>
-<p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/X86_debug_register" >x86 debug register - Wikipedia<i class="fas fa-external-link-alt"></i></a></p>
-<p>cpu在执行代码之前会先确定要执行的地址是否保存在中断寄存器中，同时确认访问的地址是否处于设置了硬件断点的区域内，满足条件后会触发INT1中断。</p>
-<h2 id="内存断点"><a href="#内存断点" class="headerlink" title="内存断点"></a>内存断点</h2><p>通过设置对应内存位置所在页为guard page，对保护页访问则会触发异常，之后页面恢复访问前的状态。</p>
-<h1 id="ptrace"><a href="#ptrace" class="headerlink" title="ptrace"></a>ptrace</h1><p>Linux中我们可以直接通过ptrace来打断点、读取信息或者是单步执行等。</p>
-<p>关于ptrace的文档：<a class="link"   target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/ptrace.2.html" >https://man7.org/linux/man-pages/man2/ptrace.2.html<i class="fas fa-external-link-alt"></i></a></p>
-<h2 id="直接调试"><a href="#直接调试" class="headerlink" title="直接调试"></a>直接调试</h2><p>首先我们来看一下用法示例</p>
-<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/ptrace.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/types.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/wait.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;unistd.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;linux/user.h&gt;</span> </span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;   <span class="keyword">pid_t</span> child;</span><br><span class="line">    <span class="keyword">long</span> orig_eax;</span><br><span class="line">    child = fork();</span><br><span class="line">    <span class="keyword">if</span>(child == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">ptrace</span>(PTRACE_TRACEME, <span class="number">0</span>, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">        <span class="built_in">execl</span>(<span class="string">&quot;/bin/ls&quot;</span>, <span class="string">&quot;ls&quot;</span>, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="built_in">wait</span>(<span class="literal">NULL</span>);</span><br><span class="line">        orig_eax = <span class="built_in">ptrace</span>(PTRACE_PEEKUSER,child, <span class="number">4</span> * ORIG_EAX,<span class="literal">NULL</span>);</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;The child made a &quot;</span><span class="string">&quot;system call %ld\n&quot;</span>, orig_eax);</span><br><span class="line">        <span class="built_in">ptrace</span>(PTRACE_CONT, child, <span class="literal">NULL</span>, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>被调试的程序通过ptrace(PTRACE_TRACEME)来设定自身是被trace的对象，接着通过execl来执行对应的命令行程序，此时执行的程序作为调试器的子进程。</p>
-<p>而调试器进程本身则是通过wait去等待子进程停下来，等wait返回后就可以查看子进程的信息或者对子进程进行操作。对于ptrace使用方面来说最重要的是选择合适的__ptrace_request，大多数调试器常见的功能都能通过设置这个参数来实现，比如说单步。</p>
-<p>这个项目使用ptrace实现了许多debug的基础功能</p>
-<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/Kakaluoto/ptraceDebugger" >https://github.com/Kakaluoto/ptraceDebugger<i class="fas fa-external-link-alt"></i></a></p>
-<h2 id="attach"><a href="#attach" class="headerlink" title="attach"></a>attach</h2><p>通过设置__ptrace_request为PTRACE_ATTACH或者PTRACE_SEIZE还可以调试一个当前已经启动的进程。</p>
-<p>对于常规的调试和attach的本质区别自然是进程间的关系，直接调试中调试器进程和被调试进程互为父子进程，而attach时两者是独立的，也因此有的时候attch会需要管理员权限。</p>
-<h1 id="其他系统"><a href="#其他系统" class="headerlink" title="其他系统"></a>其他系统</h1><p>以上ptrace的实现都是基于Linux的api来讲的，macOS的ptrace的request缺少非常多基本功能，比如说读取寄存器的值。如果想要在mac下实现可以参考如下链接，如果是arm的Mac则这里很多接口仍然过时。（我反正不想折腾了，有这时间多看下Linux的不香吗）</p>
-<p><a class="link"   target="_blank" rel="noopener" href="http://uninformed.org/index.cgi?v=4&a=3&p=14" >Uninformed - vol 4 article 3<i class="fas fa-external-link-alt"></i></a></p>
-<p><a class="link"   target="_blank" rel="noopener" href="https://www.spaceflint.com/?p=150" >Using ptrace on OS X<i class="fas fa-external-link-alt"></i></a></p>
-<p>而对于windows来说则是提供了另一套完全不同的api，有兴趣的可以自行了解。</p>
-<p><a class="link"   target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-engine-and-extension-apis" >Debugger Programming Extension APIs - Windows drivers<i class="fas fa-external-link-alt"></i></a></p>
-<h1 id="后续"><a href="#后续" class="headerlink" title="后续"></a>后续</h1><p>这一期的内容都是一些非常容易搜到的基础知识，如果不鸽的话调试器后面会继续深入学习，造一个自己的debugger之类的。大概也会作为一个系列更新，可能深入的方向有如下几个</p>
-<ol>
-<li>ptrace的具体实现细节代码</li>
-<li>debug信息的格式以及源码级调试</li>
-<li>lldb的学习</li>
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/linker-init/Untitled.jpeg"
+                      alt="Untitled"
+                ></p>
+<p>又开始不务正业乱开新坑了。接下来会通过阅读mold的源码来学习如何实现一个ELF链接器，有精力也会再跟着plct的这个课程学习实现一个简单的RV ELF链接器，可能会跟着将代码换一门语言翻译一遍，将这个学习过程中遇到的知识点记录到博客中。如果坑能开到后面的话我还会针对这门课程实现的链接器在功能上与mold的进行比较，一门教学用的链接器和真正实用的链接器在功能上有哪些差别。</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/rui314/mold" >https://github.com/rui314/mold<i class="fas fa-external-link-alt"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://ksco.cc/rvld/" >index<i class="fas fa-external-link-alt"></i></a></p>
+<p>从未了解过链接器实现的我，在跟着mold源码和这门课程之前，先来写一下根据我现有的知识去设想一个链接器内部应该大致有哪些功能。（本期内容不是教程，只是我个人对知识的回忆，因此很多地方都会缺很多东西）同时回忆过后对比检查理解的问题，在差不多理解整体运作过程的情况下学习会更有效一些。</p>
+<h1 id="链接器做了什么"><a href="#链接器做了什么" class="headerlink" title="链接器做了什么"></a>链接器做了什么</h1><ol>
+<li>链接器做的事情是将多个编译器生成的目标文件的内容合到一起</li>
+<li>处理符号。在编译期间要求编译生成的目标文件中每个符号小于等于一个定义，在链接的时候链接器负责找到未定义的符号的地址，重复符号的解决（如果是弱符号则根据规则选取其中一个定义，如果非弱符号则需要报错）</li>
 </ol>
+<h1 id="目标文件"><a href="#目标文件" class="headerlink" title="目标文件"></a>目标文件</h1><p>要合并目标文件那么我们要知道目标文件的内容是什么样的（这里我们仅探讨ELF的格式）。先不查阅文档，想一下目标文件大概会有什么内容。</p>
+<h2 id="段"><a href="#段" class="headerlink" title="段"></a>段</h2><p>首先是对于我们写代码的时候经常提到的一些段，比如说代码段、数据段、BSS段、堆、栈等等。这些段本身只是一串数据，那么我们需要一个位置存放起始位置和数据长度。而其中的各种段名以及各种符号名也需要一个位置保存，因此目标文件中还需要有一个符号段用于保存各种用于链接使用的符号。（strip是否就是去掉这里）我们知道debug模式生成的代码包含debug信息，而这些信息对于elf来说是写在内部的，因此里面还需要有保存调试信息的段。</p>
+<h2 id="文件头"><a href="#文件头" class="headerlink" title="文件头"></a>文件头</h2><p>类似于段段起始和长度这种</p>
+<p>寻找保存具体信息的信息需要放到一个文件头中，除此之外文件头中还需要一些魔数来标识文件类型。</p>
+<h2 id="符号表"><a href="#符号表" class="headerlink" title="符号表"></a>符号表</h2><p>保存所有代码中符号的相关信息（而不是段名的符号），最容易想到的就是地址，其次上面提到了符号的强弱。</p>
+<h1 id="行为控制"><a href="#行为控制" class="headerlink" title="行为控制"></a>行为控制</h1><p>而更精细控制这些行为的方式一个是命令行参数，另一个是链接脚本。由于系统中内置了默认的链接脚本，我们日常很少会接触到这些。读取链接脚本也是链接器很重要的一个功能。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>回顾下来，链接器主要的功能如下</p>
+<ol>
+<li>读取目标文件ELF文件头</li>
+<li>读取链接脚本并且按照链接脚本控制链接行为</li>
+<li>符号解析</li>
+<li>合并段</li>
+<li>生成对应的ELF文件</li>
+</ol>
+<p>而plct课程的大纲如下</p>
+<p>第一课：搭建开发环境、初始化项目、开始读取 ELF 文件</p>
+<p>第二课：继续读取 ELF 文件</p>
+<p>第三课：解析链接器参数</p>
+<p>第四课：解析静态链接库文件</p>
+<p>第五课：解析未定义符号，移除未使用文件</p>
+<p>第六课：处理 Mergeable Sections</p>
+<p>第七课：开始写文件</p>
+<p>第八课：处理 Output Sections</p>
+<p>第九课：继续处理 Output Sections</p>
+<p>第十课：Phdr 和 Merged Sections</p>
+<p>第十一课：处理重定向，课程回顾</p>
+<p>可以说做的功能大致类似，之后就会先从mold的源码开始开新系列了。</p>
 
         </div>
 
@@ -321,11 +321,11 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：调试器之工作原理</li>
+        <li>本文标题：链接器起始篇</li>
         <li>本文作者：Homura</li>
-        <li>创建时间：2023-01-09 23:27:58</li>
+        <li>创建时间：2023-01-17 20:31:34</li>
         <li>
-            本文链接：https://homura.live/2023/01/09/Debugger/debugger-0/
+            本文链接：https://homura.live/2023/01/17/linker/linker-init/
         </li>
         <li>
             版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
@@ -339,29 +339,14 @@
         
             <div class="article-nav">
                 
-                    <div class="article-prev">
-                        <a class="prev"
-                           rel="prev"
-                           href="/2023/01/17/linker/linker-init/"
-                        >
-                            <span class="left arrow-icon flex-center">
-                              <i class="fas fa-chevron-left"></i>
-                            </span>
-                            <span class="title flex-center">
-                                <span class="post-nav-title-item">链接器起始篇</span>
-                                <span class="post-nav-item">上一篇</span>
-                            </span>
-                        </a>
-                    </div>
-                
                 
                     <div class="article-next">
                         <a class="next"
                            rel="next"
-                           href="/2022/12/31/Summary/summary-2022/"
+                           href="/2023/01/09/Debugger/debugger-0/"
                         >
                             <span class="title flex-center">
-                                <span class="post-nav-title-item">2022年终总结</span>
+                                <span class="post-nav-title-item">调试器之工作原理</span>
                                 <span class="post-nav-item">下一篇</span>
                             </span>
                             <span class="right arrow-icon flex-center">
@@ -493,7 +478,7 @@
         <aside class="page-aside">
             <div class="post-toc-wrap">
     <div class="post-toc">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B0%83%E8%AF%95%E5%99%A8%E4%B9%8B%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">调试器之工作原理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%96%AD%E7%82%B9"><span class="nav-number">2.</span> <span class="nav-text">断点</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BD%AF%E4%BB%B6%E6%96%AD%E7%82%B9"><span class="nav-number">2.1.</span> <span class="nav-text">软件断点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A1%AC%E4%BB%B6%E6%96%AD%E7%82%B9"><span class="nav-number">2.2.</span> <span class="nav-text">硬件断点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E6%96%AD%E7%82%B9"><span class="nav-number">2.3.</span> <span class="nav-text">内存断点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ptrace"><span class="nav-number">3.</span> <span class="nav-text">ptrace</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B4%E6%8E%A5%E8%B0%83%E8%AF%95"><span class="nav-number">3.1.</span> <span class="nav-text">直接调试</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#attach"><span class="nav-number">3.2.</span> <span class="nav-text">attach</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E7%B3%BB%E7%BB%9F"><span class="nav-number">4.</span> <span class="nav-text">其他系统</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%8E%E7%BB%AD"><span class="nav-number">5.</span> <span class="nav-text">后续</span></a></li></ol>
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%93%BE%E6%8E%A5%E5%99%A8%E5%81%9A%E4%BA%86%E4%BB%80%E4%B9%88"><span class="nav-number">1.</span> <span class="nav-text">链接器做了什么</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%9B%AE%E6%A0%87%E6%96%87%E4%BB%B6"><span class="nav-number">2.</span> <span class="nav-text">目标文件</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AE%B5"><span class="nav-number">2.1.</span> <span class="nav-text">段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%87%E4%BB%B6%E5%A4%B4"><span class="nav-number">2.2.</span> <span class="nav-text">文件头</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E8%A1%A8"><span class="nav-number">2.3.</span> <span class="nav-text">符号表</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%A1%8C%E4%B8%BA%E6%8E%A7%E5%88%B6"><span class="nav-number">3.</span> <span class="nav-text">行为控制</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li></ol>
     </div>
 </div>
         </aside>

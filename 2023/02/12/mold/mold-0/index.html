@@ -36,7 +36,7 @@
 <meta property="og:image" content="https://fusionbolt.github.io/images/mold-0/FWlv3FsaMAAdSs2-20230212221048408.jpeg">
 <meta property="og:image" content="https://fusionbolt.github.io/images/mold-0/Untitled.png">
 <meta property="article:published_time" content="2023-02-12T14:06:32.000Z">
-<meta property="article:modified_time" content="2023-02-12T14:12:06.463Z">
+<meta property="article:modified_time" content="2023-02-19T05:33:14.192Z">
 <meta property="article:author" content="Homura">
 <meta property="article:tag" content="mold">
 <meta name="twitter:card" content="summary">
@@ -310,12 +310,12 @@
                      data-src="/images/mold-0/Untitled.png"
                       alt="Untitled"
                 ></p>
-<p>在这之中有两个作为主线的文件: main.cc和passes</p>
+<p>在这之中有两个作为主线的文件: main.cc和passes.cc</p>
 <p>实际执行链接的主要流程都存放在main.cc的elf_main中，而这个过程执行的代码大多会指向passes.cc中的函数。不同目标arch的文件都用相应的文件名区分开了，以及其他的文件看名字也相对比较易懂。</p>
 <h1 id="链接前的准备流程"><a href="#链接前的准备流程" class="headerlink" title="链接前的准备流程"></a>链接前的准备流程</h1><p>main.cc</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span> </span>&#123;</span><br><span class="line">  mold::mold_version = mold::<span class="built_in">get_mold_version</span>();</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> MOLD_IS_SOLD</span></span><br><span class="line">  std::string cmd = mold::<span class="built_in">filepath</span>(argv[<span class="number">0</span>]).<span class="built_in">filename</span>().<span class="built_in">string</span>();</span><br><span class="line">  <span class="keyword">if</span> (cmd == <span class="string">&quot;ld64&quot;</span> || cmd == <span class="string">&quot;ld64.mold&quot;</span>)</span><br><span class="line">    <span class="keyword">return</span> mold::macho::<span class="built_in">main</span>(argc, argv);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> mold::elf::<span class="built_in">main</span>(argc, argv);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>elf/main.cpp</p>
+<p>elf/main.cc</p>
 <p>默认采用了X86_64</p>
 <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> elf_main&lt;X86_64&gt;(argc, argv);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
@@ -377,7 +377,7 @@
                     <div class="article-prev">
                         <a class="prev"
                            rel="prev"
-                           href="/2023/02/18/psychological-counseling/"
+                           href="/2023/02/18/Life/psychological-counseling/"
                         >
                             <span class="left arrow-icon flex-center">
                               <i class="fas fa-chevron-left"></i>

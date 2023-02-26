@@ -9,7 +9,7 @@
     
     <title>
         
-            mold源码阅读 其一 |
+            mold源码阅读 其一 读取输入文件 |
         
         Homura&#39;s Blog
     </title>
@@ -28,8 +28,8 @@
   </script>
     <meta name="description" content="上一期主要讲了链接前的一些准备流程以及在mold中链接过程的简单介绍。这期开始我们从链接过程中的功能开始介绍。在开始之前，提前说明一下里面各种缩写有很多，我会在第一次出现时提及缩写具体含义是什么，如果后期更的期数比较多会考虑专门写一页缩写的参考，方便查阅。 首先是解析输入，命令行参数解析的细节略过，但是这里不能略过elf文件的解析。我们从代码的实现去看elf的结构，再和文档中的图进行对比，同时尽可">
 <meta property="og:type" content="article">
-<meta property="og:title" content="mold源码阅读 其一">
-<meta property="og:url" content="https://fusionbolt.github.io/2023/02/26/mold-1-read-input-files/index.html">
+<meta property="og:title" content="mold源码阅读 其一 读取输入文件">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/02/26/mold/mold-1-read-input-files/index.html">
 <meta property="og:site_name" content="Homura&#39;s Blog">
 <meta property="og:description" content="上一期主要讲了链接前的一些准备流程以及在mold中链接过程的简单介绍。这期开始我们从链接过程中的功能开始介绍。在开始之前，提前说明一下里面各种缩写有很多，我会在第一次出现时提及缩写具体含义是什么，如果后期更的期数比较多会考虑专门写一页缩写的参考，方便查阅。 首先是解析输入，命令行参数解析的细节略过，但是这里不能略过elf文件的解析。我们从代码的实现去看elf的结构，再和文档中的图进行对比，同时尽可">
 <meta property="og:locale" content="zh_CN">
@@ -40,7 +40,7 @@
 <meta property="og:image" content="https://fusionbolt.github.io/images/mold-1-read-input-files/Untitled%203.png">
 <meta property="og:image" content="https://fusionbolt.github.io/images/mold-1-read-input-files/Untitled%204.png">
 <meta property="article:published_time" content="2023-02-26T09:40:55.000Z">
-<meta property="article:modified_time" content="2023-02-26T09:40:43.106Z">
+<meta property="article:modified_time" content="2023-02-26T09:45:10.272Z">
 <meta property="article:author" content="Homura">
 <meta property="article:tag" content="mold">
 <meta name="twitter:card" content="summary">
@@ -221,7 +221,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">mold源码阅读 其一</span>
+            <span class="title-hover-animation">mold源码阅读 其一 读取输入文件</span>
         </div>
 
         
@@ -547,11 +547,11 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：mold源码阅读 其一</li>
+        <li>本文标题：mold源码阅读 其一 读取输入文件</li>
         <li>本文作者：Homura</li>
         <li>创建时间：2023-02-26 17:40:55</li>
         <li>
-            本文链接：https://homura.live/2023/02/26/mold-1-read-input-files/
+            本文链接：https://homura.live/2023/02/26/mold/mold-1-read-input-files/
         </li>
         <li>
             版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！

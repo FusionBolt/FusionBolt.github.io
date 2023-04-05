@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读 其二 读取SharedFile |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="70054356   这期的内容主要是讲完读取输入的部分，有一些之前遗漏的信息，以及之前未讲完的初始化ehframe以及shared object读取的部分。有许多地方默认读者读过上期内容，建议先阅读上期内容后再来查看本期。 https:&#x2F;&#x2F;homura.live&#x2F;2023&#x2F;02&#x2F;26&#x2F;mold&#x2F;mold-1-read-input-files&#x2F; ObjectFileget_string之前在读取">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读 其二 读取SharedFile">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/04/05/mold/mold-2-read-shared-files/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="70054356   这期的内容主要是讲完读取输入的部分，有一些之前遗漏的信息，以及之前未讲完的初始化ehframe以及shared object读取的部分。有许多地方默认读者读过上期内容，建议先阅读上期内容后再来查看本期。 https:&#x2F;&#x2F;homura.live&#x2F;2023&#x2F;02&#x2F;26&#x2F;mold&#x2F;mold-1-read-input-files&#x2F; ObjectFileget_string之前在读取">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-2-read-shared-files/Untitled.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-2-read-shared-files/Untitled%201.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-2-read-shared-files/Untitled%202.png">
+<meta property="article:published_time" content="2023-04-05T08:35:27.000Z">
+<meta property="article:modified_time" content="2023-04-05T08:39:17.119Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta property="article:tag" content="eh_frame">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-2-read-shared-files/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读 其二 读取SharedFile</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        .article-meta-info {
+  font-size: 0.8rem;
+  color: var(--third-text-color);
+
+  .article-meta-item {
+    margin-right: 10px;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+
+
+  .article-tags, .article-categories {
+    display: inline;
+
+    ul, li {
+      display: inline;
+    }
+
+    a {
+      color: var(--third-text-color);
+
+      &:hover {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+
+  .article-wordcount, .article-tags {
+    +keep-mobile() {
+      display: none;
+    }
+  }
+
+  .article-min2read, .article-categories {
+
+    +keep-tablet() {
+      display: none;
+    }
+
+  }
+}
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-2-read-shared-files/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">70054356</center> 
+
+<p>这期的内容主要是讲完读取输入的部分，有一些之前遗漏的信息，以及之前未讲完的初始化ehframe以及shared object读取的部分。有许多地方默认读者读过上期内容，建议先阅读上期内容后再来查看本期。</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/" >https://homura.live/2023/02/26/mold/mold-1-read-input-files/<i class="fas fa-external-link-alt"></i></a></p>
+<h1 id="ObjectFile"><a href="#ObjectFile" class="headerlink" title="ObjectFile"></a>ObjectFile</h1><h2 id="get-string"><a href="#get-string" class="headerlink" title="get_string"></a>get_string</h2><p>之前在读取符号表的时候是通过这种方式读取的，但我们没有讲解这个读取的细节</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>-&gt;symbol_strtab = <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, symtab_sec-&gt;sh_link);</span><br></pre></td></tr></table></figure>
+
+<p>elf/mold.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> std::string_view InputFile&lt;E&gt;::<span class="built_in">get_string</span>(Context&lt;E&gt; &amp;ctx, i64 idx) &#123;</span><br><span class="line">  <span class="built_in">assert</span>(idx &lt; elf_sections.<span class="built_in">size</span>());</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (elf_sections.<span class="built_in">size</span>() &lt;= idx)</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: invalid section index: &quot;</span> &lt;&lt; idx;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, elf_sections[idx]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> std::string_view</span><br><span class="line">InputFile&lt;E&gt;::<span class="built_in">get_string</span>(Context&lt;E&gt; &amp;ctx, <span class="keyword">const</span> ElfShdr&lt;E&gt; &amp;shdr) &#123;</span><br><span class="line">  u8 *begin = mf-&gt;data + shdr.sh_offset;</span><br><span class="line">  u8 *end = begin + shdr.sh_size;</span><br><span class="line">  <span class="keyword">if</span> (mf-&gt;data + mf-&gt;size &lt; end)</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: section header is out of range: &quot;</span> &lt;&lt; shdr.sh_offset;</span><br><span class="line">  <span class="keyword">return</span> &#123;(<span class="keyword">char</span> *)begin, (<span class="keyword">size_t</span>)(end - begin)&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实际上是找到文件中对应offset的data作为开始，根据长度构造一个<strong>string_view</strong>，注意这里并不是实际构造了一个string，因此返回的string并没有这块空间的所有权。</p>
+<p>由get_string衍生出来的方法还有get_data，之前在读取elfsyms的时候就是使用了get_data</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>-&gt;elf_syms = <span class="keyword">this</span>-&gt;<span class="keyword">template</span> get_data&lt;ElfSym&lt;E&gt;&gt;(ctx, *symtab_sec);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">inline</span> std::span&lt;T&gt;</span><br><span class="line">InputFile&lt;E&gt;::<span class="built_in">get_data</span>(Context&lt;E&gt; &amp;ctx, <span class="keyword">const</span> ElfShdr&lt;E&gt; &amp;shdr) &#123;</span><br><span class="line">  std::string_view view = <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, shdr);</span><br><span class="line">  <span class="keyword">if</span> (view.<span class="built_in">size</span>() % <span class="built_in"><span class="keyword">sizeof</span></span>(T))</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: corrupted section&quot;</span>;</span><br><span class="line">  <span class="keyword">return</span> &#123;(T *)view.<span class="built_in">data</span>(), view.<span class="built_in">size</span>() / <span class="built_in"><span class="keyword">sizeof</span></span>(T)&#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T&gt;</span><br><span class="line"><span class="keyword">inline</span> std::span&lt;T&gt; InputFile&lt;E&gt;::<span class="built_in">get_data</span>(Context&lt;E&gt; &amp;ctx, i64 idx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (elf_sections.<span class="built_in">size</span>() &lt;= idx)</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: invalid section index&quot;</span>;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">this</span>-&gt;<span class="keyword">template</span> get_data&lt;T&gt;(elf_sections[idx]);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里直接获取了get_string的结果，并且将对应的结果映射为了一个对应数据的span</p>
+<h2 id="get-shndx"><a href="#get-shndx" class="headerlink" title="get_shndx"></a>get_shndx</h2><p>在之前从符号表取数据的时候是通过get_shndx实现的</p>
+<p>elf/mold.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> i64 ObjectFile&lt;E&gt;::<span class="built_in">get_shndx</span>(<span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym) &#123;</span><br><span class="line">  <span class="built_in">assert</span>(&amp;<span class="keyword">this</span>-&gt;elf_syms[<span class="number">0</span>] &lt;= &amp;esym);</span><br><span class="line">  <span class="built_in">assert</span>(&amp;esym &lt;= &amp;<span class="keyword">this</span>-&gt;elf_syms[<span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>() - <span class="number">1</span>]);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (esym.st_shndx == SHN_XINDEX)</span><br><span class="line">    <span class="keyword">return</span> symtab_shndx_sec[&amp;esym - &amp;<span class="keyword">this</span>-&gt;elf_syms[<span class="number">0</span>]];</span><br><span class="line">  <span class="keyword">return</span> esym.st_shndx;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>虽然符号中是有对应的shndx字段，但是这个字段的长度为16bit，如果超出这个长度的index那么需要去symtab_shndx_sec中获取。</p>
+<p>这个限制在之前读取输入的时候多次遇到，比如说在构造InputFile类，读取shstrtab_idx的时候</p>
+<p>input-files.cc</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// e_shstrndx is a 16-bit field. If .shstrtab&#x27;s section index is</span></span><br><span class="line"><span class="comment">// too large, the actual number is stored to sh_link field.</span></span><br><span class="line">i64 shstrtab_idx = (ehdr.e_shstrndx == SHN_XINDEX)</span><br><span class="line">  ? sh_begin-&gt;sh_link : ehdr.e_shstrndx;</span><br></pre></td></tr></table></figure>
+
+<h2 id="eh-frame"><a href="#eh-frame" class="headerlink" title="eh_frame"></a>eh_frame</h2><p>eh_frame段对于大多数人来说比较陌生，因此首先来讲解eh_frame是什么。eh_frame是包含了记录如何处理异常信息的段，当异常抛出的时候runtime会寻找一个eh_frame记录的信息并且来处理。</p>
+<p>我们来看一下hello world的汇编</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;Hello world\n&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">.section	__TEXT,__text,regu</span><br><span class="line">lar,pure_instructions</span><br><span class="line">	.build_version macos, <span class="number">12</span>, <span class="number">0</span>	sdk_version <span class="number">12</span>, <span class="number">1</span></span><br><span class="line">	.globl	_main                           ; -- Begin function main</span><br><span class="line">	.p2align	<span class="number">2</span></span><br><span class="line">_main:                                  ; @main</span><br><span class="line">	.cfi_startproc</span><br><span class="line">; %bb<span class="number">.0</span>:</span><br><span class="line">	sub	sp, sp, #<span class="number">32</span>                     ; =<span class="number">32</span></span><br><span class="line">	stp	x29, x30, [sp, #<span class="number">16</span>]             ; <span class="number">16</span>-byte Folded Spill</span><br><span class="line">	add	x29, sp, #<span class="number">16</span>                    ; =<span class="number">16</span></span><br><span class="line">	.cfi_def_cfa w29, <span class="number">16</span></span><br><span class="line">	.cfi_offset w30, <span class="number">-8</span></span><br><span class="line">	.cfi_offset w29, <span class="number">-16</span></span><br><span class="line">	mov	w8, #<span class="number">0</span></span><br><span class="line">	str	w8, [sp, #<span class="number">8</span>]                    ; <span class="number">4</span>-byte Folded Spill</span><br><span class="line">	stur	wzr, [x29, #<span class="number">-4</span>]</span><br><span class="line">	adrp	x0, l_.str@PAGE</span><br><span class="line">	add	x0, x0, l_.str@PAGEOFF</span><br><span class="line">	bl	_printf</span><br><span class="line">	ldr	w0, [sp, #<span class="number">8</span>]                    ; <span class="number">4</span>-byte Folded Reload</span><br><span class="line">	ldp	x29, x30, [sp, #<span class="number">16</span>]             ; <span class="number">16</span>-byte Folded Reload</span><br><span class="line">	add	sp, sp, #<span class="number">32</span>                     ; =<span class="number">32</span></span><br><span class="line">	ret</span><br><span class="line">	.cfi_endproc</span><br><span class="line">                                        ; -- End function</span><br><span class="line">	.section	__TEXT,__cstring,cstring_literals</span><br><span class="line">l_.str:                                 ; @.str</span><br><span class="line">	.asciz	<span class="string">&quot;Hello world\n&quot;</span></span><br><span class="line"></span><br><span class="line">.subsections_via_symbols</span><br></pre></td></tr></table></figure>
+
+<p>关于eh_frame我有一个疑问，是否能像符号一样被strip掉？手动strip以后发现elf大小并没有发生改变。关于这个问题stackoverflow有这样一条回答</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://stackoverflow.com/questions/26300819/why-gcc-compiled-c-program-needs-eh-frame-section" >Why GCC compiled C program needs .eh_frame section?<i class="fas fa-external-link-alt"></i></a></p>
+<blockquote>
+<p>You can disable generation of .eh_frame with -fno-asynchronous-unwind-tables for individual translation units, and this mostly eliminates the size cost</p>
+</blockquote>
+<blockquote>
+<p>You cannot strip them with the strip command later; since .eh_frame is a section that lives in the loaded part of the program (this is the whole point), stripping it modifies the binary in ways that break it at runtime.</p>
+</blockquote>
+<p>大意是不能通过strip消除，但是eh_frame在gcc中可以通过开启特殊的编译选项避免生成。</p>
+<h3 id="eh-frame的结构"><a href="#eh-frame的结构" class="headerlink" title="eh_frame的结构"></a>eh_frame的结构</h3><p><a class="link"   target="_blank" rel="noopener" href="https://refspecs.linuxbase.org/LSB_4.0.0/LSB-Core-generic/LSB-Core-generic/ehframechpt.html" >Exception Frames<i class="fas fa-external-link-alt"></i></a></p>
+<p>这里不详细介绍里面的具体字段了。简单来说，每个eh_frame段中会包含至少一个CFI（Call Frame Information），而每个CFI包含一个CIE（Common Information Entry），之后紧接着跟着许多FDE（Frame Description Entry）</p>
+<p>一个CFI对应了一个单一的object文件，如果是多个object文件合并那么就会有多个，因此至少存在一个。CFI中包含了一个CIE，也就是这个object里的common information，而后面跟随的许多FDE则是对应了各个function。</p>
+<p>这里引用一下MaskRay聚聚的资料，里面包含了更具体严谨的描述。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-2-read-shared-files/Untitled%201.png"
+                      alt="Untitled"
+                ></p>
+<h2 id="initialize-ehframe-sections"><a href="#initialize-ehframe-sections" class="headerlink" title="initialize_ehframe_sections"></a>initialize_ehframe_sections</h2><p>对于链接器来说，ehframe和其他段不同是单独进行parse的。注释中给出了以下几条原因</p>
+<ol>
+<li>避免大量dead section的字段。如果只是最后拷贝所有的eh_frame则会有许多针对dead section的字段。</li>
+<li>减少section的大小。删除function的时候顺便删除FDE，所以eh_frame不包含dead FDE。</li>
+<li>增加搜索效率。扫描eh_frame段查找一个record是一个O(n)操作，通过linker创建一个sorted list后可以通过二分查找降低复杂度到O(log n)。</li>
+</ol>
+<p>接下来我们看一下具体的实现</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">read_ehframe</span>(Context&lt;E&gt; &amp;ctx, InputSection&lt;E&gt; &amp;isec) &#123;</span><br><span class="line">  std::span&lt;ElfRel&lt;E&gt;&gt; rels = isec.<span class="built_in">get_rels</span>(ctx);</span><br><span class="line">  i64 cies_begin = cies.<span class="built_in">size</span>();</span><br><span class="line">  i64 fdes_begin = fdes.<span class="built_in">size</span>();</span><br><span class="line">	<span class="comment">// Read CIEs and FDEs until empty.</span></span><br><span class="line">	std::string_view contents = <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, isec.<span class="built_in">shdr</span>());</span><br><span class="line">	i64 rel_idx = <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">for</span> (std::string_view data = contents; !data.<span class="built_in">empty</span>();) &#123;</span><br><span class="line">    i64 size = *(U32&lt;E&gt; *)data.<span class="built_in">data</span>();</span><br><span class="line">    <span class="keyword">if</span> (size == <span class="number">0</span>)</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    i64 begin_offset = data.<span class="built_in">data</span>() - contents.<span class="built_in">data</span>();</span><br><span class="line">    i64 end_offset = begin_offset + size + <span class="number">4</span>;</span><br><span class="line">    i64 id = *(U32&lt;E&gt; *)(data.<span class="built_in">data</span>() + <span class="number">4</span>);</span><br><span class="line">    data = data.<span class="built_in">substr</span>(size + <span class="number">4</span>);</span><br><span class="line"></span><br><span class="line">    i64 rel_begin = rel_idx;</span><br><span class="line">    <span class="keyword">while</span> (rel_idx &lt; rels.<span class="built_in">size</span>() &amp;&amp; rels[rel_idx].r_offset &lt; end_offset)</span><br><span class="line">      rel_idx++;</span><br><span class="line">    <span class="built_in">assert</span>(rel_idx == rels.<span class="built_in">size</span>() || begin_offset &lt;= rels[rel_begin].r_offset);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (id == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="comment">// This is CIE.</span></span><br><span class="line">      cies.<span class="built_in">emplace_back</span>(ctx, *<span class="keyword">this</span>, isec, begin_offset, rels, rel_begin);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="comment">// This is FDE.</span></span><br><span class="line">      <span class="keyword">if</span> (rel_begin == rel_idx || rels[rel_begin].r_sym == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// FDE has no valid relocation, which means FDE is dead from</span></span><br><span class="line">        <span class="comment">// the beginning. Compilers usually don&#x27;t create such FDE, but</span></span><br><span class="line">        <span class="comment">// `ld -r` tend to generate such dead FDEs.</span></span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (rels[rel_begin].r_offset - begin_offset != <span class="number">8</span>)</span><br><span class="line">        <span class="built_in">Fatal</span>(ctx) &lt;&lt; isec &lt;&lt; <span class="string">&quot;: FDE&#x27;s first relocation should have offset 8&quot;</span>;</span><br><span class="line"></span><br><span class="line">      fdes.<span class="built_in">emplace_back</span>(begin_offset, rel_begin);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据这个解析过程以及参考格式描述我们能够画出这样一张图</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-2-read-shared-files/Untitled%202.png"
+                      alt="Untitled"
+                ></p>
+<p>在读取完所有基本的段以后，将CIE关联到FDE中</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> find_cie = [&amp;](i64 offset) &#123;</span><br><span class="line">  <span class="keyword">for</span> (i64 i = cies_begin; i &lt; cies.<span class="built_in">size</span>(); i++)</span><br><span class="line">    <span class="keyword">if</span> (cies[i].input_offset == offset)</span><br><span class="line">      <span class="keyword">return</span> i;</span><br><span class="line">  <span class="built_in">Fatal</span>(ctx) &lt;&lt; isec &lt;&lt; <span class="string">&quot;: bad FDE pointer&quot;</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (i64 i = fdes_begin; i &lt; fdes.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  i64 cie_offset = *(I32&lt;E&gt; *)(contents.<span class="built_in">data</span>() + fdes[i].input_offset + <span class="number">4</span>);</span><br><span class="line">  fdes[i].cie_idx = <span class="built_in">find_cie</span>(fdes[i].input_offset + <span class="number">4</span> - cie_offset);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>最后将FDE关联到InputSection中。注意这里进行了stable_sort，上面提到的第三条增加搜索效率就是通过这里实现的。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">std::<span class="built_in">stable_sort</span>(fdes.<span class="built_in">begin</span>() + fdes_begin, fdes.<span class="built_in">end</span>(),</span><br><span class="line">                 [&amp;](<span class="keyword">const</span> FdeRecord&lt;E&gt; &amp;a, <span class="keyword">const</span> FdeRecord&lt;E&gt; &amp;b) &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">get_isec</span>(a)-&gt;<span class="built_in">get_priority</span>() &lt; <span class="built_in">get_isec</span>(b)-&gt;<span class="built_in">get_priority</span>();</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (i64 i = fdes_begin; i &lt; fdes.<span class="built_in">size</span>();) &#123;</span><br><span class="line">  InputSection&lt;E&gt; *isec = <span class="built_in">get_isec</span>(fdes[i]);</span><br><span class="line">  <span class="built_in">assert</span>(isec-&gt;fde_begin == <span class="number">-1</span>);</span><br><span class="line">  isec-&gt;fde_begin = i++;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span> (i &lt; fdes.<span class="built_in">size</span>() &amp;&amp; isec == <span class="built_in">get_isec</span>(fdes[i]))</span><br><span class="line">    i++;</span><br><span class="line">  isec-&gt;fde_end = i;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>至此，整个eh_frame部分的初始化就完毕了。</p>
+<h1 id="SharedFile"><a href="#SharedFile" class="headerlink" title="SharedFile"></a>SharedFile</h1><h2 id="create"><a href="#create" class="headerlink" title="create"></a>create</h2><p>首先我们来看一下SharedFile的构造</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">SharedFile&lt;E&gt; *</span><br><span class="line">SharedFile&lt;E&gt;::<span class="built_in">create</span>(Context&lt;E&gt; &amp;ctx, MappedFile&lt;Context&lt;E&gt;&gt; *mf) &#123;</span><br><span class="line">  SharedFile&lt;E&gt; *obj = <span class="keyword">new</span> <span class="built_in">SharedFile</span>(ctx, mf);</span><br><span class="line">  ctx.dso_pool.<span class="built_in">emplace_back</span>(obj);</span><br><span class="line">  <span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">SharedFile&lt;E&gt;::<span class="built_in">SharedFile</span>(Context&lt;E&gt; &amp;ctx, MappedFile&lt;Context&lt;E&gt;&gt; *mf)</span><br><span class="line">  : InputFile&lt;E&gt;(ctx, mf) &#123;</span><br><span class="line">  <span class="keyword">this</span>-&gt;is_needed = ctx.as_needed;</span><br><span class="line">  <span class="keyword">this</span>-&gt;is_alive = !ctx.as_needed;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这部分没什么特别要讲的，关于is_needed和is_alive会涉及到关于whole-archive这个选项，之后会再单独开文章讲解。构造基类InputFile之前在ObjectFile的部分已经讲过了，不再赘述。接着来看parse的部分。</p>
+<h2 id="parse"><a href="#parse" class="headerlink" title="parse"></a>parse</h2><p>首先是找到DYNSYM段</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> SharedFile&lt;E&gt;::<span class="built_in">parse</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  symtab_sec = <span class="keyword">this</span>-&gt;<span class="built_in">find_section</span>(SHT_DYNSYM);</span><br><span class="line">  <span class="keyword">if</span> (!symtab_sec)</span><br><span class="line">    <span class="keyword">return</span>;</span><br></pre></td></tr></table></figure>
+
+<p>之后读取符号表和ver信息，这些是Shared only的成员。而soname是针对一个dso的，所以个dso关联一个soname</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>-&gt;symbol_strtab = <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, symtab_sec-&gt;sh_link);</span><br><span class="line">soname = <span class="built_in">get_soname</span>(ctx);</span><br><span class="line">version_strings = <span class="built_in">read_verdef</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>读取具体的符号信息以及符号版本信息</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Read a symbol table.</span></span><br><span class="line">std::span&lt;ElfSym&lt;E&gt;&gt; esyms = <span class="keyword">this</span>-&gt;<span class="keyword">template</span> get_data&lt;ElfSym&lt;E&gt;&gt;(ctx, *symtab_sec);</span><br><span class="line"></span><br><span class="line">std::span&lt;U16&lt;E&gt;&gt; vers;</span><br><span class="line"><span class="keyword">if</span> (ElfShdr&lt;E&gt; *sec = <span class="keyword">this</span>-&gt;<span class="built_in">find_section</span>(SHT_GNU_VERSYM))</span><br><span class="line">  vers = <span class="keyword">this</span>-&gt;<span class="keyword">template</span> get_data&lt;U16&lt;E&gt;&gt;(ctx, *sec);</span><br></pre></td></tr></table></figure>
+
+<p>对于DYNSYM来说symtab_sec-&gt;sh_info是开始的符号数量</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i64 i = symtab_sec-&gt;sh_info; i &lt; esyms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  u16 ver;</span><br><span class="line">  <span class="keyword">if</span> (vers.<span class="built_in">empty</span>() || esyms[i].<span class="built_in">is_undef</span>())</span><br><span class="line">    ver = VER_NDX_GLOBAL;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    ver = (vers[i] &amp; ~VERSYM_HIDDEN);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ver == VER_NDX_LOCAL)</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">  std::string_view name = <span class="keyword">this</span>-&gt;symbol_strtab.<span class="built_in">data</span>() + esyms[i].st_name;</span><br><span class="line">  <span class="keyword">bool</span> is_hidden = (!vers.<span class="built_in">empty</span>() &amp;&amp; (vers[i] &amp; VERSYM_HIDDEN));</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;elf_syms2.<span class="built_in">push_back</span>(esyms[i]);</span><br><span class="line">  <span class="keyword">this</span>-&gt;versyms.<span class="built_in">push_back</span>(ver);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (is_hidden) &#123;</span><br><span class="line">    std::string_view mangled_name = <span class="built_in">save_string</span>(</span><br><span class="line">      ctx, std::<span class="built_in">string</span>(name) + <span class="string">&quot;@&quot;</span> + std::<span class="built_in">string</span>(version_strings[ver]));</span><br><span class="line">    <span class="keyword">this</span>-&gt;symbols.<span class="built_in">push_back</span>(<span class="built_in">get_symbol</span>(ctx, mangled_name, name));</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;symbols.<span class="built_in">push_back</span>(<span class="built_in">get_symbol</span>(ctx, name));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个for循环中针对每个符号信息来说做了以下几件事情</p>
+<ol>
+<li><p>处理version信息。</p>
+<ol>
+<li>跳过只有一个VER_NDX_LOCAL属性的</li>
+<li>vers为空或esym未定义，则是global的（大概用于symbol resolve去寻找定义。因此设为了GLOBAL</li>
+<li>不为空且有定义，那么就不是HIDDEN的</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">constexpr</span> u32 VER_NDX_LOCAL = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">constexpr</span> u32 VER_NDX_GLOBAL = <span class="number">1</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">constexpr</span> u32 VERSYM_HIDDEN = <span class="number">0x8000</span>;</span><br></pre></td></tr></table></figure></li>
+<li><p>添加elf_syms2（Shared Only的字段）以及versysms</p>
+</li>
+<li><p>处理hidden的符号，hidden的话要mangled才行</p>
+<ul>
+<li><input disabled="" type="checkbox"> 为什么呢…</li>
+</ul>
+</li>
+</ol>
+<p>设置基本信息后结束</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">this</span>-&gt;elf_syms = elf_syms2;</span><br><span class="line"><span class="keyword">this</span>-&gt;first_global = <span class="number">0</span>;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Counter <span class="title">counter</span><span class="params">(<span class="string">&quot;dso_syms&quot;</span>)</span></span>;</span><br><span class="line">counter += <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>();</span><br></pre></td></tr></table></figure>
+
+<p>这里first_global设置为0，也就是说dso中所有的符号都是global的。</p>
+<h2 id="get-soname"><a href="#get-soname" class="headerlink" title="get_soname"></a>get_soname</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">std::string SharedFile&lt;E&gt;::<span class="built_in">get_soname</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ElfShdr&lt;E&gt; *sec = <span class="keyword">this</span>-&gt;<span class="built_in">find_section</span>(SHT_DYNAMIC))</span><br><span class="line">    <span class="keyword">for</span> (ElfDyn&lt;E&gt; &amp;dyn : <span class="keyword">this</span>-&gt;<span class="keyword">template</span> get_data&lt;ElfDyn&lt;E&gt;&gt;(ctx, *sec))</span><br><span class="line">      <span class="keyword">if</span> (dyn.d_tag == DT_SONAME)</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">this</span>-&gt;symbol_strtab.<span class="built_in">data</span>() + dyn.d_val;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">this</span>-&gt;mf-&gt;given_fullpath)</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">this</span>-&gt;filename;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">filepath</span>(<span class="keyword">this</span>-&gt;filename).<span class="built_in">filename</span>().<span class="built_in">string</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>找到DYNAMIC段，从里面的ElfDyn中查找tag为DT_SONAME的，找不到就用依靠完整文件路径作为soname。</p>
+<p>关于ElfDyn</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;&gt; <span class="class"><span class="keyword">struct</span> <span class="title">ElfDyn</span>&lt;</span>RV64LE&gt;     : EL64Dyn &#123;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">EL64Dyn</span> &#123;</span></span><br><span class="line">  ul64 d_tag;</span><br><span class="line">  ul64 d_val;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>在elf规范中关于DT_SONAME这个tag的信息</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>d_un</th>
+<th>Executable</th>
+<th>Shared Object</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>DT_SONAME</td>
+<td>d_val</td>
+<td>ignored</td>
+<td>optional</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>This element holds the string table offset of a null-terminated string, giving the name of the shared object. The offset is an index into the table recorded in the DT_STRTAB entry. See “Shared Object Dependencies” below for more information about these names.</p>
+</blockquote>
+<h2 id="verdef"><a href="#verdef" class="headerlink" title="verdef"></a>verdef</h2><blockquote>
+<p>Symbol versioning is a <strong>GNU extension</strong> to the ELF file format.</p>
+</blockquote>
+<blockquote>
+<p>Versions are just strings, and no ordering is defined between them. For example, “GLIBC_2.15” is not considered a newer version of “GLIBC_2.2.5” or vice versa. They are considered just different.</p>
+</blockquote>
+<blockquote>
+<p>If a shared object file has versioned symbols, it contains a parallel array for the symbol table. Version strings can be found in that parallel table.</p>
+</blockquote>
+<blockquote>
+<p>One version is considered the “default” version for each shared object. If an undefiend symbol <code>foo</code> is resolved to a symbol defined by the shared object, it’s marked so that it’ll be resolved to (<code>foo</code>, the default version of the library) at load-time.</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">std::vector&lt;std::string_view&gt; SharedFile&lt;E&gt;::<span class="built_in">read_verdef</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="function">std::vector&lt;std::string_view&gt; <span class="title">ret</span><span class="params">(VER_NDX_LAST_RESERVED + <span class="number">1</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  ElfShdr&lt;E&gt; *verdef_sec = <span class="keyword">this</span>-&gt;<span class="built_in">find_section</span>(SHT_GNU_VERDEF);</span><br><span class="line">  <span class="keyword">if</span> (!verdef_sec)</span><br><span class="line">    <span class="keyword">return</span> ret;</span><br><span class="line"></span><br><span class="line">  std::string_view verdef = <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, *verdef_sec);</span><br><span class="line">  std::string_view strtab = <span class="keyword">this</span>-&gt;<span class="built_in">get_string</span>(ctx, verdef_sec-&gt;sh_link);</span><br><span class="line"></span><br><span class="line">  ElfVerdef&lt;E&gt; *ver = (ElfVerdef&lt;E&gt; *)verdef.<span class="built_in">data</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">    <span class="keyword">if</span> (ret.<span class="built_in">size</span>() &lt;= ver-&gt;vd_ndx)</span><br><span class="line">      ret.<span class="built_in">resize</span>(ver-&gt;vd_ndx + <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">    ElfVerdaux&lt;E&gt; *aux = (ElfVerdaux&lt;E&gt; *)((u8 *)ver + ver-&gt;vd_aux);</span><br><span class="line">    ret[ver-&gt;vd_ndx] = strtab.<span class="built_in">data</span>() + aux-&gt;vda_name;</span><br><span class="line">    <span class="keyword">if</span> (!ver-&gt;vd_next)</span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">    ver = (ElfVerdef&lt;E&gt; *)((u8 *)ver + ver-&gt;vd_next);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>拿一个helloworld的elf看一下</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">readelf -S ./a.out</span><br><span class="line"></span><br><span class="line">[ <span class="number">8</span>] .gnu.version      VERSYM           <span class="number">0000000000000516</span>  <span class="number">00000516</span></span><br><span class="line">     <span class="number">000000000000000</span>e  <span class="number">0000000000000002</span>   A       <span class="number">6</span>     <span class="number">0</span>     <span class="number">2</span></span><br></pre></td></tr></table></figure>
+
+<p>这里的全体大小为2，我们再看一下符号</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">nm ./a.out | grep <span class="string">&quot;@&quot;</span></span><br><span class="line">w __cxa_finalize@GLIBC_2<span class="number">.2</span><span class="number">.5</span></span><br><span class="line">U __libc_start_main@GLIBC_2<span class="number">.34</span></span><br><span class="line">U puts@GLIBC_2<span class="number">.2</span><span class="number">.5</span></span><br></pre></td></tr></table></figure>
+
+<p>其中两个是重复的符号，去重后也就是2个符号</p>
+<h1 id="对比ObjectFile和SharedFile"><a href="#对比ObjectFile和SharedFile" class="headerlink" title="对比ObjectFile和SharedFile"></a>对比ObjectFile和SharedFile</h1><p>最后我们通过分析ObjectFile和SharedFile相关的异同来结束这期内容。</p>
+<p>相比于ObjectFile的复杂解析过程，SharedFile的整个过程显得十分简单。这和文件本身的性质与使用场景都有关系。dso加载符号的定义以及其他信息绝大部分都是在运行时，因此在链接期间并不需要做太多操作，其主要用途是将会被引用的符号加入到决议过程，同时将对应符号的版本信息和dso的soname加入到生成的产物中，以便在运行时进行加载。在谷歌搜索的时候搜到了这样一句话，我觉得概括的更好</p>
+<blockquote>
+<p>A DSO can be used in place of archive libraries and will minimize overall memory usage because code is shared.</p>
+</blockquote>
+<p>在链接的时候dso的作用是in place of archive libraries，所以并不需要太多的信息。</p>
+<p>虽然SharedFile在链接的时候并没有解析ObjectFile中许多信息，但是那些信息仍然是存在的，只是在链接的时候无需参与，而是全部交给运行时加载来处理。虽然在mold的类结构中ObjectFile和SharedFile都是直接继承自InputFile，但对于实际的object和dso来说我觉得dso更倾向于是特别的object，不过这个从dso的全名（dynamic shared object）也能看出来了。</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读 其二 读取SharedFile</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-04-05 16:35:27</li>
+        <li>
+            本文链接：https://homura.live/2023/04/05/mold/mold-2-read-shared-files/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/02/26/mold/mold-1-read-input-files/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">mold源码阅读 其一 读取输入文件</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ObjectFile"><span class="nav-number">1.</span> <span class="nav-text">ObjectFile</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#get-string"><span class="nav-number">1.1.</span> <span class="nav-text">get_string</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#get-shndx"><span class="nav-number">1.2.</span> <span class="nav-text">get_shndx</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#eh-frame"><span class="nav-number">1.3.</span> <span class="nav-text">eh_frame</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#eh-frame%E7%9A%84%E7%BB%93%E6%9E%84"><span class="nav-number">1.3.1.</span> <span class="nav-text">eh_frame的结构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#initialize-ehframe-sections"><span class="nav-number">1.4.</span> <span class="nav-text">initialize_ehframe_sections</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#SharedFile"><span class="nav-number">2.</span> <span class="nav-text">SharedFile</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#create"><span class="nav-number">2.1.</span> <span class="nav-text">create</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#parse"><span class="nav-number">2.2.</span> <span class="nav-text">parse</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#get-soname"><span class="nav-number">2.3.</span> <span class="nav-text">get_soname</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#verdef"><span class="nav-number">2.4.</span> <span class="nav-text">verdef</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%AF%B9%E6%AF%94ObjectFile%E5%92%8CSharedFile"><span class="nav-number">3.</span> <span class="nav-text">对比ObjectFile和SharedFile</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

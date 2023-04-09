@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读 其三 符号决议 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:72272420   前面两期将读取输入的部分全部讲完了，本期开始涉及链接过程中的处理。在讲主要的符号决议之前，先讲一下mold在符号决议执行之前做的一些其他处理。 dso uniquely在读取完输入后首先做的是将shared object根据soname进行去重，因此我们可以在链接的过程中链接多个相同soname的库而不会产生冲突。 elf&#x2F;main.cc 123456&amp;#123">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读 其三 符号决议">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/04/09/mold/mold-3-symbol-resolve/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:72272420   前面两期将读取输入的部分全部讲完了，本期开始涉及链接过程中的处理。在讲主要的符号决议之前，先讲一下mold在符号决议执行之前做的一些其他处理。 dso uniquely在读取完输入后首先做的是将shared object根据soname进行去重，因此我们可以在链接的过程中链接多个相同soname的库而不会产生冲突。 elf&#x2F;main.cc 123456&amp;#123">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-3-symbol-resolve/Untitled.png">
+<meta property="article:published_time" content="2023-04-09T08:06:20.000Z">
+<meta property="article:modified_time" content="2023-04-09T08:11:35.212Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta property="article:tag" content="symbol_resolve">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-3-symbol-resolve/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读 其三 符号决议</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-04-09 16:06:20
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/symbol-resolve/">symbol_resolve</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>3.8k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>19 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-3-symbol-resolve/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:72272420</center> 
+
+<p>前面两期将读取输入的部分全部讲完了，本期开始涉及链接过程中的处理。在讲主要的符号决议之前，先讲一下mold在符号决议执行之前做的一些其他处理。</p>
+<h1 id="dso-uniquely"><a href="#dso-uniquely" class="headerlink" title="dso uniquely"></a>dso uniquely</h1><p>在读取完输入后首先做的是将shared object根据soname进行去重，因此我们可以在链接的过程中链接多个相同soname的库而不会产生冲突。</p>
+<p>elf/main.cc</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    std::unordered_set&lt;std::string_view&gt; seen;</span><br><span class="line">    std::<span class="built_in">erase_if</span>(ctx.dsos, [&amp;](SharedFile&lt;E&gt; *file) &#123;</span><br><span class="line">      <span class="keyword">return</span> !seen.<span class="built_in">insert</span>(file-&gt;soname).second;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="apply-exclude-libs"><a href="#apply-exclude-libs" class="headerlink" title="apply_exclude_libs"></a>apply_exclude_libs</h1><p>elf/passes.cc</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">apply_exclude_libs</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;apply_exclude_libs&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.exclude_libs.<span class="built_in">empty</span>())</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="function">std::unordered_set&lt;std::string_view&gt; <span class="title">set</span><span class="params">(ctx.arg.exclude_libs.begin(),</span></span></span><br><span class="line"><span class="params"><span class="function">                                           ctx.arg.exclude_libs.end())</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!file-&gt;archive_name.<span class="built_in">empty</span>())</span><br><span class="line">      <span class="keyword">if</span> (set.<span class="built_in">contains</span>(<span class="string">&quot;ALL&quot;</span>) ||</span><br><span class="line">          set.<span class="built_in">contains</span>(<span class="built_in">filepath</span>(file-&gt;archive_name).<span class="built_in">filename</span>().<span class="built_in">string</span>()))</span><br><span class="line">        file-&gt;exclude_libs = <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里就是简单将所有包含在exclude-libs里的lib名字对应的exclude_libs设置为true，而这个设置在后面符号决议的过程会用到。</p>
+<p>exclude_libs是命令行中获取的</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">read_arg</span>(<span class="string">&quot;exclude-libs&quot;</span>)) &#123;</span><br><span class="line">      <span class="built_in">append</span>(ctx.arg.exclude_libs, <span class="built_in">split_by_comma_or_colon</span>(arg));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="create-internal-file"><a href="#create-internal-file" class="headerlink" title="create_internal_file"></a>create_internal_file</h1><h2 id="internal-file是什么"><a href="#internal-file是什么" class="headerlink" title="internal file是什么"></a>internal file是什么</h2><p>内部的文件，用来保存linker-synthesized符号。linker-synthesized符号或许也可以理解为编译产物中不存在的符号。作为一个并不实际存在的文件，依然会作为一个普通的ObjFile加入到obj_pool中，主要用途是在create_output_sections以后来add_synthetic_symbol，与之相关联的有一个internal_esyms，里面都是具体相关的符号。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><p>在main函数中调用是这样的</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!ctx.arg.relocatable)</span><br><span class="line">  <span class="built_in">create_internal_file</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>elf/passes.cc</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">create_internal_file</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  ObjectFile&lt;E&gt; *obj = <span class="keyword">new</span> ObjectFile&lt;E&gt;;</span><br><span class="line">  ctx.obj_pool.<span class="built_in">emplace_back</span>(obj);</span><br><span class="line">  ctx.internal_obj = obj;</span><br><span class="line">  ctx.objs.<span class="built_in">push_back</span>(obj);</span><br><span class="line"></span><br><span class="line">  ctx.internal_esyms.<span class="built_in">resize</span>(<span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">  obj-&gt;symbols.<span class="built_in">push_back</span>(<span class="keyword">new</span> Symbol&lt;E&gt;);</span><br><span class="line">  obj-&gt;first_global = <span class="number">1</span>;</span><br><span class="line">  obj-&gt;is_alive = <span class="literal">true</span>;</span><br><span class="line">  obj-&gt;priority = <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>首先创建了基本的ObjectFile对象并且进行了一些初始化的处理。</p>
+<p>之后添加从命令行参数中读取的–defsym里的所有的defsym</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.arg.defsyms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  std::pair&lt;Symbol&lt;E&gt; *, std::variant&lt;Symbol&lt;E&gt; *, u64&gt;&gt; &amp;defsym = ctx.arg.defsyms[i];</span><br><span class="line">  <span class="built_in">add</span>(defsym.first);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (std::holds_alternative&lt;Symbol&lt;E&gt; *&gt;(defsym.second)) &#123;</span><br><span class="line">    <span class="comment">// Add an undefined symbol to keep a reference to the defsym target.</span></span><br><span class="line">    <span class="comment">// This prevents elimination by e.g. LTO or gc-sections.</span></span><br><span class="line">    <span class="comment">// The undefined symbol will never make to the final object file; we</span></span><br><span class="line">    <span class="comment">// double-check that the defsym target is not undefined in</span></span><br><span class="line">    <span class="comment">// fix_synthetic_symbols.</span></span><br><span class="line">    <span class="keyword">auto</span> sym = std::get&lt;Symbol&lt;E&gt; *&gt;(defsym.second);</span><br><span class="line">    <span class="built_in">add_undef</span>(sym);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>处理完defsym后再从命令行参数中读取的SectionOrder的符号</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (SectionOrder &amp;ord : ctx.arg.section_order)</span><br><span class="line">  <span class="keyword">if</span> (ord.type == SectionOrder::SYMBOL)</span><br><span class="line">    <span class="built_in">add</span>(<span class="built_in">get_symbol</span>(ctx, ord.name));</span><br></pre></td></tr></table></figure>
+
+<p>关于SectionOrder的定义</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">SectionOrder</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">enum</span> &#123;</span> NONE, SECTION, GROUP, ADDR, ALIGN, SYMBOL &#125; type = NONE;</span><br><span class="line">  std::string name;</span><br><span class="line">  u64 value = <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>最后设置obj类的一些参数</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">obj-&gt;elf_syms = ctx.internal_esyms;</span><br><span class="line">obj-&gt;symvers.<span class="built_in">resize</span>(ctx.internal_esyms.<span class="built_in">size</span>() - <span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+
+<h2 id="defsym"><a href="#defsym" class="headerlink" title="defsym"></a>defsym</h2><p>关于前面提到的defsym，我们来看一下mold的测试代码一部分来理解其作用。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF | $CC -fPIC -o $t/a.o -c -xc -</span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">char</span> foo;</span><br><span class="line"><span class="keyword">extern</span> <span class="keyword">char</span> bar;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">baz</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">print</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Hello %p %p\n&quot;</span>, &amp;foo, &amp;bar);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">baz</span>();</span><br><span class="line">&#125;</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">$CC -B. -o $t/exe $t/a.o -pie -Wl,-defsym=foo=<span class="number">16</span> \</span><br><span class="line">  -Wl,-defsym=bar=<span class="number">0x2000</span> -Wl,-defsym=baz=print</span><br><span class="line"></span><br><span class="line">$QEMU $t/exe | grep -q <span class="string">&#x27;^Hello 0x10 0x2000$&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p>通过defsym指定了符号名以及其实现的位置，尽管对应的符号在代码中并没有实现。</p>
+<p>关于这里的add和add_undef的实现</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> add = [&amp;](Symbol&lt;E&gt; *sym) &#123;</span><br><span class="line">  obj-&gt;symbols.<span class="built_in">push_back</span>(sym);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// An actual value will be set to a linker-synthesized symbol by</span></span><br><span class="line">  <span class="comment">// fix_synthetic_symbols(). Until then, `value` doesn&#x27;t have a valid</span></span><br><span class="line">  <span class="comment">// value. 0xdeadbeef is a unique dummy value to make debugging easier</span></span><br><span class="line">  <span class="comment">// if the field is accidentally used before it gets a valid one.</span></span><br><span class="line">  sym-&gt;value = <span class="number">0xdeadbeef</span>;</span><br><span class="line"></span><br><span class="line">  ElfSym&lt;E&gt; esym;</span><br><span class="line">  <span class="built_in">memset</span>(&amp;esym, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(esym));</span><br><span class="line">  esym.st_type = STT_NOTYPE;</span><br><span class="line">  esym.st_shndx = SHN_ABS;</span><br><span class="line">  esym.st_bind = STB_GLOBAL;</span><br><span class="line">  esym.st_visibility = STV_DEFAULT;</span><br><span class="line">  ctx.internal_esyms.<span class="built_in">push_back</span>(esym);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">auto</span> add_undef = [&amp;](Symbol&lt;E&gt; *sym) &#123;</span><br><span class="line">  obj-&gt;symbols.<span class="built_in">push_back</span>(sym);</span><br><span class="line">  sym-&gt;value = <span class="number">0xdeadbeef</span>;</span><br><span class="line"></span><br><span class="line">  ElfSym&lt;E&gt; esym;</span><br><span class="line">  <span class="built_in">memset</span>(&amp;esym, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(esym));</span><br><span class="line">  esym.st_type = STT_NOTYPE;</span><br><span class="line">  esym.st_shndx = SHN_UNDEF;</span><br><span class="line">  esym.st_bind = STB_GLOBAL;</span><br><span class="line">  esym.st_visibility = STV_DEFAULT;</span><br><span class="line">  ctx.internal_esyms.<span class="built_in">push_back</span>(esym);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>通过add和add_undef函数把defsym指定的符号添加到symbols中，并且设定为了特殊值，关联到了一个esym里。主要的差别就在于st_shndx被设置为了不同的值。</p>
+<h1 id="符号决议"><a href="#符号决议" class="headerlink" title="符号决议"></a>符号决议</h1><p>接下来是链接过程中比较重要的一个环节，符号决议（symbol resolve）</p>
+<p>在mold中，这个部分做了四件事情</p>
+<ol>
+<li>检测所有需要使用的objet files</li>
+<li>移除重复的COMDAT段</li>
+<li>进行符号决议的过程。在多个不同的esym中选择出一个更高priority的关联到sym中</li>
+<li>LTO的处理，处理后再次执行决议</li>
+</ol>
+<h2 id="resolve-symbols"><a href="#resolve-symbols" class="headerlink" title="resolve_symbols"></a>resolve_symbols</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">resolve_symbols</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;resolve_symbols&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  std::vector&lt;ObjectFile&lt;E&gt; *&gt; objs = ctx.objs;</span><br><span class="line">  std::vector&lt;SharedFile&lt;E&gt; *&gt; dsos = ctx.dsos;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">do_resolve_symbols</span>(ctx);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.has_lto_object) &#123;</span><br><span class="line">		...</span><br><span class="line">		<span class="built_in">do_resolve_symbols</span>(ctx);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里先省略lto相关的具体处理，很多处理和do_resolve_symbols中是类似的，因此放到后面再说。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">do_resolve_symbols</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">auto</span> for_each_file = [&amp;](std::function&lt;<span class="built_in"><span class="keyword">void</span></span>(InputFile&lt;E&gt; *)&gt; fn) &#123;</span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, fn);</span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(ctx.dsos, fn);</span><br><span class="line">  &#125;;</span><br><span class="line">	<span class="comment">// 1. 检测object files</span></span><br><span class="line">	<span class="comment">// 2. 消除重复COMDAT</span></span><br><span class="line">	<span class="comment">// 3. 符号决议</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="1-检测object-files"><a href="#1-检测object-files" class="headerlink" title="1. 检测object files"></a>1. 检测object files</h2><p>archive extraction: .a成员只会在满足非archive object文件未定义符号之一的情况下才会被包含在最终的二进制文件中</p>
+<p>链接时为了满足archive extraction的规则，mold采取的策略是：</p>
+<ol>
+<li>初步resolve：假设全部include，match undef符号</li>
+<li>mark sweep消除无需使用的archive成员</li>
+<li>删除掉非archive成员</li>
+</ol>
+<p>下面是具体的实现</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;extract_archive_members&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Register symbols</span></span><br><span class="line">    for_each_file([&amp;](InputFile&lt;E&gt; *file) &#123; file-&gt;<span class="built_in">resolve_symbols</span>(ctx); &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Mark reachable objects to decide which files to include into an output.</span></span><br><span class="line">    <span class="comment">// This also merges symbol visibility.</span></span><br><span class="line">    <span class="built_in">mark_live_objects</span>(ctx);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Cleanup. The rule used for archive extraction isn&#x27;t accurate for the</span></span><br><span class="line">    <span class="comment">// general case of symbol extraction, so reset the resolution to be redone</span></span><br><span class="line">    <span class="comment">// later.</span></span><br><span class="line">    for_each_file([](InputFile&lt;E&gt; *file) &#123; file-&gt;<span class="built_in">clear_symbols</span>(); &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Now that the symbol references are gone, remove the eliminated files from</span></span><br><span class="line">    <span class="comment">// the file list.</span></span><br><span class="line">    std::<span class="built_in">erase_if</span>(ctx.objs, [](InputFile&lt;E&gt; *file) &#123; <span class="keyword">return</span> !file-&gt;is_alive; &#125;);</span><br><span class="line">    std::<span class="built_in">erase_if</span>(ctx.dsos, [](InputFile&lt;E&gt; *file) &#123; <span class="keyword">return</span> !file-&gt;is_alive; &#125;);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>for_each_file针对objs和dsos处理resolve，mark live，clear，erase file</li>
+<li>标记所有可访问的输出到文件的object，之后合并可见性</li>
+<li>清除file的symbols</li>
+<li>最后清除掉objs和dsos中非alive的file</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">__attribute__((<span class="built_in">no_sanitize</span>(<span class="string">&quot;thread&quot;</span>)))</span><br><span class="line"><span class="keyword">void</span> InputFile&lt;E&gt;::<span class="built_in">clear_symbols</span>() &#123;</span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : <span class="built_in">get_global_syms</span>())</span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;file == <span class="keyword">this</span>)</span><br><span class="line">      sym-&gt;<span class="built_in">clear</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="mark-live-objects"><a href="#mark-live-objects" class="headerlink" title="mark_live_objects"></a>mark_live_objects</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">mark_live_objects</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">auto</span> mark_symbol = [&amp;](std::string_view name) &#123;</span><br><span class="line">    <span class="keyword">if</span> (InputFile&lt;E&gt; *file = <span class="built_in">get_symbol</span>(ctx, name)-&gt;file)</span><br><span class="line">      file-&gt;is_alive = <span class="literal">true</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::string_view name : ctx.arg.undefined)</span><br><span class="line">    <span class="built_in">mark_symbol</span>(name);</span><br><span class="line">  <span class="keyword">for</span> (std::string_view name : ctx.arg.require_defined)</span><br><span class="line">    <span class="built_in">mark_symbol</span>(name);</span><br><span class="line"></span><br><span class="line">  std::vector&lt;InputFile&lt;E&gt; *&gt; roots;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (InputFile&lt;E&gt; *file : ctx.objs)</span><br><span class="line">    <span class="keyword">if</span> (file-&gt;is_alive)</span><br><span class="line">      roots.<span class="built_in">push_back</span>(file);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (InputFile&lt;E&gt; *file : ctx.dsos)</span><br><span class="line">    <span class="keyword">if</span> (file-&gt;is_alive)</span><br><span class="line">      roots.<span class="built_in">push_back</span>(file);</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(roots, [&amp;](InputFile&lt;E&gt; *file,</span><br><span class="line">                                    tbb::feeder&lt;InputFile&lt;E&gt; *&gt; &amp;feeder) &#123;</span><br><span class="line">    <span class="keyword">if</span> (file-&gt;is_alive)</span><br><span class="line">      file-&gt;<span class="built_in">mark_live_objects</span>(ctx, [&amp;](InputFile&lt;E&gt; *obj) &#123; feeder.<span class="built_in">add</span>(obj); &#125;);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先对所有参数中传入的undef以及require_define的符号所关联的文件进行mark，之后遍历所有alive的obj和dso，加入到root中，之后再进行mark_live_objects。部分文件会因为特殊的链接选项，比如说whole-archive会影响是否设置为is_alive，这部分会之后再以这个为主题单独讲一篇。</p>
+<p>对于ObjectFile和SharedFile的mark方式也是不同的。</p>
+<h3 id="ObjectFile-mark-live-objects"><a href="#ObjectFile-mark-live-objects" class="headerlink" title="ObjectFile::mark_live_objects"></a>ObjectFile::mark_live_objects</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span></span><br><span class="line">ObjectFile&lt;E&gt;::<span class="built_in">mark_live_objects</span>(Context&lt;E&gt; &amp;ctx,</span><br><span class="line">                                 std::function&lt;<span class="built_in"><span class="keyword">void</span></span>(InputFile&lt;E&gt; *)&gt; feeder) &#123;</span><br><span class="line">  <span class="built_in">assert</span>(<span class="keyword">this</span>-&gt;is_alive);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="keyword">this</span>-&gt;first_global; i &lt; <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[i];</span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!esym.<span class="built_in">is_undef</span>() &amp;&amp; exclude_libs)</span><br><span class="line">      <span class="built_in">merge_visibility</span>(ctx, sym, STV_HIDDEN);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      <span class="built_in">merge_visibility</span>(ctx, sym, esym.st_visibility);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym.traced)</span><br><span class="line">      <span class="built_in">print_trace_symbol</span>(ctx, *<span class="keyword">this</span>, esym, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (esym.<span class="built_in">is_weak</span>())</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!sym.file)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">bool</span> keep = esym.<span class="built_in">is_undef</span>() || (esym.<span class="built_in">is_common</span>() &amp;&amp; !sym.<span class="built_in">esym</span>().<span class="built_in">is_common</span>());</span><br><span class="line">    <span class="keyword">if</span> (keep &amp;&amp; <span class="built_in">fast_mark</span>(sym.file-&gt;is_alive)) &#123;</span><br><span class="line">      <span class="built_in">feeder</span>(sym.file);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (sym.traced)</span><br><span class="line">        <span class="built_in">SyncOut</span>(ctx) &lt;&lt; <span class="string">&quot;trace-symbol: &quot;</span> &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot; keeps &quot;</span> &lt;&lt; *sym.file</span><br><span class="line">                     &lt;&lt; <span class="string">&quot; for &quot;</span> &lt;&lt; sym;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>针对所有global的符号进行处理。</p>
+<ol>
+<li><p>首先对esym进行merge_visibility，对于存在定义的exclude_libs的符号来说是HIDDEN的，关于这一点在命令行参数处有说明。</p>
+<blockquote>
+<p>-exclude-libs LIB,LIB,.. Mark all symbols in given libraries hidden</p>
+</blockquote>
+</li>
+<li><p>跳过弱符号以及文件不存在的符号。</p>
+</li>
+<li><p>keep并且fast_mark成功的符号加入到root中。</p>
+</li>
+</ol>
+<p>keep这里需要是undef的情况，我认为是因为如果esym存在定义，那么定义就是存在于当前的ObjectFile中，也就不需要再重复加入到root中了。common我想同样是因为这种情况下所在的文件已经加入到root中了。</p>
+<p>关于merge_visibility</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">merge_visibility</span>(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym,</span><br><span class="line">                                     u8 visibility) &#123;</span><br><span class="line">  <span class="comment">// Canonicalize visibility</span></span><br><span class="line">  <span class="keyword">if</span> (visibility == STV_INTERNAL)</span><br><span class="line">    visibility = STV_HIDDEN;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> priority = [&amp;](u8 visibility) &#123;</span><br><span class="line">    <span class="built_in"><span class="keyword">switch</span></span> (visibility) &#123;</span><br><span class="line">    <span class="keyword">case</span> STV_HIDDEN:</span><br><span class="line">      <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">case</span> STV_PROTECTED:</span><br><span class="line">      <span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">case</span> STV_DEFAULT:</span><br><span class="line">      <span class="keyword">return</span> <span class="number">3</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: unknown symbol visibility: &quot;</span> &lt;&lt; sym;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">update_minimum</span>(sym.visibility, visibility, [&amp;](u8 a, u8 b) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">priority</span>(a) &lt; <span class="built_in">priority</span>(b);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里首先将INTERNAL转换为HIDDEN，之后按照最小的priority来更新visibility。</p>
+<p>update_minimum只是一个针对多线程的封装，本质上是一个compare and exchange操作。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> T, <span class="keyword">typename</span> Compare = std::less&lt;T&gt;&gt;</span><br><span class="line"><span class="keyword">void</span> <span class="built_in">update_minimum</span>(std::atomic&lt;T&gt; &amp;atomic, u64 new_val, Compare cmp = &#123;&#125;) &#123;</span><br><span class="line">  T old_val = atomic.<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">  <span class="keyword">while</span> (<span class="built_in">cmp</span>(new_val, old_val) &amp;&amp;</span><br><span class="line">         !atomic.<span class="built_in">compare_exchange_weak</span>(old_val, new_val,</span><br><span class="line">                                       std::memory_order_relaxed));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>fast_mark也是针对多线程的一个封装，如果是false则更新为true。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// An optimized &quot;mark&quot; operation for parallel mark-and-sweep algorithms.</span></span><br><span class="line"><span class="comment">// Returns true if `visited` was false and updated to true.</span></span><br><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">bool</span> <span class="title">fast_mark</span><span class="params">(std::atomic&lt;<span class="keyword">bool</span>&gt; &amp;visited)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// A relaxed load + branch (assuming miss) takes only around 20 cycles,</span></span><br><span class="line">  <span class="comment">// while an atomic RMW can easily take hundreds on x86. We note that it&#x27;s</span></span><br><span class="line">  <span class="comment">// common that another thread beat us in marking, so doing an optimistic</span></span><br><span class="line">  <span class="comment">// early test tends to improve performance in the ~20% ballpark.</span></span><br><span class="line">  <span class="keyword">return</span> !visited.<span class="built_in">load</span>(std::memory_order_relaxed) &amp;&amp;</span><br><span class="line">         !visited.<span class="built_in">exchange</span>(<span class="literal">true</span>, std::memory_order_relaxed);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="SharedFile-mark-live-objects"><a href="#SharedFile-mark-live-objects" class="headerlink" title="SharedFile::mark_live_objects"></a>SharedFile::mark_live_objects</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span></span><br><span class="line">SharedFile&lt;E&gt;::<span class="built_in">mark_live_objects</span>(Context&lt;E&gt; &amp;ctx,</span><br><span class="line">                                 std::function&lt;<span class="built_in"><span class="keyword">void</span></span>(InputFile&lt;E&gt; *)&gt; feeder) &#123;</span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[i];</span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym.traced)</span><br><span class="line">      <span class="built_in">print_trace_symbol</span>(ctx, *<span class="keyword">this</span>, esym, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (esym.<span class="built_in">is_undef</span>() &amp;&amp; sym.file &amp;&amp; !sym.file-&gt;is_dso &amp;&amp;</span><br><span class="line">        <span class="built_in">fast_mark</span>(sym.file-&gt;is_alive)) &#123;</span><br><span class="line">      <span class="built_in">feeder</span>(sym.file);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (sym.traced)</span><br><span class="line">        <span class="built_in">SyncOut</span>(ctx) &lt;&lt; <span class="string">&quot;trace-symbol: &quot;</span> &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot; keeps &quot;</span> &lt;&lt; *sym.file</span><br><span class="line">                     &lt;&lt; <span class="string">&quot; for &quot;</span> &lt;&lt; sym;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里要说的唯一一点是因为mark的是object而不是shared file，因此dso的情况下不会进行mark</p>
+<h2 id="2-移除重复的COMDAT段"><a href="#2-移除重复的COMDAT段" class="headerlink" title="2. 移除重复的COMDAT段"></a>2. 移除重复的COMDAT段</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;eliminate_comdats&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">resolve_comdat_groups</span>();</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">eliminate_duplicate_comdat_groups</span>();</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">resolve_comdat_groups</span>() &#123;</span><br><span class="line">  <span class="keyword">for</span> (ComdatGroupRef&lt;E&gt; &amp;ref : comdat_groups)</span><br><span class="line">    <span class="built_in">update_minimum</span>(ref.group-&gt;owner, <span class="keyword">this</span>-&gt;priority);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>更新所有comdat_groups的priority</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">eliminate_duplicate_comdat_groups</span>() &#123;</span><br><span class="line">  <span class="keyword">for</span> (ComdatGroupRef&lt;E&gt; &amp;ref : comdat_groups)</span><br><span class="line">    <span class="keyword">if</span> (ref.group-&gt;owner != <span class="keyword">this</span>-&gt;priority)</span><br><span class="line">      <span class="keyword">for</span> (u32 i : ref.members)</span><br><span class="line">        <span class="keyword">if</span> (sections[i])</span><br><span class="line">          sections[i]-&gt;<span class="built_in">kill</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">void</span> InputSection&lt;E&gt;::<span class="built_in">kill</span>() &#123;</span><br><span class="line">  <span class="keyword">if</span> (is_alive.<span class="built_in">exchange</span>(<span class="literal">false</span>))</span><br><span class="line">    <span class="keyword">for</span> (FdeRecord&lt;E&gt; &amp;fde : <span class="built_in">get_fdes</span>())</span><br><span class="line">      fde.is_alive = <span class="literal">false</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>eliminate重复的section。将section和fde的is_alive都设置为false。</p>
+<p>这里将fde设置为false正对应了上期提到单独解析eh_frame的原因之一：消除重复的fde。</p>
+<h2 id="3-实际进行符号决议的过程"><a href="#3-实际进行符号决议的过程" class="headerlink" title="3. 实际进行符号决议的过程"></a>3. 实际进行符号决议的过程</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">for_each_file([&amp;](InputFile&lt;E&gt; *file) &#123; file-&gt;<span class="built_in">resolve_symbols</span>(ctx); &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>resolve_symbols的实现对于ObjectFile和SharedFile是不同的</p>
+<h3 id="ObjectFile"><a href="#ObjectFile" class="headerlink" title="ObjectFile"></a>ObjectFile</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">resolve_symbols</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="keyword">this</span>-&gt;first_global; i &lt; <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line">    <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[i];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (esym.<span class="built_in">is_undef</span>())</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    InputSection&lt;E&gt; *isec = <span class="literal">nullptr</span>;</span><br><span class="line">    <span class="keyword">if</span> (!esym.<span class="built_in">is_abs</span>() &amp;&amp; !esym.<span class="built_in">is_common</span>()) &#123;</span><br><span class="line">      isec = <span class="built_in">get_section</span>(esym);</span><br><span class="line">      <span class="keyword">if</span> (!isec || !isec-&gt;is_alive)</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">std::scoped_lock <span class="title">lock</span><span class="params">(sym.mu)</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">get_rank</span>(<span class="keyword">this</span>, esym, !<span class="keyword">this</span>-&gt;is_alive) &lt; <span class="built_in">get_rank</span>(sym)) &#123;</span><br><span class="line">      sym.file = <span class="keyword">this</span>;</span><br><span class="line">      sym.<span class="built_in">set_input_section</span>(isec);</span><br><span class="line">      sym.value = esym.st_value;</span><br><span class="line">      sym.sym_idx = i;</span><br><span class="line">      sym.ver_idx = ctx.default_version;</span><br><span class="line">      sym.is_weak = esym.<span class="built_in">is_weak</span>();</span><br><span class="line">      sym.is_imported = <span class="literal">false</span>;</span><br><span class="line">      sym.is_exported = <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>符号决议是针对global symbol的elf_sym的。未定义的esym都跳过了，它们都不需要参与resolve的过程，因为resolve本质是找到需要加入到生成产物的符号实现，但是注意在前面mark的时候还是需要的。</p>
+<p>也就是说Symbol类的sym其实是保留的最终唯一定义。而在决议的过程，不断的将esym和对应的sym进行比较。如果esym的rank小，也就是更加优先，那么就将sym中的信息更新为对应的esym的信息，这就是实际决议过程中做的事情。而这里也是实际初始化symbols成员里global的值的地方，local的部分初始化在parse的阶段就做好了，因为local的符号并不需要进行resolve。</p>
+<h3 id="get-rank"><a href="#get-rank" class="headerlink" title="get_rank"></a>get_rank</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> u64 <span class="title">get_rank</span><span class="params">(<span class="keyword">const</span> Symbol&lt;E&gt; &amp;sym)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (!sym.file)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">7</span> &lt;&lt; <span class="number">24</span>;</span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">get_rank</span>(sym.file, sym.<span class="built_in">esym</span>(), !sym.file-&gt;is_alive);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Symbols with higher priorities overwrites symbols with lower priorities.</span></span><br><span class="line"><span class="comment">// Here is the list of priorities, from the highest to the lowest.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  1. Strong defined symbol</span></span><br><span class="line"><span class="comment">//  2. Weak defined symbol</span></span><br><span class="line"><span class="comment">//  3. Strong defined symbol in a DSO/archive</span></span><br><span class="line"><span class="comment">//  4. Weak Defined symbol in a DSO/archive</span></span><br><span class="line"><span class="comment">//  5. Common symbol</span></span><br><span class="line"><span class="comment">//  6. Common symbol in an archive</span></span><br><span class="line"><span class="comment">//  7. Unclaimed (nonexistent) symbol</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Ties are broken by file priority.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> u64 <span class="title">get_rank</span><span class="params">(InputFile&lt;E&gt; *file, <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym, <span class="keyword">bool</span> is_lazy)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (esym.<span class="built_in">is_common</span>()) &#123;</span><br><span class="line">    <span class="built_in">assert</span>(!file-&gt;is_dso);</span><br><span class="line">    <span class="keyword">if</span> (is_lazy)</span><br><span class="line">      <span class="keyword">return</span> (<span class="number">6</span> &lt;&lt; <span class="number">24</span>) + file-&gt;priority;</span><br><span class="line">    <span class="keyword">return</span> (<span class="number">5</span> &lt;&lt; <span class="number">24</span>) + file-&gt;priority;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (file-&gt;is_dso || is_lazy) &#123;</span><br><span class="line">    <span class="keyword">if</span> (esym.st_bind == STB_WEAK)</span><br><span class="line">      <span class="keyword">return</span> (<span class="number">4</span> &lt;&lt; <span class="number">24</span>) + file-&gt;priority;</span><br><span class="line">    <span class="keyword">return</span> (<span class="number">3</span> &lt;&lt; <span class="number">24</span>) + file-&gt;priority;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (esym.st_bind == STB_WEAK)</span><br><span class="line">    <span class="keyword">return</span> (<span class="number">2</span> &lt;&lt; <span class="number">24</span>) + file-&gt;priority;</span><br><span class="line">  <span class="keyword">return</span> (<span class="number">1</span> &lt;&lt; <span class="number">24</span>) + file-&gt;priority;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>get_rank的实现，根据注释我们可以看到不同类别符号的优先级。</p>
+<h3 id="SharedFile"><a href="#SharedFile" class="headerlink" title="SharedFile"></a>SharedFile</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> SharedFile&lt;E&gt;::<span class="built_in">resolve_symbols</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; <span class="keyword">this</span>-&gt;symbols.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line">    <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[i];</span><br><span class="line">    <span class="keyword">if</span> (esym.<span class="built_in">is_undef</span>())</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">std::scoped_lock <span class="title">lock</span><span class="params">(sym.mu)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">get_rank</span>(<span class="keyword">this</span>, esym, <span class="literal">false</span>) &lt; <span class="built_in">get_rank</span>(sym)) &#123;</span><br><span class="line">      sym.file = <span class="keyword">this</span>;</span><br><span class="line">      sym.origin = <span class="number">0</span>;</span><br><span class="line">      sym.value = esym.st_value;</span><br><span class="line">      sym.sym_idx = i;</span><br><span class="line">      sym.ver_idx = versyms[i];</span><br><span class="line">      sym.is_weak = <span class="literal">false</span>;</span><br><span class="line">      sym.is_imported = <span class="literal">false</span>;</span><br><span class="line">      sym.is_exported = <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于SharedFile中的符号中不需要考虑是否是global的问题，上期解析SharedFile的部分也有提到，对应的first_global就是0。相对于</p>
+<h2 id="4-LTO的处理"><a href="#4-LTO的处理" class="headerlink" title="4. LTO的处理"></a>4. LTO的处理</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ctx.has_lto_object) &#123;</span><br><span class="line">  <span class="comment">// Do link-time optimization. We pass all IR object files to the</span></span><br><span class="line">  <span class="comment">// compiler backend to compile them into a few ELF object files.</span></span><br><span class="line">  <span class="comment">//</span></span><br><span class="line">  <span class="comment">// The compiler backend needs to know how symbols are resolved,</span></span><br><span class="line">  <span class="comment">// so compute symbol visibility, import/export bits, etc early.</span></span><br><span class="line">  <span class="built_in">mark_live_objects</span>(ctx);</span><br><span class="line">  <span class="built_in">apply_version_script</span>(ctx);</span><br><span class="line">  <span class="built_in">parse_symbol_version</span>(ctx);</span><br><span class="line">  <span class="built_in">compute_import_export</span>(ctx);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Do LTO. It compiles IR object files into a few big ELF files.</span></span><br><span class="line">  std::vector&lt;ObjectFile&lt;E&gt; *&gt; lto_objs = <span class="built_in">do_lto</span>(ctx);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// do_resolve_symbols() have removed unreferenced files. Restore the</span></span><br><span class="line">  <span class="comment">// original files here because some of them may have to be resurrected</span></span><br><span class="line">  <span class="comment">// because they are referenced by the ELF files returned from do_lto().</span></span><br><span class="line">  ctx.objs = objs;</span><br><span class="line">  ctx.dsos = dsos;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">append</span>(ctx.objs, lto_objs);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Redo name resolution from scratch.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">clear_symbols</span>();</span><br><span class="line">    file-&gt;is_alive = !file-&gt;is_in_lib;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.dsos, [&amp;](SharedFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">clear_symbols</span>();</span><br><span class="line">    file-&gt;is_alive = !file-&gt;is_needed;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Remove IR object files.</span></span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs)</span><br><span class="line">    <span class="keyword">if</span> (file-&gt;is_lto_obj)</span><br><span class="line">      file-&gt;is_alive = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">  std::<span class="built_in">erase_if</span>(ctx.objs, [](ObjectFile&lt;E&gt; *file) &#123; <span class="keyword">return</span> file-&gt;is_lto_obj; &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">do_resolve_symbols</span>(ctx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于apply_version_script, parse_symbol_version, compute_import_export这三个过程，会在之后的过程中讲解。这里简单来讲就是获取符号对应的版本信息以及对应import/export的属性。</p>
+<p>这个部分做了这么几件事情</p>
+<ol>
+<li>计算出符号所需的基本信息</li>
+<li>实际执行lto</li>
+<li>将lto结果的object加入到全局</li>
+<li>清理旧的lto文件</li>
+<li>再次执行do_resolve_symbols整个过程</li>
+</ol>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读 其三 符号决议</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-04-09 16:06:20</li>
+        <li>
+            本文链接：https://homura.live/2023/04/09/mold/mold-3-symbol-resolve/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/04/05/mold/mold-2-read-shared-files/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">mold源码阅读 其二 读取SharedFile</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#dso-uniquely"><span class="nav-number">1.</span> <span class="nav-text">dso uniquely</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#apply-exclude-libs"><span class="nav-number">2.</span> <span class="nav-text">apply_exclude_libs</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#create-internal-file"><span class="nav-number">3.</span> <span class="nav-text">create_internal_file</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#internal-file%E6%98%AF%E4%BB%80%E4%B9%88"><span class="nav-number">3.1.</span> <span class="nav-text">internal file是什么</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.2.</span> <span class="nav-text">实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#defsym"><span class="nav-number">3.3.</span> <span class="nav-text">defsym</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E5%86%B3%E8%AE%AE"><span class="nav-number">4.</span> <span class="nav-text">符号决议</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#resolve-symbols"><span class="nav-number">4.1.</span> <span class="nav-text">resolve_symbols</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E6%A3%80%E6%B5%8Bobject-files"><span class="nav-number">4.2.</span> <span class="nav-text">1. 检测object files</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#mark-live-objects"><span class="nav-number">4.2.1.</span> <span class="nav-text">mark_live_objects</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ObjectFile-mark-live-objects"><span class="nav-number">4.2.2.</span> <span class="nav-text">ObjectFile::mark_live_objects</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SharedFile-mark-live-objects"><span class="nav-number">4.2.3.</span> <span class="nav-text">SharedFile::mark_live_objects</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E7%A7%BB%E9%99%A4%E9%87%8D%E5%A4%8D%E7%9A%84COMDAT%E6%AE%B5"><span class="nav-number">4.3.</span> <span class="nav-text">2. 移除重复的COMDAT段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E5%AE%9E%E9%99%85%E8%BF%9B%E8%A1%8C%E7%AC%A6%E5%8F%B7%E5%86%B3%E8%AE%AE%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="nav-number">4.4.</span> <span class="nav-text">3. 实际进行符号决议的过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ObjectFile"><span class="nav-number">4.4.1.</span> <span class="nav-text">ObjectFile</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#get-rank"><span class="nav-number">4.4.2.</span> <span class="nav-text">get_rank</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#SharedFile"><span class="nav-number">4.4.3.</span> <span class="nav-text">SharedFile</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-LTO%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">4.5.</span> <span class="nav-text">4. LTO的处理</span></a></li></ol></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

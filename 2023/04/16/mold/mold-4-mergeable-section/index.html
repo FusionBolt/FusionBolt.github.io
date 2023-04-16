@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读 其四 mergeable section |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:83834646   上一期的内容讲完了一些针对文件的简单处理以及符号决议，这一期的主要内容是在这之后针对mergeable section的决议与合并。 resolve_section_pieces这个过程是将mergeable的section split到更小的pieces中，并且将每一个piece和其他来自不同文件的pieces进行合并，最典型的例子是不同object file">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读 其四 mergeable section">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/04/16/mold/mold-4-mergeable-section/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:83834646   上一期的内容讲完了一些针对文件的简单处理以及符号决议，这一期的主要内容是在这之后针对mergeable section的决议与合并。 resolve_section_pieces这个过程是将mergeable的section split到更小的pieces中，并且将每一个piece和其他来自不同文件的pieces进行合并，最典型的例子是不同object file">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-4-mergeable-section/Untitled.png">
+<meta property="article:published_time" content="2023-04-16T07:37:08.000Z">
+<meta property="article:modified_time" content="2023-04-16T07:39:34.874Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta property="article:tag" content="Section">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-4-mergeable-section/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/photos"
+                            >
+                                照片
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/photos">照片</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读 其四 mergeable section</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-04-16 15:37:08
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/Section/">Section</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.5k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>13 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-4-mergeable-section/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:83834646</center> 
+
+<p>上一期的内容讲完了一些针对文件的简单处理以及符号决议，这一期的主要内容是在这之后针对mergeable section的决议与合并。</p>
+<h1 id="resolve-section-pieces"><a href="#resolve-section-pieces" class="headerlink" title="resolve_section_pieces"></a>resolve_section_pieces</h1><p>这个过程是将mergeable的section split到更小的pieces中，并且将每一个piece和其他来自不同文件的pieces进行合并，最典型的例子是不同object file中string段的合并。mold中称mergeable section原子单元为section pieces。</p>
+<p>所以这里的过程分为了两部分</p>
+<ol>
+<li>将普通的section转换为MegeableSection</li>
+<li>resolve and merge</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">resolve_section_pieces</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;resolve_section_pieces&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">initialize_mergeable_sections</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">resolve_section_pieces</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="initialize-mergeable-sections"><a href="#initialize-mergeable-sections" class="headerlink" title="initialize_mergeable_sections"></a>initialize_mergeable_sections</h1><p>mold中attach section pieces symbols</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">initialize_mergeable_sections</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  mergeable_sections.<span class="built_in">resize</span>(sections.<span class="built_in">size</span>());</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; sections.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;isec = sections[i]) &#123;</span><br><span class="line">      <span class="keyword">if</span> (std::unique_ptr&lt;MergeableSection&lt;E&gt;&gt; m = <span class="built_in">split_section</span>(ctx, *isec)) &#123;</span><br><span class="line">        mergeable_sections[i] = std::<span class="built_in">move</span>(m);</span><br><span class="line">        isec-&gt;is_alive = <span class="literal">false</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>针对每一个section进行split_section，转换为一个MergeableSection，之后将原始的section设置为非alive。</p>
+<h2 id="MergeableSection"><a href="#MergeableSection" class="headerlink" title="MergeableSection"></a>MergeableSection</h2><p>首先我们来看和MergeableSection相关的数据结构，有如下三个</p>
+<ol>
+<li>MergeableSection</li>
+<li>MergedSection</li>
+<li>SectionFragment</li>
+</ol>
+<p>其中每个MergeableSection中包含了多个SectionFragment，又关联了其对应的MergedSection。MergedSection是一个chunk，而chunk则是在链接后期要输出到文件的时候的一个基本单位，暂时先不进一步讲解。SectionFragment则是MergedSection根据MergeableSection传入的信息构造的，并且返回给MergeableSection保存的结构。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">MergeableSection</span> &#123;</span></span><br><span class="line">  std::pair&lt;SectionFragment&lt;E&gt; *, i64&gt; <span class="built_in">get_fragment</span>(i64 offset);</span><br><span class="line"></span><br><span class="line">  MergedSection&lt;E&gt; *parent;</span><br><span class="line">  u8 p2align = <span class="number">0</span>;</span><br><span class="line">  std::vector&lt;std::string_view&gt; strings;</span><br><span class="line">  std::vector&lt;u64&gt; hashes;</span><br><span class="line">  std::vector&lt;u32&gt; frag_offsets;</span><br><span class="line">  std::vector&lt;SectionFragment&lt;E&gt; *&gt; fragments;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">MergedSection</span> :</span> <span class="keyword">public</span> Chunk&lt;E&gt; &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="function"><span class="keyword">static</span> MergedSection&lt;E&gt; *</span></span><br><span class="line"><span class="function">  <span class="title">get_instance</span><span class="params">(Context&lt;E&gt; &amp;ctx, std::string_view name, u64 type, u64 flags)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function">SectionFragment&lt;E&gt; *<span class="title">insert</span><span class="params">(std::string_view data, u64 hash, i64 p2align)</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">assign_offsets</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">copy_buf</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> <span class="keyword">override</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">write_to</span><span class="params">(Context&lt;E&gt; &amp;ctx, u8 *buf)</span> <span class="keyword">override</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">print_stats</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span></span>;</span><br><span class="line"></span><br><span class="line">  HyperLogLog estimator;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="built_in">MergedSection</span>(std::string_view name, u64 flags, u32 type);</span><br><span class="line"></span><br><span class="line">  ConcurrentMap&lt;SectionFragment&lt;E&gt;&gt; map;</span><br><span class="line">  std::vector&lt;i64&gt; shard_offsets;</span><br><span class="line">  std::once_flag once_flag;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">SectionFragment</span> &#123;</span></span><br><span class="line">  <span class="built_in">SectionFragment</span>(MergedSection&lt;E&gt; *sec) : <span class="built_in">output_section</span>(*sec) &#123;&#125;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">SectionFragment</span>(<span class="keyword">const</span> SectionFragment &amp;other)</span><br><span class="line">    : <span class="built_in">output_section</span>(other.output_section), <span class="built_in">offset</span>(other.offset),</span><br><span class="line">      <span class="built_in">p2align</span>(other.p2align.<span class="built_in">load</span>()), <span class="built_in">is_alive</span>(other.is_alive.<span class="built_in">load</span>()) &#123;&#125;</span><br><span class="line"></span><br><span class="line">  <span class="function">u64 <span class="title">get_addr</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> <span class="keyword">const</span></span>;</span><br><span class="line"></span><br><span class="line">  MergedSection&lt;E&gt; &amp;output_section;</span><br><span class="line">  u32 offset = <span class="number">-1</span>;</span><br><span class="line">  std::<span class="keyword">atomic_uint8_t</span> p2align = <span class="number">0</span>;</span><br><span class="line">  std::<span class="keyword">atomic_bool</span> is_alive = <span class="literal">false</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>MergedSection并不暴露对应的构造函数，而是通过对应的get_instance来获取实例</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">MergedSection&lt;E&gt;::<span class="built_in">get_instance</span>(Context&lt;E&gt; &amp;ctx, std::string_view name,</span><br><span class="line">                               u64 type, u64 flags) &#123;</span><br><span class="line">  name = <span class="built_in">get_merged_output_name</span>(ctx, name, flags);</span><br><span class="line">  flags = flags &amp; ~(u64)SHF_GROUP &amp; ~(u64)SHF_COMPRESSED;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> find = [&amp;]() -&gt; MergedSection * &#123;</span><br><span class="line">    <span class="keyword">for</span> (std::unique_ptr&lt;MergedSection&lt;E&gt;&gt; &amp;osec : ctx.merged_sections)</span><br><span class="line">      <span class="keyword">if</span> (std::<span class="built_in">tuple</span>(name, flags, type) ==</span><br><span class="line">          std::<span class="built_in">tuple</span>(osec-&gt;name, osec-&gt;shdr.sh_flags, osec-&gt;shdr.sh_type))</span><br><span class="line">        <span class="keyword">return</span> osec.<span class="built_in">get</span>();</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Search for an exiting output section.</span></span><br><span class="line">  <span class="keyword">static</span> std::shared_mutex mu;</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="function">std::shared_lock <span class="title">lock</span><span class="params">(mu)</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (MergedSection *osec = <span class="built_in">find</span>())</span><br><span class="line">      <span class="keyword">return</span> osec;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Create a new output section.</span></span><br><span class="line">  <span class="function">std::unique_lock <span class="title">lock</span><span class="params">(mu)</span></span>;</span><br><span class="line">  <span class="keyword">if</span> (MergedSection *osec = <span class="built_in">find</span>())</span><br><span class="line">    <span class="keyword">return</span> osec;</span><br><span class="line"></span><br><span class="line">  MergedSection *osec = <span class="keyword">new</span> <span class="built_in">MergedSection</span>(name, flags, type);</span><br><span class="line">  ctx.merged_sections.<span class="built_in">emplace_back</span>(osec);</span><br><span class="line">  <span class="keyword">return</span> osec;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>每次获取的时候去ctx中寻找实例，不存在则创建新的并且返回。</p>
+<h2 id="split-section"><a href="#split-section" class="headerlink" title="split_section"></a>split_section</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">static</span> std::unique_ptr&lt;MergeableSection&lt;E&gt;&gt;</span><br><span class="line"><span class="built_in">split_section</span>(Context&lt;E&gt; &amp;ctx, InputSection&lt;E&gt; &amp;sec) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!sec.is_alive || sec.sh_size == <span class="number">0</span> || sec.relsec_idx != <span class="number">-1</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">const</span> ElfShdr&lt;E&gt; &amp;shdr = sec.<span class="built_in">shdr</span>();</span><br><span class="line">  <span class="keyword">if</span> (!(shdr.sh_flags &amp; SHF_MERGE))</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br></pre></td></tr></table></figure>
+
+<p>由于是针对mergeable section，而判断标准则是根据section header中的sh_flgas的值，因此先通过检查flga来进行过滤。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">std::unique_ptr&lt;MergeableSection&lt;E&gt;&gt; <span class="built_in">rec</span>(<span class="keyword">new</span> MergeableSection&lt;E&gt;);</span><br><span class="line">rec-&gt;parent = MergedSection&lt;E&gt;::<span class="built_in">get_instance</span>(ctx, sec.<span class="built_in">name</span>(), shdr.sh_type,</span><br><span class="line">                                             shdr.sh_flags);</span><br><span class="line">rec-&gt;p2align = sec.p2align;</span><br><span class="line"></span><br><span class="line"><span class="comment">// If thes section contents are compressed, uncompress them.</span></span><br><span class="line">sec.<span class="built_in">uncompress</span>(ctx);</span><br><span class="line"></span><br><span class="line">std::string_view data = sec.contents;</span><br><span class="line"><span class="keyword">const</span> <span class="keyword">char</span> *begin = data.<span class="built_in">data</span>();</span><br><span class="line">u64 entsize = shdr.sh_entsize;</span><br><span class="line">HyperLogLog estimator;</span><br></pre></td></tr></table></figure>
+
+<p>做一些基本的初始化操作，包括创建了MergeableSection以及关联对应的MergedSection，取出数据等。</p>
+<h3 id="split-string"><a href="#split-string" class="headerlink" title="split string"></a>split string</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Split sections</span></span><br><span class="line"><span class="keyword">if</span> (shdr.sh_flags &amp; SHF_STRINGS) &#123;</span><br><span class="line">  <span class="keyword">if</span> (entsize == <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// GHC (Glasgow Haskell Compiler) sometimes creates a mergeable</span></span><br><span class="line">    <span class="comment">// string section with entsize of 0 instead of 1, though such</span></span><br><span class="line">    <span class="comment">// entsize is technically wrong. This is a workaround for the issue.</span></span><br><span class="line">    entsize = <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">while</span> (!data.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">    <span class="keyword">size_t</span> end = <span class="built_in">find_null</span>(data, entsize);</span><br><span class="line">    <span class="keyword">if</span> (end == data.npos)</span><br><span class="line">      <span class="built_in">Fatal</span>(ctx) &lt;&lt; sec &lt;&lt; <span class="string">&quot;: string is not null terminated&quot;</span>;</span><br><span class="line"></span><br><span class="line">    std::string_view substr = data.<span class="built_in">substr</span>(<span class="number">0</span>, end + entsize);</span><br><span class="line">    data = data.<span class="built_in">substr</span>(end + entsize);</span><br><span class="line"></span><br><span class="line">    rec-&gt;strings.<span class="built_in">push_back</span>(substr);</span><br><span class="line">    rec-&gt;frag_offsets.<span class="built_in">push_back</span>(substr.<span class="built_in">data</span>() - begin);</span><br><span class="line"></span><br><span class="line">    u64 hash = <span class="built_in">hash_string</span>(substr);</span><br><span class="line">    rec-&gt;hashes.<span class="built_in">push_back</span>(hash);</span><br><span class="line">    estimator.<span class="built_in">insert</span>(hash);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">size_t</span> <span class="title">find_null</span><span class="params">(std::string_view data, u64 entsize)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (entsize == <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">return</span> data.<span class="built_in">find</span>(<span class="string">&#x27;\0&#x27;</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt;= data.<span class="built_in">size</span>() - entsize; i += entsize)</span><br><span class="line">    <span class="keyword">if</span> (data.<span class="built_in">substr</span>(i, entsize).<span class="built_in">find_first_not_of</span>(<span class="string">&#x27;\0&#x27;</span>) == data.npos)</span><br><span class="line">      <span class="keyword">return</span> i;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> data.npos;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>找到terminator（’\0’）</li>
+<li>将对应的rec的strings添加找到的str</li>
+<li>添加对应的frag_offsets</li>
+<li>添加string的hash到estimator中</li>
+</ol>
+<p>estimator是用于优化时间的方案，等到最后会提及，不影响合并的正确性。</p>
+<h3 id="split-other"><a href="#split-other" class="headerlink" title="split other"></a>split other</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">// OCaml compiler seems to create a mergeable non-string section with</span></span><br><span class="line">    <span class="comment">// entisze of 0. Such section is malformed. We do not split such section.</span></span><br><span class="line">    <span class="keyword">if</span> (entsize == <span class="number">0</span>)</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (data.<span class="built_in">size</span>() % entsize)</span><br><span class="line">      <span class="built_in">Fatal</span>(ctx) &lt;&lt; sec &lt;&lt; <span class="string">&quot;: section size is not multiple of sh_entsize&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (!data.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">      std::string_view substr = data.<span class="built_in">substr</span>(<span class="number">0</span>, entsize);</span><br><span class="line">      data = data.<span class="built_in">substr</span>(entsize);</span><br><span class="line"></span><br><span class="line">      rec-&gt;strings.<span class="built_in">push_back</span>(substr);</span><br><span class="line">      rec-&gt;frag_offsets.<span class="built_in">push_back</span>(substr.<span class="built_in">data</span>() - begin);</span><br><span class="line"></span><br><span class="line">      u64 hash = <span class="built_in">hash_string</span>(substr);</span><br><span class="line">      rec-&gt;hashes.<span class="built_in">push_back</span>(hash);</span><br><span class="line">      estimator.<span class="built_in">insert</span>(hash);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>和split string的区别在于不是通过’\0’而是通过entsize判断一个piece的结束位置</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">rec-&gt;parent-&gt;estimator.<span class="built_in">merge</span>(estimator);</span><br><span class="line"><span class="function"><span class="keyword">static</span> Counter <span class="title">counter</span><span class="params">(<span class="string">&quot;string_fragments&quot;</span>)</span></span>;</span><br><span class="line">counter += rec-&gt;fragments.<span class="built_in">size</span>();</span><br><span class="line"><span class="keyword">return</span> rec;</span><br></pre></td></tr></table></figure>
+
+<p>最后的收尾</p>
+<h1 id="ObjectFile-resolve-section-pieces"><a href="#ObjectFile-resolve-section-pieces" class="headerlink" title="ObjectFile::resolve_section_pieces"></a>ObjectFile::resolve_section_pieces</h1><ul>
+<li><input disabled="" type="checkbox"> 如何判断是相同的字符串？？对应地址怎么办</li>
+</ul>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">resolve_section_pieces</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">	<span class="keyword">for</span> (std::unique_ptr&lt;MergeableSection&lt;E&gt;&gt; &amp;m : mergeable_sections) &#123;</span><br><span class="line">    <span class="keyword">if</span> (m) &#123;</span><br><span class="line">      m-&gt;fragments.<span class="built_in">reserve</span>(m-&gt;strings.<span class="built_in">size</span>());</span><br><span class="line">      <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; m-&gt;strings.<span class="built_in">size</span>(); i++)</span><br><span class="line">        m-&gt;fragments.<span class="built_in">push_back</span>(m-&gt;parent-&gt;<span class="built_in">insert</span>(m-&gt;strings[i], m-&gt;hashes[i],</span><br><span class="line">                                                 m-&gt;p2align));</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Shrink vectors that we will never use again to reclaim memory.</span></span><br><span class="line">      m-&gt;strings.<span class="built_in">clear</span>();</span><br><span class="line">      m-&gt;hashes.<span class="built_in">clear</span>();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>将所有MergableSection的数据merge到对应的parent中。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i64 i = <span class="number">1</span>; i &lt; <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line">  <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[i];</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (esym.<span class="built_in">is_abs</span>() || esym.<span class="built_in">is_common</span>() || esym.<span class="built_in">is_undef</span>())</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">  std::unique_ptr&lt;MergeableSection&lt;E&gt;&gt; &amp;m = mergeable_sections[<span class="built_in">get_shndx</span>(esym)];</span><br><span class="line">  <span class="keyword">if</span> (!m)</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">  SectionFragment&lt;E&gt; *frag;</span><br><span class="line">  i64 frag_offset;</span><br><span class="line">  std::<span class="built_in">tie</span>(frag, frag_offset) = m-&gt;<span class="built_in">get_fragment</span>(esym.st_value);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!frag)</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: bad symbol value: &quot;</span> &lt;&lt; esym.st_value;</span><br><span class="line"></span><br><span class="line">  sym.<span class="built_in">set_frag</span>(frag);</span><br><span class="line">  sym.value = frag_offset;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>之后是attach section piece to symbols的过程。本质的操作是将对应的有定义的且非abs的符号关联到对应的fragment。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Compute the size of frag_syms.</span></span><br><span class="line">  i64 nfrag_syms = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;isec : sections)</span><br><span class="line">    <span class="keyword">if</span> (isec &amp;&amp; isec-&gt;is_alive &amp;&amp; (isec-&gt;<span class="built_in">shdr</span>().sh_flags &amp; SHF_ALLOC))</span><br><span class="line">      <span class="keyword">for</span> (ElfRel&lt;E&gt; &amp;r : isec-&gt;<span class="built_in">get_rels</span>(ctx))</span><br><span class="line">        <span class="keyword">if</span> (<span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[r.r_sym];</span><br><span class="line">            esym.st_type == STT_SECTION &amp;&amp; mergeable_sections[<span class="built_in">get_shndx</span>(esym)])</span><br><span class="line">          nfrag_syms++;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;frag_syms.<span class="built_in">resize</span>(nfrag_syms);</span><br></pre></td></tr></table></figure>
+
+<p>之后寻找满足条件的esym，统计对应的size。</p>
+<p>注意寻找的是ElfRel中的esym，只有ElfRel中的esym才能被relocation，因为merge的过程中必然会修改各种地址信息。</p>
+<p>这里根据sym得到的index获取对应的mergeable_section是在前一步init的过程中初始化的，也就是说这个index对于mergeable_section和原始的section是完全对应的，如果不是mergeable的section则返回的会是空指针。</p>
+<p>接下来是引用mergeable section的relocation symbol，会针对每一个这样的symbol redirect rel sym到一个新创建的dummy到symbol上。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// For each relocation referring a mergeable section symbol, we create</span></span><br><span class="line"><span class="comment">// a new dummy non-section symbol and redirect the relocation to the</span></span><br><span class="line"><span class="comment">// newly-created symbol.</span></span><br><span class="line">i64 idx = <span class="number">0</span>;</span><br><span class="line"><span class="keyword">for</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;isec : sections) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!isec || !isec-&gt;is_alive || !(isec-&gt;<span class="built_in">shdr</span>().sh_flags &amp; SHF_ALLOC))</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (ElfRel&lt;E&gt; &amp;r : isec-&gt;<span class="built_in">get_rels</span>(ctx)) &#123;</span><br><span class="line">    <span class="keyword">const</span> ElfSym&lt;E&gt; &amp;esym = <span class="keyword">this</span>-&gt;elf_syms[r.r_sym];</span><br><span class="line">    <span class="keyword">if</span> (esym.st_type != STT_SECTION)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    std::unique_ptr&lt;MergeableSection&lt;E&gt;&gt; &amp;m = mergeable_sections[<span class="built_in">get_shndx</span>(esym)];</span><br><span class="line">    <span class="keyword">if</span> (!m)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    i64 r_addend = <span class="built_in">get_addend</span>(*isec, r);</span><br><span class="line"></span><br><span class="line">    SectionFragment&lt;E&gt; *frag;</span><br><span class="line">    i64 in_frag_offset;</span><br><span class="line">    std::<span class="built_in">tie</span>(frag, in_frag_offset) = m-&gt;<span class="built_in">get_fragment</span>(esym.st_value + r_addend);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!frag)</span><br><span class="line">      <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: bad relocation at &quot;</span> &lt;&lt; r.r_sym;</span><br><span class="line"></span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = <span class="keyword">this</span>-&gt;frag_syms[idx];</span><br><span class="line">    sym.file = <span class="keyword">this</span>;</span><br><span class="line">    sym.<span class="built_in">set_name</span>(<span class="string">&quot;&lt;fragment&gt;&quot;</span>);</span><br><span class="line">    sym.sym_idx = r.r_sym;</span><br><span class="line">    sym.visibility = STV_HIDDEN;</span><br><span class="line">    sym.<span class="built_in">set_frag</span>(frag);</span><br><span class="line">    sym.value = in_frag_offset - r_addend;</span><br><span class="line">    r.r_sym = <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>() + idx;</span><br><span class="line">    idx++;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">inline</span> i64 <span class="title">get_addend</span><span class="params">(u8 *loc, <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> rel.r_addend;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">std::pair&lt;SectionFragment&lt;E&gt; *, i64&gt;</span><br><span class="line">MergeableSection&lt;E&gt;::<span class="built_in">get_fragment</span>(i64 offset) &#123;</span><br><span class="line">  std::vector&lt;u32&gt; &amp;vec = frag_offsets;</span><br><span class="line">  <span class="keyword">auto</span> it = std::<span class="built_in">upper_bound</span>(vec.<span class="built_in">begin</span>(), vec.<span class="built_in">end</span>(), offset);</span><br><span class="line">  i64 idx = it - <span class="number">1</span> - vec.<span class="built_in">begin</span>();</span><br><span class="line">  <span class="keyword">return</span> &#123;fragments[idx], offset - vec[idx]&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>简单的对新的sym设置了基本信息，主要是进行双向的关联。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">sym.sym_idx = r.r_sym;</span><br><span class="line">r.r_sym = <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>() + idx;</span><br><span class="line"></span><br><span class="line"><span class="comment">// Symbol:sym_idx</span></span><br><span class="line"><span class="comment">// Index into the symbol table of the owner file.</span></span><br><span class="line">i32 sym_idx = <span class="number">-1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这里将rel中的sym指向了elf_syms后面的位置，后面会将执行frag_syms逐一添加到elf_syms之后。</p>
+<p>最后将frag_syms都添加到ObjectFile的symbols中，整个过程就全部结束了。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">assert</span>(idx == <span class="keyword">this</span>-&gt;frag_syms.<span class="built_in">size</span>());</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (Symbol&lt;E&gt; &amp;sym : <span class="keyword">this</span>-&gt;frag_syms)</span><br><span class="line">  <span class="keyword">this</span>-&gt;symbols.<span class="built_in">push_back</span>(&amp;sym);</span><br></pre></td></tr></table></figure>
+
+<h2 id="MergedSection-insert"><a href="#MergedSection-insert" class="headerlink" title="MergedSection::insert"></a>MergedSection::insert</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line">SectionFragment&lt;E&gt; *</span><br><span class="line">MergedSection&lt;E&gt;::<span class="built_in">insert</span>(std::string_view data, u64 hash, i64 p2align) &#123;</span><br><span class="line">  std::<span class="built_in">call_once</span>(once_flag, [&amp;] &#123;</span><br><span class="line">    <span class="comment">// We aim 2/3 occupation ratio</span></span><br><span class="line">    map.<span class="built_in">resize</span>(estimator.<span class="built_in">get_cardinality</span>() * <span class="number">3</span> / <span class="number">2</span>);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  SectionFragment&lt;E&gt; *frag;</span><br><span class="line">  <span class="keyword">bool</span> inserted;</span><br><span class="line">  std::<span class="built_in">tie</span>(frag, inserted) = map.<span class="built_in">insert</span>(data, hash, <span class="built_in">SectionFragment</span>(<span class="keyword">this</span>));</span><br><span class="line">  <span class="built_in">assert</span>(frag);</span><br><span class="line"></span><br><span class="line">  <span class="built_in">update_maximum</span>(frag-&gt;p2align, p2align);</span><br><span class="line">  <span class="keyword">return</span> frag;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">ConcurrentMap&lt;SectionFragment&lt;E&gt;&gt; map;</span><br></pre></td></tr></table></figure>
+
+<p>第一次insert的时候进行预估大小，之后进行insert。</p>
+<p>在看到这里的实现我在想，在merge string的时候是要比较长度吗，在这里我得到了答案，是直接通过之前保存的hash保证unique。</p>
+<p>另外这里用到了estimator，estimator的类型是hyperloglog，根据注释</p>
+<blockquote>
+<p>This file implements HyperLogLog algorithm, which estimates the number of unique items in a given multiset.</p>
+</blockquote>
+<p>谷歌的结果是这样的</p>
+<blockquote>
+<p>HyperLogLog is <strong>an algorithm for the count-distinct problem, approximating the number of distinct elements in a multiset</strong><br>. Calculating the exact cardinality of the distinct elements of a multiset requires an amount of memory proportional to the cardinality, which is impractical for very large data sets.</p>
+</blockquote>
+<p>有兴趣的可以去看wiki或者更多资料，这不在此系列博客的研究范围内。</p>
+<h1 id="整个过程的回顾"><a href="#整个过程的回顾" class="headerlink" title="整个过程的回顾"></a>整个过程的回顾</h1><p>resolve_section_pieces由两部分操作组成</p>
+<ol>
+<li>针对所有mergeable的段进行split，将InputSection转换为对应的MergeableSection</li>
+<li>针对所有MergeableSection进行merge<ol>
+<li>strings Merge到相关联的MergedSection中</li>
+<li>symbols attach to piece section</li>
+<li>针对rel的symbol关联到一个新创建的dummy的symbol上</li>
+</ol>
+</li>
+</ol>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读 其四 mergeable section</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-04-16 15:37:08</li>
+        <li>
+            本文链接：https://homura.live/2023/04/16/mold/mold-4-mergeable-section/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/04/09/Reading/1984/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">1984</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#resolve-section-pieces"><span class="nav-number">1.</span> <span class="nav-text">resolve_section_pieces</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#initialize-mergeable-sections"><span class="nav-number">2.</span> <span class="nav-text">initialize_mergeable_sections</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MergeableSection"><span class="nav-number">2.1.</span> <span class="nav-text">MergeableSection</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#split-section"><span class="nav-number">2.2.</span> <span class="nav-text">split_section</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#split-string"><span class="nav-number">2.2.1.</span> <span class="nav-text">split string</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#split-other"><span class="nav-number">2.2.2.</span> <span class="nav-text">split other</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#ObjectFile-resolve-section-pieces"><span class="nav-number">3.</span> <span class="nav-text">ObjectFile::resolve_section_pieces</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#MergedSection-insert"><span class="nav-number">3.1.</span> <span class="nav-text">MergedSection::insert</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%95%B4%E4%B8%AA%E8%BF%87%E7%A8%8B%E7%9A%84%E5%9B%9E%E9%A1%BE"><span class="nav-number">4.</span> <span class="nav-text">整个过程的回顾</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

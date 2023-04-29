@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读五 符号相关 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:73005507   上期讲完了resolve_section_pieces，在这之后本应是combine_object，但是combine_object几乎包含了后面的所有过程，因此等到整个流程讲完后或许会再回来讲，这一期的内容以符号版本的处理为主。 为common symbol创建bss段12&#x2F;&#x2F; Create .bss sections for common symbols.c">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读五 符号相关">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/04/29/mold/mold-5-symbol/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:73005507   上期讲完了resolve_section_pieces，在这之后本应是combine_object，但是combine_object几乎包含了后面的所有过程，因此等到整个流程讲完后或许会再回来讲，这一期的内容以符号版本的处理为主。 为common symbol创建bss段12&#x2F;&#x2F; Create .bss sections for common symbols.c">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-5-symbol/Untitled.png">
+<meta property="article:published_time" content="2023-04-29T09:09:46.000Z">
+<meta property="article:modified_time" content="2023-04-29T09:11:32.284Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-5-symbol/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读五 符号相关</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-04-29 17:09:46
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.6k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>12 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-5-symbol/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:73005507</center> 
+
+<p>上期讲完了resolve_section_pieces，在这之后本应是combine_object，但是combine_object几乎包含了后面的所有过程，因此等到整个流程讲完后或许会再回来讲，这一期的内容以符号版本的处理为主。</p>
+<h1 id="为common-symbol创建bss段"><a href="#为common-symbol创建bss段" class="headerlink" title="为common symbol创建bss段"></a>为common symbol创建bss段</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Create .bss sections for common symbols.</span></span><br><span class="line"><span class="built_in">convert_common_symbols</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">convert_common_symbols</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;convert_common_symbols&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">convert_common_symbols</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="common-symbol"><a href="#common-symbol" class="headerlink" title="common symbol"></a>common symbol</h2><p>首先解释一下common symbol。根据mold的注释所讲，common symbols被用于C的tentative definition，tentative definition是指C语言在一个头文件中允许全局变量定义省略extern。header会存在于多个翻译单元中，但这个符号不会导致duplicate symbol error，相反linker会将他们merge到一个单一的实例中。</p>
+<p>还给出了一个例子，比如说一个头文件中有一个tentative definition是int foo，在一个C文件中包含了其包含初始值定义，比如说int foo = 5（real definition），那么这个tentative definition的符号会被resolve到real definition上。如果没有real definition，那么tentative definition会得到默认值。</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://stackoverflow.com/questions/3095861/about-tentative-definition" >About Tentative definition<i class="fas fa-external-link-alt"></i></a></p>
+<p>参考这个stackoverflow的回答，C语言中纯变量声明会被处理为extern的，我想这就是允许省略extern的原因，编译器帮你做了这件事情，尽管这或许与你的预期不符。</p>
+<p>简单总结来说就是头文件中一个全局的声明在不同编译单元有不同定义的时候需要进行resolve一个单一实现，声明的symbol其实是属于多个文件的，因此是common的。</p>
+<h2 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">convert_common_symbols</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!has_common_symbol)</span><br><span class="line">    <span class="keyword">return</span>;</span><br></pre></td></tr></table></figure>
+
+<p>has_common_symbol初始化的地方是在input-files.cc中的void ObjectFile<E>::initialize_symbols</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// initialize_symbols</span></span><br><span class="line"><span class="keyword">this</span>-&gt;symbols[i] = <span class="built_in">insert_symbol</span>(ctx, esym, key, name);</span><br><span class="line">    <span class="keyword">if</span> (esym.<span class="built_in">is_common</span>())</span><br><span class="line">      has_common_symbol = <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>实际的处理是针对所有global的common符号</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (i64 i = <span class="keyword">this</span>-&gt;first_global; i &lt; <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!<span class="keyword">this</span>-&gt;elf_syms[i].<span class="built_in">is_common</span>())</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">  Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line">  <span class="function">std::scoped_lock <span class="title">lock</span><span class="params">(sym.mu)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (sym.file != <span class="keyword">this</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.warn_common)</span><br><span class="line">      <span class="built_in">Warn</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: multiple common symbols: &quot;</span> &lt;&lt; sym;</span><br><span class="line">    <span class="keyword">continue</span>;</span><br><span class="line">  &#125;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>提示warning</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// in for</span></span><br><span class="line">elf_sections2.<span class="built_in">push_back</span>(&#123;&#125;);</span><br><span class="line">ElfShdr&lt;E&gt; &amp;shdr = elf_sections2.<span class="built_in">back</span>();</span><br><span class="line"><span class="built_in">memset</span>(&amp;shdr, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(shdr));</span><br><span class="line"></span><br><span class="line">std::string_view name;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (sym.<span class="built_in">get_type</span>() == STT_TLS) &#123;</span><br><span class="line">  name = <span class="string">&quot;.tls_common&quot;</span>;</span><br><span class="line">  shdr.sh_flags = SHF_ALLOC | SHF_WRITE | SHF_TLS;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">  name = <span class="string">&quot;.common&quot;</span>;</span><br><span class="line">  shdr.sh_flags = SHF_ALLOC | SHF_WRITE;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">shdr.sh_type = SHT_NOBITS;</span><br><span class="line">shdr.sh_size = <span class="keyword">this</span>-&gt;elf_syms[i].st_size;</span><br><span class="line">shdr.sh_addralign = <span class="keyword">this</span>-&gt;elf_syms[i].st_value;</span><br></pre></td></tr></table></figure>
+
+<p>关于SHF_TLS</p>
+<blockquote>
+<p>SHF_TLS: This section holds Thread-Local Storage, meaning that each separate execution flow has its own distinct instance of this data. Implementations need not support this flag.</p>
+</blockquote>
+<p><a class="link"   target="_blank" rel="noopener" href="https://refspecs.linuxbase.org/elf/gabi4+/ch4.sheader.html" >https://refspecs.linuxbase.org/elf/gabi4+/ch4.sheader.html<i class="fas fa-external-link-alt"></i></a></p>
+<p>对每个global common符号创建了一个ElfShdr后开始设置其基本信息</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">i64 idx = <span class="keyword">this</span>-&gt;elf_sections.<span class="built_in">size</span>() + elf_sections2.<span class="built_in">size</span>() - <span class="number">1</span>;</span><br><span class="line">std::unique_ptr&lt;InputSection&lt;E&gt;&gt; isec =</span><br><span class="line">  std::make_unique&lt;InputSection&lt;E&gt;&gt;(ctx, *<span class="keyword">this</span>, name, idx);</span><br><span class="line"></span><br><span class="line">sym.file = <span class="keyword">this</span>;</span><br><span class="line">sym.<span class="built_in">set_input_section</span>(isec.<span class="built_in">get</span>());</span><br><span class="line">sym.value = <span class="number">0</span>;</span><br><span class="line">sym.sym_idx = i;</span><br><span class="line">sym.ver_idx = ctx.default_version;</span><br><span class="line">sym.is_weak = <span class="literal">false</span>;</span><br><span class="line">sym.is_imported = <span class="literal">false</span>;</span><br><span class="line">sym.is_exported = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">sections.<span class="built_in">push_back</span>(std::<span class="built_in">move</span>(isec));</span><br><span class="line"><span class="comment">// for end</span></span><br></pre></td></tr></table></figure>
+
+<p>创建了一个指向elf_sections的InputSecion，之后添加到sections中。</p>
+<h1 id="apply-version-script"><a href="#apply-version-script" class="headerlink" title="apply_version_script"></a>apply_version_script</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Apply version scripts.</span></span><br><span class="line"><span class="built_in">apply_version_script</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<h2 id="simple"><a href="#simple" class="headerlink" title="simple"></a>simple</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">apply_version_script</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;apply_version_script&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// If all patterns are simple (i.e. not containing any meta-</span></span><br><span class="line">  <span class="comment">// characters and is not a C++ name), we can simply look up</span></span><br><span class="line">  <span class="comment">// symbols.</span></span><br><span class="line">  <span class="keyword">auto</span> is_simple = [&amp;] &#123;</span><br><span class="line">    <span class="keyword">for</span> (VersionPattern &amp;v : ctx.version_patterns)</span><br><span class="line">      <span class="keyword">if</span> (v.is_cpp || v.pattern.<span class="built_in">find_first_of</span>(<span class="string">&quot;*?[&quot;</span>) != v.pattern.npos)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>首先定义了is_simple。</p>
+<p>simple的定义</p>
+<ol>
+<li>非cpp name。VersionPattern是根据链接器参数创建与添加的，is_cpp也同样是在那时指定的。</li>
+<li>不包含meta字符的名字。根据代码中，meta字符即是*[?中的char</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (<span class="built_in">is_simple</span>()) &#123;</span><br><span class="line">    <span class="keyword">for</span> (VersionPattern &amp;v : ctx.version_patterns) &#123;</span><br><span class="line">      Symbol&lt;E&gt; *sym = <span class="built_in">get_symbol</span>(ctx, v.pattern);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (!sym-&gt;file &amp;&amp; !ctx.arg.undefined_version)</span><br><span class="line">        <span class="built_in">Warn</span>(ctx) &lt;&lt; v.source &lt;&lt; <span class="string">&quot;: cannot assign version `&quot;</span> &lt;&lt; v.ver_str</span><br><span class="line">                  &lt;&lt; <span class="string">&quot;` to symbol `&quot;</span> &lt;&lt; *sym &lt;&lt; <span class="string">&quot;`: symbol not found&quot;</span>;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (sym-&gt;file &amp;&amp; !sym-&gt;file-&gt;is_dso)</span><br><span class="line">        sym-&gt;ver_idx = v.ver_idx;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果是simple的那么直接针对所有的version_pattern找到对应的符号，并且将其通过设置ver_idx的方式与VersionPattern进行关联</p>
+<h2 id="otherwise"><a href="#otherwise" class="headerlink" title="otherwise"></a>otherwise</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Otherwise, use glob pattern matchers.</span></span><br><span class="line">MultiGlob matcher;</span><br><span class="line">MultiGlob cpp_matcher;</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.version_patterns.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  VersionPattern &amp;v = ctx.version_patterns[i];</span><br><span class="line">  <span class="keyword">if</span> (v.is_cpp) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!cpp_matcher.<span class="built_in">add</span>(v.pattern, i))</span><br><span class="line">      <span class="built_in">Fatal</span>(ctx) &lt;&lt; <span class="string">&quot;invalid version pattern: &quot;</span> &lt;&lt; v.pattern;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (!matcher.<span class="built_in">add</span>(v.pattern, i))</span><br><span class="line">      <span class="built_in">Fatal</span>(ctx) &lt;&lt; <span class="string">&quot;invalid version pattern: &quot;</span> &lt;&lt; v.pattern;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先将cpp和其他复杂的符号区分开</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : file-&gt;<span class="built_in">get_global_syms</span>()) &#123;</span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;file != file)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    std::string_view name = sym-&gt;<span class="built_in">name</span>();</span><br><span class="line">    i64 match = INT64_MAX;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (std::optional&lt;u32&gt; idx = matcher.<span class="built_in">find</span>(name))</span><br><span class="line">      match = std::min&lt;i64&gt;(match, *idx);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Match non-mangled symbols against the C++ pattern as well.</span></span><br><span class="line">    <span class="comment">// Weird, but required to match other linkers&#x27; behavior.</span></span><br><span class="line">    <span class="keyword">if</span> (!cpp_matcher.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">      <span class="keyword">if</span> (std::optional&lt;std::string_view&gt; s = <span class="built_in">cpp_demangle</span>(name))</span><br><span class="line">        name = *s;</span><br><span class="line">      <span class="keyword">if</span> (std::optional&lt;u32&gt; idx = cpp_matcher.<span class="built_in">find</span>(name))</span><br><span class="line">        match = std::min&lt;i64&gt;(match, *idx);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (match != INT64_MAX)</span><br><span class="line">      sym-&gt;ver_idx = ctx.version_patterns[match].ver_idx;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>在所有obj文件中找到所有global symbol</p>
+<p>如果普通matcher中能找到其名字，那么更新match的index</p>
+<p>如果cpp matcher非空，那么对其进行demangle操作，之后在cpp matcher中寻找其名字并且更新match的index</p>
+<p>最后将符号与对应VersionPattern进行关联。</p>
+<p>而这里的demangle操作是直接调用对应平台的abi。starts_with(”_Z”)是代表这是一个mangling的名字。关于mangling的规则参考</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/gchatelet/gcc_cpp_mangling_documentation" >https://github.com/gchatelet/gcc_cpp_mangling_documentation<i class="fas fa-external-link-alt"></i></a></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">std::optional&lt;std::string_view&gt; <span class="title">cpp_demangle</span><span class="params">(std::string_view name)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">static</span> <span class="keyword">thread_local</span> <span class="keyword">char</span> *buf;</span><br><span class="line">  <span class="keyword">static</span> <span class="keyword">thread_local</span> <span class="keyword">size_t</span> buflen;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// TODO(cwasser): Actually demangle Symbols on Windows using e.g.</span></span><br><span class="line">  <span class="comment">// `UnDecorateSymbolName` from Dbghelp, maybe even Itanium symbols?</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifndef</span> _WIN32</span></span><br><span class="line">  <span class="keyword">if</span> (name.<span class="built_in">starts_with</span>(<span class="string">&quot;_Z&quot;</span>)) &#123;</span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    <span class="keyword">char</span> *p = abi::__cxa_demangle(std::<span class="built_in">string</span>(name).<span class="built_in">c_str</span>(), buf, &amp;buflen, &amp;status);</span><br><span class="line">    <span class="keyword">if</span> (status == <span class="number">0</span>) &#123;</span><br><span class="line">      buf = p;</span><br><span class="line">      <span class="keyword">return</span> p;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> &#123;&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="obj-only"><a href="#obj-only" class="headerlink" title="obj only"></a>obj only</h2><p>我在读到这里，很好奇为什么只针对的是obj而不考虑dso，看了下相关的命令行参数的介绍才明白过来</p>
+<blockquote>
+<p>-E, –export-dynamic Put symbols in the dynamic symbol table –no-export-dynamic</p>
+</blockquote>
+<h1 id="parse-symbol-version"><a href="#parse-symbol-version" class="headerlink" title="parse_symbol_version"></a>parse_symbol_version</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Parse symbol version suffixes (e.g. &quot;foo@ver1&quot;).</span></span><br><span class="line"><span class="built_in">parse_symbol_version</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">parse_symbol_version</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (!ctx.arg.shared)</span><br><span class="line">    <span class="keyword">return</span>;</span><br></pre></td></tr></table></figure>
+
+<p>这是针对生成shared库的操作，因为只有动态链接才需要考虑加载符号版本的问题，符号版本是为了加载动态库的时候确保更新后符号的实现一致，如果和预想的实现不一致可能引起其他问题。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">std::unordered_map&lt;std::string_view, u16&gt; verdefs;</span><br><span class="line"><span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.arg.version_definitions.<span class="built_in">size</span>(); i++)</span><br><span class="line">  verdefs[ctx.arg.version_definitions[i]] = i + VER_NDX_LAST_RESERVED + <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>实现中首先是将每一个version信息绑定到一个i + VER_NDX_LAST_RESERVED + 1的值（其中的version_definitions则是在read_version_script中读取的）。</p>
+<p>接下来是针对了所有的global object进行操作。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; file-&gt;elf_syms.<span class="built_in">size</span>() - file-&gt;first_global; i++) &#123;</span><br><span class="line">      <span class="comment">// Match VERSION part of symbol foo@VERSION with version definitions.</span></span><br><span class="line">      <span class="comment">// The symbols&#x27; VERSION parts are in file-&gt;symvers.</span></span><br><span class="line">      <span class="keyword">if</span> (!file-&gt;symvers[i])</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">      Symbol&lt;E&gt; *sym = file-&gt;symbols[i + file-&gt;first_global];</span><br><span class="line">      <span class="keyword">if</span> (sym-&gt;file != file)</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">      std::string_view ver = file-&gt;symvers[i];</span><br><span class="line">			...</span><br><span class="line">  &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>首先找到了对应文件的global符号</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">bool</span> is_default = <span class="literal">false</span>;</span><br><span class="line"><span class="keyword">if</span> (ver.<span class="built_in">starts_with</span>(<span class="string">&#x27;@&#x27;</span>)) &#123;</span><br><span class="line">  is_default = <span class="literal">true</span>;</span><br><span class="line">  ver = ver.<span class="built_in">substr</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>获取符号的版本具体的值</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> it = verdefs.<span class="built_in">find</span>(ver);</span><br><span class="line"><span class="keyword">if</span> (it == verdefs.<span class="built_in">end</span>()) &#123;</span><br><span class="line">  <span class="built_in">Error</span>(ctx) &lt;&lt; *file &lt;&lt; <span class="string">&quot;: symbol &quot;</span> &lt;&lt; *sym &lt;&lt;  <span class="string">&quot; has undefined version &quot;</span></span><br><span class="line">             &lt;&lt; ver;</span><br><span class="line">  <span class="keyword">continue</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>根据具体的值查找到上面保存的index</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sym-&gt;ver_idx = it-&gt;second;</span><br><span class="line"><span class="keyword">if</span> (!is_default)</span><br><span class="line">  sym-&gt;ver_idx |= VERSYM_HIDDEN;</span><br></pre></td></tr></table></figure>
+
+<p>非default行为的版本，也就是非@开头的版本则ver_idx设置为HIDDEN。关于非default的情况，这种符号version则是在default_symver选项中添加的。</p>
+<p>该选项对应的介绍以及代码实现处</p>
+<blockquote>
+<p>Use soname as a symbol version and append that version to all symbols.</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ctx.arg.default_symver) &#123;</span><br><span class="line">    std::string ver = ctx.arg.soname.<span class="built_in">empty</span>() ?</span><br><span class="line">      <span class="built_in">filepath</span>(ctx.arg.output).<span class="built_in">filename</span>().<span class="built_in">string</span>() : std::<span class="built_in">string</span>(ctx.arg.soname);</span><br><span class="line">    ctx.arg.version_definitions.<span class="built_in">push_back</span>(ver);</span><br><span class="line">    ctx.default_version = VER_NDX_LAST_RESERVED + <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// If both symbol `foo` and `foo@VERSION` are defined, `foo@VERSION`</span></span><br><span class="line"><span class="comment">// hides `foo` so that all references to `foo` are resolved to a</span></span><br><span class="line"><span class="comment">// versioned symbol. Likewise, if `foo@VERSION` and `foo@@VERSION` are</span></span><br><span class="line"><span class="comment">// defined, the default one takes precedence.</span></span><br><span class="line">Symbol&lt;E&gt; *sym2 = <span class="built_in">get_symbol</span>(ctx, sym-&gt;<span class="built_in">name</span>());</span><br><span class="line"><span class="keyword">if</span> (sym2-&gt;file == file &amp;&amp; !file-&gt;symvers[sym2-&gt;sym_idx - file-&gt;first_global])</span><br><span class="line">  <span class="keyword">if</span> (sym2-&gt;ver_idx == ctx.default_version ||</span><br><span class="line">      (sym2-&gt;ver_idx &amp; ~VERSYM_HIDDEN) == (sym-&gt;ver_idx &amp; ~VERSYM_HIDDEN))</span><br><span class="line">    sym2-&gt;ver_idx = VER_NDX_LOCAL;</span><br></pre></td></tr></table></figure>
+
+<p>最后是一个符号名同时存在带有version和没有version的两种定义，那么带有version信息的则会对外隐藏不带有特殊version信息的实现（设置为local）。通过当前sym的名字在ctx中查找同名符号，之后进行处理操作。</p>
+<h1 id="compute-import-export"><a href="#compute-import-export" class="headerlink" title="compute_import_export"></a>compute_import_export</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Set is_imported and is_exported bits for each symbol.</span></span><br><span class="line"><span class="built_in">compute_import_export</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">compute_import_export</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;compute_import_export&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// If we are creating an executable, we want to export symbols referenced</span></span><br><span class="line">  <span class="comment">// by DSOs unless they are explicitly marked as local by a version script.</span></span><br><span class="line">  <span class="keyword">if</span> (!ctx.arg.shared) &#123;</span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(ctx.dsos, [&amp;](SharedFile&lt;E&gt; *file) &#123;</span><br><span class="line">      <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : file-&gt;symbols) &#123;</span><br><span class="line">        <span class="keyword">if</span> (sym-&gt;file &amp;&amp; !sym-&gt;file-&gt;is_dso &amp;&amp; sym-&gt;visibility != STV_HIDDEN) &#123;</span><br><span class="line">          <span class="keyword">if</span> (sym-&gt;ver_idx != VER_NDX_LOCAL || !ctx.default_version_from_version_script) &#123;</span><br><span class="line">            std::scoped_lock <span class="built_in">lock</span>(sym-&gt;mu);</span><br><span class="line">            sym-&gt;is_exported = <span class="literal">true</span>;</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>在不生成shared库的情况下，针对所有的dso进行处理，在创建可执行文件的时候，导出被dso引用的且不被标记为local的符号。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Export symbols that are not hidden or marked as local.</span></span><br><span class="line"><span class="comment">// We also want to mark imported symbols as such.</span></span><br><span class="line">tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : file-&gt;<span class="built_in">get_global_syms</span>()) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!sym-&gt;file || sym-&gt;visibility == STV_HIDDEN ||</span><br><span class="line">        sym-&gt;ver_idx == VER_NDX_LOCAL)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;file != file &amp;&amp; sym-&gt;file-&gt;is_dso &amp;&amp; !sym-&gt;<span class="built_in">is_absolute</span>()) &#123;</span><br><span class="line">      std::scoped_lock <span class="built_in">lock</span>(sym-&gt;mu);</span><br><span class="line">      sym-&gt;is_imported = <span class="literal">true</span>;</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If we are creating a DSO, all global symbols are exported by default.</span></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;file == file) &#123;</span><br><span class="line">      std::scoped_lock <span class="built_in">lock</span>(sym-&gt;mu);</span><br><span class="line">      sym-&gt;is_exported = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (ctx.arg.shared &amp;&amp; sym-&gt;visibility != STV_PROTECTED &amp;&amp;</span><br><span class="line">          !ctx.arg.Bsymbolic &amp;&amp;</span><br><span class="line">          !(ctx.arg.Bsymbolic_functions &amp;&amp; sym-&gt;<span class="built_in">get_type</span>() == STT_FUNC))</span><br><span class="line">        sym-&gt;is_imported = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<p>objs中找到global符号，对于HIDDEN或者NDX_LOCAL的符号都跳过。</p>
+<p>如果使用一个在dso中的符号，就需要运行时import它，因此需要设置对应符号为imported</p>
+<p>如果创建dso，那么所有的global符号默认都要export。</p>
+<h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>convert_common_symbols：给所有global的common符号创建一个对应的InputSection段</p>
+<p>apply_version_script：将解析命令行参数产生的VersionPatten关联到对应的obj文件中的symbol</p>
+<p>parse_symbol_version：读取symbol version信息，处理对应的ver_idx，以及针对不同版本符号的处理</p>
+<p>compute_import_export：对所有符号计算对应的import和export信息</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读五 符号相关</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-04-29 17:09:46</li>
+        <li>
+            本文链接：https://homura.live/2023/04/29/mold/mold-5-symbol/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/04/18/Reading/Stoner/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">斯通纳</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%BAcommon-symbol%E5%88%9B%E5%BB%BAbss%E6%AE%B5"><span class="nav-number">1.</span> <span class="nav-text">为common symbol创建bss段</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#common-symbol"><span class="nav-number">1.1.</span> <span class="nav-text">common symbol</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.2.</span> <span class="nav-text">实现</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#apply-version-script"><span class="nav-number">2.</span> <span class="nav-text">apply_version_script</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#simple"><span class="nav-number">2.1.</span> <span class="nav-text">simple</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#otherwise"><span class="nav-number">2.2.</span> <span class="nav-text">otherwise</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#obj-only"><span class="nav-number">2.3.</span> <span class="nav-text">obj only</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#parse-symbol-version"><span class="nav-number">3.</span> <span class="nav-text">parse_symbol_version</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#compute-import-export"><span class="nav-number">4.</span> <span class="nav-text">compute_import_export</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">5.</span> <span class="nav-text">总结</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

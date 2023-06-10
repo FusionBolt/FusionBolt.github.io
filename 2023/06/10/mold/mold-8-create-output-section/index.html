@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读八 创建输出段 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:101015341_p18   上一期介绍了一些创建输出段之前的工作，本期主要是把创建输出相关的最后一些前置准备讲解完成。根据代码中的注释，add_synthetic_symbols以后，不会再有任何新的文件添加到ctx.objs和ctx.dsos中了。之后会再讲解简单的命令行参数处理，下一期再讲对于输出chunk中的一些处理 create output sections123456">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读八 创建输出段">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/06/10/mold/mold-8-create-output-section/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:101015341_p18   上一期介绍了一些创建输出段之前的工作，本期主要是把创建输出相关的最后一些前置准备讲解完成。根据代码中的注释，add_synthetic_symbols以后，不会再有任何新的文件添加到ctx.objs和ctx.dsos中了。之后会再讲解简单的命令行参数处理，下一期再讲对于输出chunk中的一些处理 create output sections123456">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-8-create-output-section/Untitled.png">
+<meta property="article:published_time" content="2023-06-10T08:24:45.000Z">
+<meta property="article:modified_time" content="2023-06-10T08:26:12.044Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-8-create-output-section/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读八 创建输出段</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-06-10 16:24:45
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.4k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>13 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-8-create-output-section/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:101015341_p18</center> 
+
+<p>上一期介绍了一些创建输出段之前的工作，本期主要是把创建输出相关的最后一些前置准备讲解完成。根据代码中的注释，add_synthetic_symbols以后，不会再有任何新的文件添加到ctx.objs和ctx.dsos中了。之后会再讲解简单的命令行参数处理，下一期再讲对于输出chunk中的一些处理</p>
+<h1 id="create-output-sections"><a href="#create-output-sections" class="headerlink" title="create output sections"></a>create output sections</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Create output sections for input sections.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">create_output_sections</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;create_output_sections&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">Cmp</span> &#123;</span></span><br><span class="line">    <span class="function"><span class="keyword">size_t</span> <span class="title">operator</span><span class="params">()</span><span class="params">(<span class="keyword">const</span> OutputSectionKey &amp;k)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">      u64 h = <span class="built_in">hash_string</span>(k.name);</span><br><span class="line">      h = <span class="built_in">combine_hash</span>(h, std::hash&lt;u64&gt;&#123;&#125;(k.type));</span><br><span class="line">      h = <span class="built_in">combine_hash</span>(h, std::hash&lt;u64&gt;&#123;&#125;(k.flags));</span><br><span class="line">      <span class="keyword">return</span> h;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  std::unordered_map&lt;OutputSectionKey, OutputSection&lt;E&gt; *, Cmp&gt; map;</span><br><span class="line">  std::shared_mutex mu;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>首先针对所有的InputSection生成一个key，并且根据key创建所有的OutputSection</li>
+<li>将所有obj中的InputSection加入到对应OutputSection的members中</li>
+<li>对所有的output section和mergeable section加入到chunks</li>
+<li>将所有的chunk进行排序</li>
+<li>所有的chunk加入到ctx.chunks中（在加入之前chunks中有一些synthetic的chunk，在上一期中有提及）</li>
+</ol>
+<p>以下是这五个过程的代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Instantiate output sections</span></span><br><span class="line">tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;isec : file-&gt;sections) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!isec || !isec-&gt;is_alive)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    OutputSectionKey key = <span class="built_in">get_output_section_key</span>(ctx, *isec);</span><br><span class="line"></span><br><span class="line">    &#123;</span><br><span class="line">      std::shared_lock <span class="built_in">lock</span>(mu);</span><br><span class="line">      <span class="keyword">auto</span> it = map.<span class="built_in">find</span>(key);</span><br><span class="line">      <span class="keyword">if</span> (it != map.<span class="built_in">end</span>()) &#123;</span><br><span class="line">        isec-&gt;output_section = it-&gt;second;</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    std::unique_ptr&lt;OutputSection&lt;E&gt;&gt; osec =</span><br><span class="line">      std::make_unique&lt;OutputSection&lt;E&gt;&gt;(key.name, key.type, key.flags);</span><br><span class="line">    std::unique_lock <span class="built_in">lock</span>(mu);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">auto</span> [it, inserted] = map.<span class="built_in">insert</span>(&#123;key, osec.<span class="built_in">get</span>()&#125;);</span><br><span class="line">    isec-&gt;output_section = it-&gt;second;</span><br><span class="line">    <span class="keyword">if</span> (inserted)</span><br><span class="line">      ctx.osec_pool.<span class="built_in">emplace_back</span>(std::<span class="built_in">move</span>(osec));</span><br><span class="line">  &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Add input sections to output sections</span></span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs)</span><br><span class="line">    <span class="keyword">for</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;isec : file-&gt;sections)</span><br><span class="line">      <span class="keyword">if</span> (isec &amp;&amp; isec-&gt;is_alive)</span><br><span class="line">        isec-&gt;output_section-&gt;members.<span class="built_in">push_back</span>(isec.<span class="built_in">get</span>());</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Add output sections and mergeable sections to ctx.chunks</span></span><br><span class="line">  std::vector&lt;Chunk&lt;E&gt; *&gt; vec;</span><br><span class="line">  <span class="keyword">for</span> (std::pair&lt;<span class="keyword">const</span> OutputSectionKey, OutputSection&lt;E&gt; *&gt; &amp;kv : map)</span><br><span class="line">    vec.<span class="built_in">push_back</span>(kv.second);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;MergedSection&lt;E&gt;&gt; &amp;osec : ctx.merged_sections)</span><br><span class="line">    <span class="keyword">if</span> (osec-&gt;shdr.sh_size)</span><br><span class="line">      vec.<span class="built_in">push_back</span>(osec.<span class="built_in">get</span>());</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Sections are added to the section lists in an arbitrary order</span></span><br><span class="line">  <span class="comment">// because they are created in parallel. Sort them to to make the</span></span><br><span class="line">  <span class="comment">// output deterministic.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_sort</span>(vec.<span class="built_in">begin</span>(), vec.<span class="built_in">end</span>(), [](Chunk&lt;E&gt; *x, Chunk&lt;E&gt; *y) &#123;</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">tuple</span>(x-&gt;name, x-&gt;shdr.sh_type, x-&gt;shdr.sh_flags) &lt;</span><br><span class="line">           std::<span class="built_in">tuple</span>(y-&gt;name, y-&gt;shdr.sh_type, y-&gt;shdr.sh_flags);</span><br><span class="line">  &#125;);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">append</span>(ctx.chunks, vec);</span><br></pre></td></tr></table></figure>
+
+<h2 id="get-output-section-key"><a href="#get-output-section-key" class="headerlink" title="get_output_section_key"></a>get_output_section_key</h2><p>这个函数的作用是从一个InputSection构造一个OutputSectionKey</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> OutputSectionKey</span></span><br><span class="line"><span class="function"><span class="title">get_output_section_key</span><span class="params">(Context&lt;E&gt; &amp;ctx, InputSection&lt;E&gt; &amp;isec)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">const</span> ElfShdr&lt;E&gt; &amp;shdr = isec.<span class="built_in">shdr</span>();</span><br><span class="line">  std::string_view name = <span class="built_in">get_output_name</span>(ctx, isec.<span class="built_in">name</span>(), shdr.sh_flags);</span><br><span class="line">  u64 type = canonicalize_type&lt;E&gt;(name, shdr.sh_type);</span><br><span class="line">  u64 flags = shdr.sh_flags &amp; ~(u64)SHF_COMPRESSED;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!ctx.arg.relocatable)</span><br><span class="line">    flags &amp;= ~(u64)SHF_GROUP &amp; ~(u64)SHF_GNU_RETAIN;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// .init_array is usually writable. We don&#x27;t want to create multiple</span></span><br><span class="line">  <span class="comment">// .init_array output sections, so make it always writable.</span></span><br><span class="line">  <span class="comment">// So is .fini_array.</span></span><br><span class="line">  <span class="keyword">if</span> (type == SHT_INIT_ARRAY || type == SHT_FINI_ARRAY)</span><br><span class="line">    flags |= SHF_WRITE;</span><br><span class="line">  <span class="keyword">return</span> &#123;name, type, flags&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">OutputSectionKey</span> &#123;</span></span><br><span class="line">  std::string_view name;</span><br><span class="line">  u64 type;</span><br><span class="line">  u64 flags;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">bool</span> <span class="keyword">operator</span>==(<span class="keyword">const</span> OutputSectionKey &amp;other) <span class="keyword">const</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> name == other.name &amp;&amp; type == other.type &amp;&amp; flags == other.flags;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>从InputSection获取的output name。这里有以下几种情况</p>
+<ol>
+<li><p>返回原始名字</p>
+</li>
+<li><p>忽略段名字的后缀</p>
+<p>不知道这里应该用什么术语，还是举个例子，比如说里面的.ARM.exidx，如果有.ARM.exidx.f1以及.ARM.exidx.f2，那么这两个的名字都会归为.ARM.exidx</p>
+</li>
+<li><p>将一些特殊的text段单独分开，而不是合并为一个text。这里涉及到了一个z_keep_text_section_prefix的编译选项，命令行的介绍是</p>
+<blockquote>
+<p>z keep-text-section-prefix Keep .text.{hot,unknown,unlikely,startup,exit} as separate sections in the final binary</p>
+</blockquote>
+</li>
+<li><p>对于text等特定段则是只保留原始前缀，比如说所有的.text.xxx最后都会合并到一个.text段。这个对于函数定义非常常见，查看编译产物的时候，经常会看到一些.text.function_name，最后都会合并为一个.text，这种合并其实就是这里实现的。</p>
+</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function">std::string_view</span></span><br><span class="line"><span class="function"><span class="title">get_output_name</span><span class="params">(Context&lt;E&gt; &amp;ctx, std::string_view name, u64 flags)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.relocatable &amp;&amp; !ctx.arg.relocatable_merge_sections)</span><br><span class="line">    <span class="keyword">return</span> name;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.unique &amp;&amp; ctx.arg.unique-&gt;<span class="built_in">match</span>(name))</span><br><span class="line">    <span class="keyword">return</span> name;</span><br><span class="line">  <span class="keyword">if</span> (flags &amp; SHF_MERGE)</span><br><span class="line">    <span class="keyword">return</span> name;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (name.<span class="built_in">starts_with</span>(<span class="string">&quot;.ARM.exidx&quot;</span>))</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;.ARM.exidx&quot;</span>;</span><br><span class="line">  <span class="keyword">if</span> (name.<span class="built_in">starts_with</span>(<span class="string">&quot;.ARM.extab&quot;</span>))</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;.ARM.extab&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.z_keep_text_section_prefix) &#123;</span><br><span class="line">    <span class="keyword">static</span> std::string_view prefixes[] = &#123;</span><br><span class="line">      <span class="string">&quot;.text.hot.&quot;</span>, <span class="string">&quot;.text.unknown.&quot;</span>, <span class="string">&quot;.text.unlikely.&quot;</span>, <span class="string">&quot;.text.startup.&quot;</span>,</span><br><span class="line">      <span class="string">&quot;.text.exit.&quot;</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (std::string_view prefix : prefixes) &#123;</span><br><span class="line">      std::string_view stem = prefix.<span class="built_in">substr</span>(<span class="number">0</span>, prefix.<span class="built_in">size</span>() - <span class="number">1</span>);</span><br><span class="line">      <span class="keyword">if</span> (name == stem || name.<span class="built_in">starts_with</span>(prefix))</span><br><span class="line">        <span class="keyword">return</span> stem;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">static</span> std::string_view prefixes[] = &#123;</span><br><span class="line">    <span class="string">&quot;.text.&quot;</span>, <span class="string">&quot;.data.rel.ro.&quot;</span>, <span class="string">&quot;.data.&quot;</span>, <span class="string">&quot;.rodata.&quot;</span>, <span class="string">&quot;.bss.rel.ro.&quot;</span>, <span class="string">&quot;.bss.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;.init_array.&quot;</span>, <span class="string">&quot;.fini_array.&quot;</span>, <span class="string">&quot;.tbss.&quot;</span>, <span class="string">&quot;.tdata.&quot;</span>, <span class="string">&quot;.gcc_except_table.&quot;</span>,</span><br><span class="line">    <span class="string">&quot;.ctors.&quot;</span>, <span class="string">&quot;.dtors.&quot;</span>, <span class="string">&quot;.gnu.warning.&quot;</span>,</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::string_view prefix : prefixes) &#123;</span><br><span class="line">    std::string_view stem = prefix.<span class="built_in">substr</span>(<span class="number">0</span>, prefix.<span class="built_in">size</span>() - <span class="number">1</span>);</span><br><span class="line">    <span class="keyword">if</span> (name == stem || name.<span class="built_in">starts_with</span>(prefix))</span><br><span class="line">      <span class="keyword">return</span> stem;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> name;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="add-synthetic-symbols"><a href="#add-synthetic-symbols" class="headerlink" title="add synthetic symbols"></a>add synthetic symbols</h1><p>这里的功能如名字一样，就是添加一些synthetic的符号，添加后将这些符号关联到ctx.symtab中</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">add_synthetic_symbols</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  ObjectFile&lt;E&gt; &amp;obj = *ctx.internal_obj;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> add = [&amp;](std::string_view name) &#123;</span><br><span class="line">    ElfSym&lt;E&gt; esym;</span><br><span class="line">    <span class="built_in">memset</span>(&amp;esym, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(esym));</span><br><span class="line">    esym.st_type = STT_NOTYPE;</span><br><span class="line">    esym.st_shndx = SHN_ABS;</span><br><span class="line">    esym.st_bind = STB_GLOBAL;</span><br><span class="line">    esym.st_visibility = STV_HIDDEN;</span><br><span class="line">    ctx.internal_esyms.<span class="built_in">push_back</span>(esym);</span><br><span class="line"></span><br><span class="line">    Symbol&lt;E&gt; *sym = <span class="built_in">get_symbol</span>(ctx, name);</span><br><span class="line">    sym-&gt;value = <span class="number">0xdeadbeef</span>; <span class="comment">// unique dummy value</span></span><br><span class="line">    obj.symbols.<span class="built_in">push_back</span>(sym);</span><br><span class="line">    <span class="keyword">return</span> sym;</span><br><span class="line">  &#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">ctx.__ehdr_start = <span class="built_in">add</span>(<span class="string">&quot;__ehdr_start&quot;</span>);</span><br><span class="line">ctx.__init_array_start = <span class="built_in">add</span>(<span class="string">&quot;__init_array_start&quot;</span>);</span><br><span class="line">ctx.__init_array_end = <span class="built_in">add</span>(<span class="string">&quot;__init_array_end&quot;</span>);</span><br><span class="line">ctx.__fini_array_start = <span class="built_in">add</span>(<span class="string">&quot;__fini_array_start&quot;</span>);</span><br><span class="line">ctx.__fini_array_end = <span class="built_in">add</span>(<span class="string">&quot;__fini_array_end&quot;</span>);</span><br><span class="line">ctx.__preinit_array_start = <span class="built_in">add</span>(<span class="string">&quot;__preinit_array_start&quot;</span>);</span><br><span class="line">ctx.__preinit_array_end = <span class="built_in">add</span>(<span class="string">&quot;__preinit_array_end&quot;</span>);</span><br><span class="line">ctx._DYNAMIC = <span class="built_in">add</span>(<span class="string">&quot;_DYNAMIC&quot;</span>);</span><br><span class="line">ctx._GLOBAL_OFFSET_TABLE_ = <span class="built_in">add</span>(<span class="string">&quot;_GLOBAL_OFFSET_TABLE_&quot;</span>);</span><br><span class="line">ctx._PROCEDURE_LINKAGE_TABLE_ = <span class="built_in">add</span>(<span class="string">&quot;_PROCEDURE_LINKAGE_TABLE_&quot;</span>);</span><br><span class="line">ctx.__bss_start = <span class="built_in">add</span>(<span class="string">&quot;__bss_start&quot;</span>);</span><br><span class="line">ctx._end = <span class="built_in">add</span>(<span class="string">&quot;_end&quot;</span>);</span><br><span class="line">ctx._etext = <span class="built_in">add</span>(<span class="string">&quot;_etext&quot;</span>);</span><br><span class="line">ctx._edata = <span class="built_in">add</span>(<span class="string">&quot;_edata&quot;</span>);</span><br><span class="line">ctx.__executable_start = <span class="built_in">add</span>(<span class="string">&quot;__executable_start&quot;</span>);</span><br><span class="line"></span><br><span class="line">ctx.__rel_iplt_start =</span><br><span class="line">  <span class="built_in">add</span>(is_rela&lt;E&gt; ? <span class="string">&quot;__rela_iplt_start&quot;</span> : <span class="string">&quot;__rel_iplt_start&quot;</span>);</span><br><span class="line">ctx.__rel_iplt_end =</span><br><span class="line">  <span class="built_in">add</span>(is_rela&lt;E&gt; ? <span class="string">&quot;__rela_iplt_end&quot;</span> : <span class="string">&quot;__rel_iplt_end&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.eh_frame_hdr)</span><br><span class="line">  ctx.__GNU_EH_FRAME_HDR = <span class="built_in">add</span>(<span class="string">&quot;__GNU_EH_FRAME_HDR&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (!<span class="built_in">get_symbol</span>(ctx, <span class="string">&quot;end&quot;</span>)-&gt;file)</span><br><span class="line">  ctx.end = <span class="built_in">add</span>(<span class="string">&quot;end&quot;</span>);</span><br><span class="line"><span class="keyword">if</span> (!<span class="built_in">get_symbol</span>(ctx, <span class="string">&quot;etext&quot;</span>)-&gt;file)</span><br><span class="line">  ctx.etext = <span class="built_in">add</span>(<span class="string">&quot;etext&quot;</span>);</span><br><span class="line"><span class="keyword">if</span> (!<span class="built_in">get_symbol</span>(ctx, <span class="string">&quot;edata&quot;</span>)-&gt;file)</span><br><span class="line">  ctx.edata = <span class="built_in">add</span>(<span class="string">&quot;edata&quot;</span>);</span><br><span class="line"><span class="keyword">if</span> (!<span class="built_in">get_symbol</span>(ctx, <span class="string">&quot;__dso_handle&quot;</span>)-&gt;file)</span><br><span class="line">  ctx.__dso_handle = <span class="built_in">add</span>(<span class="string">&quot;__dso_handle&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>添加通用的特殊符号</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(supports_tlsdesc&lt;E&gt;)</span></span></span><br><span class="line"><span class="function">  ctx._TLS_MODULE_BASE_ </span>= <span class="built_in">add</span>(<span class="string">&quot;_TLS_MODULE_BASE_&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(is_riscv&lt;E&gt;)</span></span></span><br><span class="line"><span class="function">  <span class="title">if</span> <span class="params">(!ctx.arg.shared)</span></span></span><br><span class="line"><span class="function">    ctx.__global_pointer </span>= <span class="built_in">add</span>(<span class="string">&quot;__global_pointer$&quot;</span>);</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_same_v&lt;E, ARM32&gt;)</span> </span>&#123;</span><br><span class="line">  ctx.__exidx_start = <span class="built_in">add</span>(<span class="string">&quot;__exidx_start&quot;</span>);</span><br><span class="line">  ctx.__exidx_end = <span class="built_in">add</span>(<span class="string">&quot;__exidx_end&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(is_ppc&lt;E&gt;)</span></span></span><br><span class="line"><span class="function">  ctx.TOC </span>= <span class="built_in">add</span>(<span class="string">&quot;.TOC.&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>针对特殊平台添加特定的符号</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks) &#123;</span><br><span class="line">    <span class="keyword">if</span> (std::optional&lt;std::string&gt; name = <span class="built_in">get_start_stop_name</span>(ctx, *chunk)) &#123;</span><br><span class="line">      <span class="built_in">add</span>(<span class="built_in">save_string</span>(ctx, <span class="string">&quot;__start_&quot;</span> + *name));</span><br><span class="line">      <span class="built_in">add</span>(<span class="built_in">save_string</span>(ctx, <span class="string">&quot;__stop_&quot;</span> + *name));</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (ctx.arg.physical_image_base) &#123;</span><br><span class="line">        <span class="built_in">add</span>(<span class="built_in">save_string</span>(ctx, <span class="string">&quot;__phys_start_&quot;</span> + *name));</span><br><span class="line">        <span class="built_in">add</span>(<span class="built_in">save_string</span>(ctx, <span class="string">&quot;__phys_stop_&quot;</span> + *name));</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
+
+<p>针对特殊名字的trunk的处理</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">obj.elf_syms = ctx.internal_esyms;</span><br><span class="line">obj.symvers.<span class="built_in">resize</span>(ctx.internal_esyms.<span class="built_in">size</span>() - <span class="number">1</span>);</span><br><span class="line"></span><br><span class="line">obj.<span class="built_in">resolve_symbols</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>对internal_obj进行symbol resolve</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Make all synthetic symbols relative ones by associating them to</span></span><br><span class="line"><span class="comment">// a dummy output section.</span></span><br><span class="line"><span class="keyword">for</span> (Symbol&lt;E&gt; *sym : obj.symbols)</span><br><span class="line">  <span class="keyword">if</span> (sym-&gt;file == &amp;obj)</span><br><span class="line">    sym-&gt;<span class="built_in">set_output_section</span>(ctx.symtab);</span><br></pre></td></tr></table></figure>
+
+<p>符号关联到symtab这个output section里</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Handle --defsym symbols.</span></span><br><span class="line"><span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.arg.defsyms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">  Symbol&lt;E&gt; *sym = ctx.arg.defsyms[i].first;</span><br><span class="line">  std::variant&lt;Symbol&lt;E&gt; *, u64&gt; val = ctx.arg.defsyms[i].second;</span><br><span class="line"></span><br><span class="line">  Symbol&lt;E&gt; *target = <span class="literal">nullptr</span>;</span><br><span class="line">  <span class="keyword">if</span> (Symbol&lt;E&gt; **ref = std::get_if&lt;Symbol&lt;E&gt; *&gt;(&amp;val))</span><br><span class="line">    target = *ref;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// If the alias refers another symobl, copy ELF symbol attributes.</span></span><br><span class="line">  <span class="keyword">if</span> (target) &#123;</span><br><span class="line">    ElfSym&lt;E&gt; &amp;esym = obj.elf_syms[i + <span class="number">1</span>];</span><br><span class="line">    esym.st_type = target-&gt;<span class="built_in">esym</span>().st_type;</span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(<span class="keyword">requires</span> &#123; esym.ppc_local_entry; &#125;)</span></span></span><br><span class="line"><span class="function">      esym.ppc_local_entry </span>= target-&gt;<span class="built_in">esym</span>().ppc_local_entry;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Make the target absolute if necessary.</span></span><br><span class="line">  <span class="keyword">if</span> (!target || target-&gt;<span class="built_in">is_absolute</span>())</span><br><span class="line">    sym-&gt;origin = <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于—defsym指定的符号进行处理</p>
+<h1 id="check-cet-errors"><a href="#check-cet-errors" class="headerlink" title="check_cet_errors"></a>check_cet_errors</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Handle `-z cet-report`.</span></span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.z_cet_report != CET_REPORT_NONE)</span><br><span class="line">    <span class="built_in">check_cet_errors</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>首先，cet是Control Flow Enforcement Technology的缩写。简单来说就是预防控制流攻击的一种技术</p>
+<blockquote>
+<p>Control-flow Enforcement Technology (CET) covers several related x86 processor features that provide protection against control flow hijacking attacks. CET can protect both applications and the kernel.</p>
+<p>CET introduces shadow stack and indirect branch tracking (IBT). A shadow stack is a secondary stack allocated from memory which cannot be directly modified by applications. When executing a CALL instruction, the processor pushes the return address to both the normal stack and the shadow stack. Upon function return, the processor pops the shadow stack copy and compares it to the normal stack copy. If the two differ, the processor raises a control-protection fault. IBT verifies indirect CALL/JMP targets are intended as marked by the compiler with ‘ENDBR’ opcodes. Not all CPU’s have both Shadow Stack and Indirect Branch Tracking. Today in the 64-bit kernel, only userspace shadow stack and kernel IBT are supported.</p>
+</blockquote>
+<p><a class="link"   target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/next/x86/shstk.html" >Control-flow Enforcement Technology (CET) Shadow Stack — The Linux Kernel  documentation<i class="fas fa-external-link-alt"></i></a></p>
+<p>cet_report有三类</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">  CET_REPORT_NONE,</span><br><span class="line">  CET_REPORT_WARNING,</span><br><span class="line">  CET_REPORT_ERROR,</span><br><span class="line">&#125; CetReportKind;</span><br></pre></td></tr></table></figure>
+
+<p>这个函数是用于进行针对每个file检查对应的gnu_properties，如果没有满足特定feature的话抛出warning或者error。</p>
+<p>ELF中必须包含GNU_PROPERTY_X86_FEATURE_1_IBT和GNU_PROPERTY_X86_FEATURE_1_SHSTK属性才能支持cet。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">check_cet_errors</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">bool</span> warning = (ctx.arg.z_cet_report == CET_REPORT_WARNING);</span><br><span class="line">  <span class="built_in">assert</span>(warning || (ctx.arg.z_cet_report == CET_REPORT_ERROR));</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> has_feature = [](ObjectFile&lt;E&gt; *file, u32 feature) &#123;</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">any_of</span>(file-&gt;gnu_properties.<span class="built_in">begin</span>(), file-&gt;gnu_properties.<span class="built_in">end</span>(),</span><br><span class="line">                       [&amp;](<span class="keyword">auto</span> kv) &#123;</span><br><span class="line">                         <span class="keyword">return</span> kv.first == GNU_PROPERTY_X86_FEATURE_1_AND</span><br><span class="line">                             &amp;&amp; (kv.second &amp; feature);</span><br><span class="line">                       &#125;);</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs) &#123;</span><br><span class="line">    <span class="keyword">if</span> (file == ctx.internal_obj)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    <span class="keyword">if</span> (!<span class="built_in">has_feature</span>(file, GNU_PROPERTY_X86_FEATURE_1_IBT)) &#123;</span><br><span class="line">      <span class="keyword">if</span> (warning)</span><br><span class="line">        <span class="built_in">Warn</span>(ctx) &lt;&lt; *file &lt;&lt; <span class="string">&quot;: -cet-report=warning: &quot;</span></span><br><span class="line">                  &lt;&lt; <span class="string">&quot;missing GNU_PROPERTY_X86_FEATURE_1_IBT&quot;</span>;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        <span class="built_in">Error</span>(ctx) &lt;&lt; *file &lt;&lt; <span class="string">&quot;: -cet-report=error: &quot;</span></span><br><span class="line">                   &lt;&lt; <span class="string">&quot;missing GNU_PROPERTY_X86_FEATURE_1_IBT&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!<span class="built_in">has_feature</span>(file, GNU_PROPERTY_X86_FEATURE_1_SHSTK)) &#123;</span><br><span class="line">      <span class="keyword">if</span> (warning)</span><br><span class="line">        <span class="built_in">Warn</span>(ctx) &lt;&lt; *file &lt;&lt; <span class="string">&quot;: -cet-report=warning: &quot;</span></span><br><span class="line">                  &lt;&lt; <span class="string">&quot;missing GNU_PROPERTY_X86_FEATURE_1_SHSTK&quot;</span>;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        <span class="built_in">Error</span>(ctx) &lt;&lt; *file &lt;&lt; <span class="string">&quot;: -cet-report=error: &quot;</span></span><br><span class="line">                   &lt;&lt; <span class="string">&quot;missing GNU_PROPERTY_X86_FEATURE_1_SHSTK&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="execstack-if-needed"><a href="#execstack-if-needed" class="headerlink" title="execstack-if-needed"></a>execstack-if-needed</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Handle `-z execstack-if-needed`.</span></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.z_execstack_if_needed)</span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs)</span><br><span class="line">    <span class="keyword">if</span> (file-&gt;needs_executable_stack)</span><br><span class="line">      ctx.arg.z_execstack = <span class="literal">true</span>;</span><br></pre></td></tr></table></figure>
+
+<p>所有的obj中，如果有needs_executable_stack为true的情况，那么设置ctx中的arg。obj中的这个属性是在ObjectFile::initialize_sections中设置的。而全局的z_execstack会在后面被用到，此时先不过多提及。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// .note.GNU-stack section controls executable-ness of the stack</span></span><br><span class="line"><span class="comment">// area in GNU linkers. We ignore that section because silently</span></span><br><span class="line"><span class="comment">// making the stack area executable is too dangerous. Tell our</span></span><br><span class="line"><span class="comment">// users about the difference if that matters.</span></span><br><span class="line"><span class="keyword">if</span> (name == <span class="string">&quot;.note.GNU-stack&quot;</span> &amp;&amp; !ctx.arg.relocatable) &#123;</span><br><span class="line">  <span class="keyword">if</span> (shdr.sh_flags &amp; SHF_EXECINSTR) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!ctx.arg.z_execstack &amp;&amp; !ctx.arg.z_execstack_if_needed)</span><br><span class="line">      <span class="built_in">Warn</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: this file may cause a segmentation&quot;</span></span><br><span class="line">        <span class="string">&quot; fault because it requires an executable stack. See&quot;</span></span><br><span class="line">        <span class="string">&quot; https://github.com/rui314/mold/tree/main/docs/execstack.md&quot;</span></span><br><span class="line">        <span class="string">&quot; for more info.&quot;</span>;</span><br><span class="line">    needs_executable_stack = <span class="literal">true</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">continue</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读八 创建输出段</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-06-10 16:24:45</li>
+        <li>
+            本文链接：https://homura.live/2023/06/10/mold/mold-8-create-output-section/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/05/20/mold/mold-7-before-create-output-section/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">mold源码阅读七 创建输出段之前</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#create-output-sections"><span class="nav-number">1.</span> <span class="nav-text">create output sections</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#get-output-section-key"><span class="nav-number">1.1.</span> <span class="nav-text">get_output_section_key</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#add-synthetic-symbols"><span class="nav-number">2.</span> <span class="nav-text">add synthetic symbols</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#check-cet-errors"><span class="nav-number">3.</span> <span class="nav-text">check_cet_errors</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#execstack-if-needed"><span class="nav-number">4.</span> <span class="nav-text">execstack-if-needed</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

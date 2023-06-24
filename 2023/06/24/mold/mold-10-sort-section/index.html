@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读十 段排序 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:76218989   段排序本篇文章提到的mold中出现的段排序，包含了一个chunk内的段与段的排序，还包含了chunk与chunk之间的排序。或者也可以说是对于输入角度来看待的排序，以及从输出角度看待的段进行排序。对于输入来讲，段的基本单位是InputSection，比如说一个输入文件中的一个text段，而对于输出来讲，也就是目标文件来讲，段的基本单位是一个chunk，而一个ch">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读十 段排序">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/06/24/mold/mold-10-sort-section/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:76218989   段排序本篇文章提到的mold中出现的段排序，包含了一个chunk内的段与段的排序，还包含了chunk与chunk之间的排序。或者也可以说是对于输入角度来看待的排序，以及从输出角度看待的段进行排序。对于输入来讲，段的基本单位是InputSection，比如说一个输入文件中的一个text段，而对于输出来讲，也就是目标文件来讲，段的基本单位是一个chunk，而一个ch">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-10-sort-section/Untitled.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-10-sort-section/Untitled%201.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-10-sort-section/Untitled%202.png">
+<meta property="article:published_time" content="2023-06-24T12:39:10.000Z">
+<meta property="article:modified_time" content="2023-06-24T13:29:25.093Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-10-sort-section/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读十 段排序</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-06-24 20:39:10
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>5.5k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>30 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-10-sort-section/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:76218989</center> 
+
+<h1 id="段排序"><a href="#段排序" class="headerlink" title="段排序"></a>段排序</h1><p>本篇文章提到的mold中出现的段排序，包含了一个chunk内的段与段的排序，还包含了chunk与chunk之间的排序。或者也可以说是对于输入角度来看待的排序，以及从输出角度看待的段进行排序。对于输入来讲，段的基本单位是InputSection，比如说一个输入文件中的一个text段，而对于输出来讲，也就是目标文件来讲，段的基本单位是一个chunk，而一个chunk是由多个输入的段组成的，比如说大的text段是由所有的输入文件中的text段组合而成。</p>
+<p>首先要说明为什么需要进行排序</p>
+<p>sort_init_fini，sort_ctor_dtor以及shuffle_sections属于chunk内的段与段之间的排序，在这里来说是为了满足mold的特殊需求。不过完全随机以及reverse的shuffle我还是不明白为什么需要这样来做。对于init这样的段来说，链接器需要将所有输入文件的同名段合并到同一个输出段中，因此必须要在chunk内的段与段之间的排序。</p>
+<p>sort_output_sections属于chunk与chunk之间的排序，这里排序的目的很大一部分是为了满足特定规则的需要，不论是regular顺序的还是指定的顺序都会使得ehdr/phdr在最前，而shdr在最后。</p>
+<p>对于中间灵活可变的部分，和对齐以及跳转指令都有关系。跳转指令这个问题我在实际遇到过，JAL指令的立即数字段的长度是固定的，而所要跳转的地址超出了JAL这个字段所能代表的长度，最后通过修改链接脚本中相关段的顺序使得地址控制在了立即数的范围之内。</p>
+<h1 id="sort-init-fini"><a href="#sort-init-fini" class="headerlink" title="sort_init_fini"></a>sort_init_fini</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sort_init_fini</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;sort_init_fini&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> get_priority = [](InputSection&lt;E&gt; *isec) &#123;</span><br><span class="line">    <span class="keyword">static</span> std::regex <span class="built_in">re</span>(<span class="string">R&quot;(\.(\d+)$)&quot;</span>, std::regex_constants::optimize);</span><br><span class="line">    std::string_view name = isec-&gt;<span class="built_in">name</span>();</span><br><span class="line">    std::cmatch m;</span><br><span class="line">    <span class="keyword">if</span> (std::<span class="built_in">regex_search</span>(name.<span class="built_in">data</span>(), name.<span class="built_in">data</span>() + name.<span class="built_in">size</span>(), m, re))</span><br><span class="line">      <span class="keyword">return</span> std::<span class="built_in">stoi</span>(m[<span class="number">1</span>]);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">65536</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks) &#123;</span><br><span class="line">    <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>()) &#123;</span><br><span class="line">      <span class="keyword">if</span> (osec-&gt;name == <span class="string">&quot;.init_array&quot;</span> || osec-&gt;name == <span class="string">&quot;.preinit_array&quot;</span> ||</span><br><span class="line">          osec-&gt;name == <span class="string">&quot;.fini_array&quot;</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (ctx.arg.shuffle_sections == SHUFFLE_SECTIONS_REVERSE)</span><br><span class="line">          std::<span class="built_in">reverse</span>(osec-&gt;members.<span class="built_in">begin</span>(), osec-&gt;members.<span class="built_in">end</span>());</span><br><span class="line"></span><br><span class="line">        <span class="built_in">sort</span>(osec-&gt;members, [&amp;](InputSection&lt;E&gt; *a, InputSection&lt;E&gt; *b) &#123;</span><br><span class="line">          <span class="keyword">return</span> <span class="built_in">get_priority</span>(a) &lt; <span class="built_in">get_priority</span>(b);</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>将所有的chunk转换为OutputSection，其中对init_array，preinit_array，fini_array段的所有成员按照priority进行排序。</p>
+<blockquote>
+<p>–shuffle-sections[=SEED]   Randomize the output by shuffling input sections</p>
+</blockquote>
+<p>关于init以及后面ctor相关的段，参考maskray聚聚的博客</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://maskray.me/blog/2021-11-07-init-ctors-init-array" >.init, .ctors, and .init_array<i class="fas fa-external-link-alt"></i></a></p>
+<p>其中有这样一段示例汇编</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">.section	.text.startup,&quot;ax&quot;,@progbits</span><br><span class="line">_GLOBAL__sub_I_a.cc:</span><br><span class="line">  callq	_Znwm</span><br><span class="line">  callq	_ZN1SC1Ev</span><br><span class="line">  callq	getpid</span><br><span class="line"></span><br><span class="line">.section	.init_array.101,&quot;aw&quot;,@init_array</span><br><span class="line">## legacy: .section .ctors.65434,&quot;aw&quot;,@progbits</span><br><span class="line">.p2align	3</span><br><span class="line">.quad	_Z7init101v</span><br><span class="line"></span><br><span class="line">.section	.init_array.102,&quot;aw&quot;,@init_array</span><br><span class="line">## legacy: .section .ctors.65433,&quot;aw&quot;,@progbits</span><br><span class="line">.p2align	3</span><br><span class="line">.quad	_Z7init102v</span><br><span class="line"></span><br><span class="line">.section	.init_array,&quot;aw&quot;,@init_array</span><br><span class="line">## legacy: .section .ctors,&quot;aw&quot;,@progbits</span><br><span class="line">.p2align	3</span><br><span class="line">.quad	_Z4initv</span><br><span class="line">.quad	_GLOBAL__sub_I_a.cc</span><br></pre></td></tr></table></figure>
+
+<p>这里面的init_array根据不同的priority增加不同的后缀数字，而这里的排序正是针对这些</p>
+<h1 id="sort-ctor-dtor"><a href="#sort-ctor-dtor" class="headerlink" title="sort_ctor_dtor"></a>sort_ctor_dtor</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sort_ctor_dtor</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;sort_ctor_dtor&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> get_priority = [](InputSection&lt;E&gt; *isec) &#123;</span><br><span class="line">    <span class="keyword">auto</span> opts = std::regex_constants::optimize | std::regex_constants::ECMAScript;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> std::regex <span class="title">re1</span><span class="params">(<span class="string">R&quot;((?:clang_rt\.)?crtbegin)&quot;</span>, opts)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> std::regex <span class="title">re2</span><span class="params">(<span class="string">R&quot;((?:clang_rt\.)?crtend)&quot;</span>, opts)</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> std::regex <span class="title">re3</span><span class="params">(<span class="string">R&quot;(\.(\d+)$)&quot;</span>, opts)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// crtbegin.o and crtend.o contain marker symbols such as</span></span><br><span class="line">    <span class="comment">// __CTOR_LIST__ or __DTOR_LIST__. So they have to be at the</span></span><br><span class="line">    <span class="comment">// beginning or end of the section.</span></span><br><span class="line">    std::smatch m;</span><br><span class="line">    <span class="keyword">if</span> (std::<span class="built_in">regex_search</span>(isec-&gt;file.filename, m, re1))</span><br><span class="line">      <span class="keyword">return</span> <span class="number">-2</span>;</span><br><span class="line">    <span class="keyword">if</span> (std::<span class="built_in">regex_search</span>(isec-&gt;file.filename, m, re2))</span><br><span class="line">      <span class="keyword">return</span> <span class="number">65536</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function">std::string <span class="title">name</span><span class="params">(isec-&gt;name())</span></span>;</span><br><span class="line">    <span class="keyword">if</span> (std::<span class="built_in">regex_search</span>(name, m, re3))</span><br><span class="line">      <span class="keyword">return</span> std::<span class="built_in">stoi</span>(m[<span class="number">1</span>]);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks) &#123;</span><br><span class="line">    <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>()) &#123;</span><br><span class="line">      <span class="keyword">if</span> (osec-&gt;name == <span class="string">&quot;.ctors&quot;</span> || osec-&gt;name == <span class="string">&quot;.dtors&quot;</span>) &#123;</span><br><span class="line">        <span class="keyword">if</span> (ctx.arg.shuffle_sections != SHUFFLE_SECTIONS_REVERSE)</span><br><span class="line">          std::<span class="built_in">reverse</span>(osec-&gt;members.<span class="built_in">begin</span>(), osec-&gt;members.<span class="built_in">end</span>());</span><br><span class="line"></span><br><span class="line">        <span class="built_in">sort</span>(osec-&gt;members, [&amp;](InputSection&lt;E&gt; *a, InputSection&lt;E&gt; *b) &#123;</span><br><span class="line">          <span class="keyword">return</span> <span class="built_in">get_priority</span>(a) &lt; <span class="built_in">get_priority</span>(b);</span><br><span class="line">        &#125;);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>和sort init类似的逻辑，除了priority的计算方式不同。这里针对了clang_rt的crtbegin和crtend做了特殊的处理，最后再对其余的按照编号进行排序。</p>
+<h1 id="shuffle-sections"><a href="#shuffle-sections" class="headerlink" title="shuffle_sections"></a>shuffle_sections</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Handle --shuffle-sections</span></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.shuffle_sections != SHUFFLE_SECTIONS_NONE)</span><br><span class="line">  <span class="built_in">shuffle_sections</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>-shuffle-sections[=SEED] Randomize the output by shuffling input sections</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">shuffle_sections</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;shuffle_sections&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> is_eligible = [](OutputSection&lt;E&gt; &amp;osec) &#123;</span><br><span class="line">    <span class="keyword">return</span> osec.name != <span class="string">&quot;.init&quot;</span> &amp;&amp; osec.name != <span class="string">&quot;.fini&quot;</span> &amp;&amp;</span><br><span class="line">           osec.name != <span class="string">&quot;.ctors&quot;</span> &amp;&amp; osec.name != <span class="string">&quot;.dtors&quot;</span> &amp;&amp;</span><br><span class="line">           osec.name != <span class="string">&quot;.init_array&quot;</span> &amp;&amp; osec.name != <span class="string">&quot;.preinit_array&quot;</span> &amp;&amp;</span><br><span class="line">           osec.name != <span class="string">&quot;.fini_array&quot;</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="built_in"><span class="keyword">switch</span></span> (ctx.arg.shuffle_sections) &#123;</span><br><span class="line">  <span class="keyword">case</span> SHUFFLE_SECTIONS_NONE:</span><br><span class="line">    <span class="built_in">unreachable</span>();</span><br><span class="line">  <span class="keyword">case</span> SHUFFLE_SECTIONS_SHUFFLE: &#123;</span><br><span class="line">    u64 seed;</span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.shuffle_sections_seed)</span><br><span class="line">      seed = *ctx.arg.shuffle_sections_seed;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      seed = ((u64)std::<span class="built_in">random_device</span>()() &lt;&lt; <span class="number">32</span>) | std::<span class="built_in">random_device</span>()();</span><br><span class="line"></span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *chunk) &#123;</span><br><span class="line">      <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>())</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">is_eligible</span>(*osec))</span><br><span class="line">          <span class="built_in">shuffle</span>(osec-&gt;members, seed + <span class="built_in">hash_string</span>(osec-&gt;name));</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">case</span> SHUFFLE_SECTIONS_REVERSE:</span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *chunk) &#123;</span><br><span class="line">      <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>())</span><br><span class="line">        <span class="keyword">if</span> (<span class="built_in">is_eligible</span>(*osec))</span><br><span class="line">          std::<span class="built_in">reverse</span>(osec-&gt;members.<span class="built_in">begin</span>(), osec-&gt;members.<span class="built_in">end</span>());</span><br><span class="line">    &#125;);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里跳过了上面sort_init_fini以及sort_ctor_dtor的特殊段，对剩下段的members根据shuffle_sections选项进行shuffle或者reverse</p>
+<h1 id="copy-str"><a href="#copy-str" class="headerlink" title="copy str"></a>copy str</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Copy string referred by .dynamic to .dynstr.</span></span><br><span class="line"><span class="keyword">for</span> (SharedFile&lt;E&gt; *file : ctx.dsos)</span><br><span class="line">  ctx.dynstr-&gt;<span class="built_in">add_string</span>(file-&gt;soname);</span><br><span class="line"><span class="keyword">for</span> (std::string_view str : ctx.arg.auxiliary)</span><br><span class="line">  ctx.dynstr-&gt;<span class="built_in">add_string</span>(str);</span><br><span class="line"><span class="keyword">for</span> (std::string_view str : ctx.arg.filter)</span><br><span class="line">  ctx.dynstr-&gt;<span class="built_in">add_string</span>(str);</span><br><span class="line"><span class="keyword">if</span> (!ctx.arg.rpaths.<span class="built_in">empty</span>())</span><br><span class="line">  ctx.dynstr-&gt;<span class="built_in">add_string</span>(ctx.arg.rpaths);</span><br><span class="line"><span class="keyword">if</span> (!ctx.arg.soname.<span class="built_in">empty</span>())</span><br><span class="line">  ctx.dynstr-&gt;<span class="built_in">add_string</span>(ctx.arg.soname);</span><br></pre></td></tr></table></figure>
+
+<p>拷贝所有动态库所需要用的字符串到dynstr中，主要是soname和一些路径之类的信息，而这些信息只是通过段合并是无法添加到dynstr中的，因为这些属于链接时的信息，无法通过链接输入的编译产物获取。</p>
+<p>关于这几个链接选项的介绍</p>
+<blockquote>
+<p>-f SHLIB, –auxiliary SHLIB Set DT_AUXILIARY to the specified value</p>
+</blockquote>
+<blockquote>
+<p>-F LIBNAME, –filter LIBNAME<br>Set DT_FILTER to the specified value</p>
+</blockquote>
+<blockquote>
+<p>–rpath DIR                 Add DIR to runtime search path</p>
+</blockquote>
+<blockquote>
+<p>h LIBNAME, –soname LIBNAME Set shared library name</p>
+</blockquote>
+<h1 id="scan-relocations"><a href="#scan-relocations" class="headerlink" title="scan_relocations"></a>scan_relocations</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Scan relocations to find symbols that need entries in .got, .plt,</span></span><br><span class="line"><span class="comment">// .got.plt, .dynsym, .dynstr, etc.</span></span><br><span class="line"><span class="built_in">scan_relocations</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scan_relocations</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;scan_relocations&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Scan relocations to find dynamic symbols.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">scan_relocations</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>为了保证输出文件中的got和plt等section包含对应rel的信息，递归所有所有的rel找到在got和plt中需要的符号，并且添加到got/plt中。而got和plt本身就是synthetic的段，无法从编译产物中获取，只能在链接的时候产生，为了确保rel段符号的正确查找，一定需要这一步骤。</p>
+<p>这里主要做了三部分</p>
+<ol>
+<li>扫描每个obj里所有段中的符号，另外标记rel段中要处理的符合条件的符号为NEEDS_PLT</li>
+<li>将flag不为空，或者是imported/exported的符号保留，过滤掉其他符号</li>
+<li>对过滤后的符号，根据其flga添加到对应的chunk中，比如说got或者plt等，最后再清空其flag</li>
+</ol>
+<h2 id="rel-scan"><a href="#rel-scan" class="headerlink" title="rel scan"></a>rel scan</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scan_relocations</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;scan_relocations&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Scan relocations to find dynamic symbols.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">scan_relocations</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Exit if there was a relocation that refers an undefined symbol.</span></span><br><span class="line">  ctx.<span class="built_in">checkpoint</span>();</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>针对每个obj进行scan_relocations</p>
+<h3 id="object-file"><a href="#object-file" class="headerlink" title="object file"></a>object file</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">scan_relocations</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="comment">// Scan relocations against seciton contents</span></span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;isec : sections)</span><br><span class="line">    <span class="keyword">if</span> (isec &amp;&amp; isec-&gt;is_alive &amp;&amp; (isec-&gt;<span class="built_in">shdr</span>().sh_flags &amp; SHF_ALLOC))</span><br><span class="line">      isec-&gt;<span class="built_in">scan_relocations</span>(ctx);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Scan relocations against exception frames</span></span><br><span class="line">  <span class="keyword">for</span> (CieRecord&lt;E&gt; &amp;cie : cies) &#123;</span><br><span class="line">    <span class="keyword">for</span> (ElfRel&lt;E&gt; &amp;rel : cie.<span class="built_in">get_rels</span>()) &#123;</span><br><span class="line">      Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[rel.r_sym];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (sym.is_imported) &#123;</span><br><span class="line">        <span class="keyword">if</span> (sym.<span class="built_in">get_type</span>() != STT_FUNC)</span><br><span class="line">          <span class="built_in">Fatal</span>(ctx) &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot;: &quot;</span> &lt;&lt; sym</span><br><span class="line">                     &lt;&lt; <span class="string">&quot;: .eh_frame CIE record with an external data reference&quot;</span></span><br><span class="line">                     &lt;&lt; <span class="string">&quot; is not supported&quot;</span>;</span><br><span class="line">        sym.flags |= NEEDS_PLT;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在讲InputSection之前先看一下CIE的部分。CIE的代码中也会包含rel的部分。</p>
+<h3 id="InputSection"><a href="#InputSection" class="headerlink" title="InputSection"></a>InputSection</h3><p>isec-&gt;scan_relocations(ctx);</p>
+<p>这里针对不同的arch有着不同的特化实现</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-10-sort-section/Untitled%201.png"
+                      alt="Untitled"
+                ></p>
+<p>这里我们拿i386和riscv的实现做对比看一下差异</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-10-sort-section/Untitled%202.png"
+                      alt="Untitled"
+                ></p>
+<p>可以看到前面的内容几乎一致，获取rels之后遍历，针对不同的rel type做出不同的处理</p>
+<p>关于riscv的rel type，可以参考这两个链接</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://github.com/riscv-non-isa/riscv-elf-psabi-doc" >https://github.com/riscv-non-isa/riscv-elf-psabi-doc<i class="fas fa-external-link-alt"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://www.risc-v1.com/thread-906-1-1.html" >RISC-V ELF规范和函数调用规范 - 国内芯片技术交流 - RISC-V单片机中文网——全球首家只专注于RISC-V单片机行业应用的中文网站<i class="fas fa-external-link-alt"></i></a></p>
+<p>然后我们看针对不同rel type处理的部分</p>
+<p>本质都是调用了InputSection的一些辅助函数，挑几个看一下。在此之前先补充两个缩写的全拼</p>
+<p>absrel: absolute relocations</p>
+<p>pcrel: PC-relative relocations</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in"><span class="keyword">switch</span></span> (rel.r_type) &#123;</span><br><span class="line">  <span class="keyword">case</span> R_RISCV_32:</span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(E::is_64)</span></span></span><br><span class="line"><span class="function">      <span class="title">scan_absrel</span><span class="params">(ctx, sym, rel)</span></span>;</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      <span class="built_in">scan_dyn_absrel</span>(ctx, sym, rel);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> R_RISCV_HI20:</span><br><span class="line">    <span class="built_in">scan_absrel</span>(ctx, sym, rel);</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> R_RISCV_64:</span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(!E::is_64)</span></span></span><br><span class="line"><span class="function">      <span class="title">Fatal</span><span class="params">(ctx)</span> &lt;&lt; *<span class="keyword">this</span> &lt;&lt; &quot;: R_RISCV_64 cannot be used on RV32<span class="string">&quot;;</span></span></span><br><span class="line"><span class="string"><span class="function">    scan_dyn_absrel(ctx, sym, rel);</span></span></span><br><span class="line"><span class="string"><span class="function">    break;</span></span></span><br><span class="line"><span class="string"><span class="function">  case R_RISCV_CALL:</span></span></span><br><span class="line"><span class="string"><span class="function">  case R_RISCV_CALL_PLT:</span></span></span><br><span class="line"><span class="string"><span class="function">    if (sym.is_imported)</span></span></span><br><span class="line"><span class="string"><span class="function">      sym.flags.fetch_or(NEEDS_PLT, std::memory_order_relaxed);</span></span></span><br><span class="line"><span class="string"><span class="function">    break;</span></span></span><br><span class="line"><span class="string"><span class="function">  case R_RISCV_GOT_HI20:</span></span></span><br><span class="line"><span class="string"><span class="function">    sym.flags.fetch_or(NEEDS_GOT, std::memory_order_relaxed);</span></span></span><br><span class="line"><span class="string"><span class="function">    break;</span></span></span><br><span class="line"><span class="string"><span class="function">  case R_RISCV_TLS_GOT_HI20:</span></span></span><br><span class="line"><span class="string"><span class="function">    ctx.has_gottp_rel.store(true, std::memory_order_relaxed);</span></span></span><br><span class="line"><span class="string"><span class="function">    sym.flags.fetch_or(NEEDS_GOTTP, std::memory_order_relaxed);</span></span></span><br><span class="line"><span class="string"><span class="function">    break;</span></span></span><br><span class="line"><span class="string"><span class="function">  case R_RISCV_TLS_GD_HI20:</span></span></span><br><span class="line"><span class="string"><span class="function">    sym.flags.fetch_or(NEEDS_TLSGD, std::memory_order_relaxed);</span></span></span><br><span class="line"><span class="string"><span class="function">    break;</span></span></span><br><span class="line"><span class="string"><span class="function">  case R_RISCV_32_PCREL:</span></span></span><br><span class="line"><span class="string"><span class="function">    scan_pcrel(ctx, sym, rel);</span></span></span><br><span class="line"><span class="string"><span class="function">    break;</span></span></span><br></pre></td></tr></table></figure>
+
+<p>fetch_or是执行按位or运算，可以简单视为 flags |= NEEDS_XXX，相当于更新了flag，前面也说过在这个scan的过程本质就是要更新其flag</p>
+<p>这里主要的内容就是scan_xxx，而这些scan的实现都是调用的scan_rel，区别是传入了不同的action</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> InputSection&lt;E&gt;::<span class="built_in">scan_pcrel</span>(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym,</span><br><span class="line">                                 <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel) &#123;</span><br><span class="line">  <span class="built_in">scan_rel</span>(ctx, *<span class="keyword">this</span>, sym, rel, <span class="built_in">get_pcrel_action</span>(ctx, sym));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> InputSection&lt;E&gt;::<span class="built_in">scan_absrel</span>(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym,</span><br><span class="line">                                  <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel) &#123;</span><br><span class="line">  <span class="built_in">scan_rel</span>(ctx, *<span class="keyword">this</span>, sym, rel, <span class="built_in">get_absrel_action</span>(ctx, sym));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> InputSection&lt;E&gt;::<span class="built_in">scan_dyn_absrel</span>(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym,</span><br><span class="line">                                      <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel) &#123;</span><br><span class="line">  <span class="built_in">scan_rel</span>(ctx, *<span class="keyword">this</span>, sym, rel, <span class="built_in">get_dyn_absrel_action</span>(ctx, sym));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> InputSection&lt;E&gt;::<span class="built_in">scan_toc_rel</span>(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym,</span><br><span class="line">                                   <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel) &#123;</span><br><span class="line">  <span class="built_in">scan_rel</span>(ctx, *<span class="keyword">this</span>, sym, rel, <span class="built_in">get_ppc64_toc_action</span>(ctx, sym));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>而不同的action则是通过查表的方式来获取。每个不同的类别有着自己的表，将这个表传递给get_rel_action后进行获取。在get_rel_action中则是通过output type和sym type进行查表</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Action <span class="title">get_pcrel_action</span><span class="params">(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// This is for PC-relative relocations (e.g. R_X86_64_PC32).</span></span><br><span class="line">  <span class="comment">// We cannot promote them to dynamic relocations because the dynamic</span></span><br><span class="line">  <span class="comment">// linker generally does not support PC-relative relocations.</span></span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">static</span> Action table[<span class="number">3</span>][<span class="number">4</span>] = &#123;</span><br><span class="line">    <span class="comment">// Absolute  Local    Imported data  Imported code</span></span><br><span class="line">    &#123;  ERROR,    NONE,    ERROR,         PLT    &#125;,  <span class="comment">// Shared object</span></span><br><span class="line">    &#123;  ERROR,    NONE,    COPYREL,       PLT    &#125;,  <span class="comment">// Position-independent exec</span></span><br><span class="line">    &#123;  NONE,     NONE,    COPYREL,       CPLT   &#125;,  <span class="comment">// Position-dependent exec</span></span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">get_rel_action</span>(ctx, sym, table);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Action <span class="title">get_absrel_action</span><span class="params">(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// This is a decision table for absolute relocations that is smaller</span></span><br><span class="line">  <span class="comment">// than the word size (e.g. R_X86_64_32). Since the dynamic linker</span></span><br><span class="line">  <span class="comment">// generally does not support dynamic relocations smaller than the</span></span><br><span class="line">  <span class="comment">// word size, we need to report an error if a relocation cannot be</span></span><br><span class="line">  <span class="comment">// resolved at link-time.</span></span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">static</span> Action table[<span class="number">3</span>][<span class="number">4</span>] = &#123;</span><br><span class="line">    <span class="comment">// Absolute  Local    Imported data  Imported code</span></span><br><span class="line">    &#123;  NONE,     ERROR,   ERROR,         ERROR &#125;,  <span class="comment">// Shared object</span></span><br><span class="line">    &#123;  NONE,     ERROR,   ERROR,         ERROR &#125;,  <span class="comment">// Position-independent exec</span></span><br><span class="line">    &#123;  NONE,     NONE,    COPYREL,       CPLT  &#125;,  <span class="comment">// Position-dependent exec</span></span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">get_rel_action</span>(ctx, sym, table);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Action <span class="title">get_dyn_absrel_action</span><span class="params">(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (sym.<span class="built_in">is_ifunc</span>())</span><br><span class="line">    <span class="keyword">return</span> IFUNC;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// This is a decision table for absolute relocations for the word</span></span><br><span class="line">  <span class="comment">// size data (e.g. R_X86_64_64). Unlike the absrel_table, we can emit</span></span><br><span class="line">  <span class="comment">// a dynamic relocation if we cannot resolve an address at link-time.</span></span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">static</span> Action table[<span class="number">3</span>][<span class="number">4</span>] = &#123;</span><br><span class="line">    <span class="comment">// Absolute  Local    Imported data  Imported code</span></span><br><span class="line">    &#123;  NONE,     BASEREL, DYNREL,        DYNREL   &#125;,  <span class="comment">// Shared object</span></span><br><span class="line">    &#123;  NONE,     BASEREL, DYNREL,        DYNREL   &#125;,  <span class="comment">// Position-independent exec</span></span><br><span class="line">    &#123;  NONE,     NONE,    DYN_COPYREL,   DYN_CPLT &#125;,  <span class="comment">// Position-dependent exec</span></span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">get_rel_action</span>(ctx, sym, table);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Action <span class="title">get_ppc64_toc_action</span><span class="params">(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (sym.<span class="built_in">is_ifunc</span>())</span><br><span class="line">    <span class="keyword">return</span> IFUNC;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// As a special case, we do not create copy relocations nor canonical</span></span><br><span class="line">  <span class="comment">// PLTs for .toc sections. PPC64&#x27;s .toc is a compiler-generated</span></span><br><span class="line">  <span class="comment">// GOT-like section, and no user-generated code directly uses values</span></span><br><span class="line">  <span class="comment">// in it.</span></span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">static</span> Action table[<span class="number">3</span>][<span class="number">4</span>] = &#123;</span><br><span class="line">    <span class="comment">// Absolute  Local    Imported data  Imported code</span></span><br><span class="line">    &#123;  NONE,     BASEREL, DYNREL,        DYNREL &#125;,  <span class="comment">// Shared object</span></span><br><span class="line">    &#123;  NONE,     BASEREL, DYNREL,        DYNREL &#125;,  <span class="comment">// Position-independent exec</span></span><br><span class="line">    &#123;  NONE,     NONE,    DYNREL,        DYNREL &#125;,  <span class="comment">// Position-dependent exec</span></span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">get_rel_action</span>(ctx, sym, table);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Action <span class="title">get_rel_action</span><span class="params">(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym,</span></span></span><br><span class="line"><span class="params"><span class="function">                             <span class="keyword">const</span> Action table[<span class="number">3</span>][<span class="number">4</span>])</span> </span>&#123;</span><br><span class="line">  <span class="keyword">auto</span> get_output_type = [&amp;] &#123;</span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.shared)</span><br><span class="line">      <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.pie)</span><br><span class="line">      <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> get_sym_type = [&amp;] &#123;</span><br><span class="line">    <span class="keyword">if</span> (sym.<span class="built_in">is_absolute</span>())</span><br><span class="line">      <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">if</span> (!sym.is_imported)</span><br><span class="line">      <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">if</span> (sym.<span class="built_in">get_type</span>() != STT_FUNC)</span><br><span class="line">      <span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">3</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> table[<span class="built_in">get_output_type</span>()][<span class="built_in">get_sym_type</span>()];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="scan-rel"><a href="#scan-rel" class="headerlink" title="scan_rel"></a>scan_rel</h3><p>这里是对符号进行标记的地方，根据传入的不同action使用不同处理以及标记方式</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">scan_rel</span><span class="params">(Context&lt;E&gt; &amp;ctx, InputSection&lt;E&gt; &amp;isec, Symbol&lt;E&gt; &amp;sym,</span></span></span><br><span class="line"><span class="params"><span class="function">                     <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel, Action action)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">bool</span> writable = (isec.<span class="built_in">shdr</span>().sh_flags &amp; SHF_WRITE);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> error = [&amp;] &#123;</span><br><span class="line">    std::string msg = sym.<span class="built_in">is_absolute</span>() ? <span class="string">&quot;-fno-PIC&quot;</span> : <span class="string">&quot;-fPIC&quot;</span>;</span><br><span class="line">    <span class="built_in">Error</span>(ctx) &lt;&lt; isec &lt;&lt; <span class="string">&quot;: &quot;</span> &lt;&lt; rel &lt;&lt; <span class="string">&quot; relocation at offset 0x&quot;</span></span><br><span class="line">               &lt;&lt; std::hex &lt;&lt; rel.r_offset &lt;&lt; <span class="string">&quot; against symbol `&quot;</span></span><br><span class="line">               &lt;&lt; sym &lt;&lt; <span class="string">&quot;&#x27; can not be used; recompile with &quot;</span> &lt;&lt; msg;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> check_textrel = [&amp;] &#123;</span><br><span class="line">    <span class="keyword">if</span> (!writable) &#123;</span><br><span class="line">      <span class="keyword">if</span> (ctx.arg.z_text) &#123;</span><br><span class="line">        <span class="built_in">error</span>();</span><br><span class="line">      &#125; <span class="keyword">else</span> <span class="keyword">if</span> (ctx.arg.warn_textrel) &#123;</span><br><span class="line">        <span class="built_in">Warn</span>(ctx) &lt;&lt; isec &lt;&lt; <span class="string">&quot;: relocation against symbol `&quot;</span> &lt;&lt; sym</span><br><span class="line">                  &lt;&lt; <span class="string">&quot;&#x27; in read-only section&quot;</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      ctx.has_textrel = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> copyrel = [&amp;] &#123;</span><br><span class="line">    <span class="built_in">assert</span>(sym.is_imported);</span><br><span class="line">    <span class="keyword">if</span> (sym.<span class="built_in">esym</span>().st_visibility == STV_PROTECTED) &#123;</span><br><span class="line">      <span class="built_in">Error</span>(ctx) &lt;&lt; isec</span><br><span class="line">                 &lt;&lt; <span class="string">&quot;: cannot make copy relocation for protected symbol &#x27;&quot;</span> &lt;&lt; sym</span><br><span class="line">                 &lt;&lt; <span class="string">&quot;&#x27;, defined in &quot;</span> &lt;&lt; *sym.file &lt;&lt; <span class="string">&quot;; recompile with -fPIC&quot;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    sym.flags |= NEEDS_COPYREL;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> dynrel = [&amp;] &#123;</span><br><span class="line">    <span class="built_in">check_textrel</span>();</span><br><span class="line">    isec.file.num_dynrel++;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="built_in"><span class="keyword">switch</span></span> (action) &#123;</span><br><span class="line">  <span class="keyword">case</span> NONE:</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> ERROR:</span><br><span class="line">    <span class="built_in">error</span>();</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> COPYREL:</span><br><span class="line">    <span class="keyword">if</span> (!ctx.arg.z_copyreloc)</span><br><span class="line">      <span class="built_in">error</span>();</span><br><span class="line">    <span class="built_in">copyrel</span>();</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> DYN_COPYREL:</span><br><span class="line">    <span class="keyword">if</span> (writable || !ctx.arg.z_copyreloc)</span><br><span class="line">      <span class="built_in">dynrel</span>();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      <span class="built_in">copyrel</span>();</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> PLT:</span><br><span class="line">    sym.flags |= NEEDS_PLT;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> CPLT:</span><br><span class="line">    sym.flags |= NEEDS_CPLT;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> DYN_CPLT:</span><br><span class="line">    <span class="keyword">if</span> (writable)</span><br><span class="line">      <span class="built_in">dynrel</span>();</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      sym.flags |= NEEDS_CPLT;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> DYNREL:</span><br><span class="line">  <span class="keyword">case</span> IFUNC:</span><br><span class="line">    <span class="built_in">dynrel</span>();</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">case</span> BASEREL:</span><br><span class="line">    <span class="built_in">check_textrel</span>();</span><br><span class="line">    <span class="keyword">if</span> (!isec.<span class="built_in">is_relr_reloc</span>(ctx, rel))</span><br><span class="line">      isec.file.num_dynrel++;</span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">  <span class="keyword">default</span>:</span><br><span class="line">    <span class="built_in">unreachable</span>();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="symbols-to-a-vec"><a href="#symbols-to-a-vec" class="headerlink" title="symbols to a vec"></a>symbols to a vec</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scan_relocations</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line"></span><br><span class="line">	<span class="comment">// Aggregate dynamic symbols to a single vector.</span></span><br><span class="line">	std::vector&lt;InputFile&lt;E&gt; *&gt; files;</span><br><span class="line">	<span class="built_in">append</span>(files, ctx.objs);</span><br><span class="line">	<span class="built_in">append</span>(files, ctx.dsos);</span><br><span class="line">	</span><br><span class="line">	std::vector&lt;std::vector&lt;Symbol&lt;E&gt; *&gt;&gt; <span class="built_in">vec</span>(files.<span class="built_in">size</span>());</span><br><span class="line">	</span><br><span class="line">	tbb::<span class="built_in">parallel_for</span>((i64)<span class="number">0</span>, (i64)files.<span class="built_in">size</span>(), [&amp;](i64 i) &#123;</span><br><span class="line">	  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : files[i]-&gt;symbols)</span><br><span class="line">	    <span class="keyword">if</span> (sym-&gt;file == files[i])</span><br><span class="line">	      <span class="keyword">if</span> (sym-&gt;flags || sym-&gt;is_imported || sym-&gt;is_exported)</span><br><span class="line">	        vec[i].<span class="built_in">push_back</span>(sym);</span><br><span class="line">	&#125;);</span><br><span class="line">	</span><br><span class="line">	std::vector&lt;Symbol&lt;E&gt; *&gt; syms = <span class="built_in">flatten</span>(vec);</span><br><span class="line">	ctx.symbol_aux.<span class="built_in">reserve</span>(syms.<span class="built_in">size</span>());</span><br><span class="line"></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里将所有的文件中所有符合条件的symbol收集起来，其中flag则是在前面的阶段进行标记的</p>
+<p>关于这里的symbol_aux</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Symbol auxiliary data</span></span><br><span class="line">std::vector&lt;SymbolAux&gt; symbol_aux;</span><br></pre></td></tr></table></figure>
+
+<p>SymbolAux</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Additional class members for dynamic symbols. Because most symbols</span></span><br><span class="line"><span class="comment">// don&#x27;t need them and we allocate tens of millions of symbol objects</span></span><br><span class="line"><span class="comment">// for large programs, we separate them from `Symbol` class to save</span></span><br><span class="line"><span class="comment">// memory.</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">SymbolAux</span> &#123;</span></span><br><span class="line">  i32 got_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 gottp_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 tlsgd_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 tlsdesc_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 plt_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 pltgot_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 opd_idx = <span class="number">-1</span>;</span><br><span class="line">  i32 dynsym_idx = <span class="number">-1</span>;</span><br><span class="line">  u32 djb_hash = <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h2 id="add-to-table"><a href="#add-to-table" class="headerlink" title="add to table"></a>add to table</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">scan_relocations</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// Assign offsets in additional tables for each dynamic symbol.</span></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : syms) &#123;</span><br><span class="line">    <span class="built_in">add_aux</span>(sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;is_imported || sym-&gt;is_exported)</span><br><span class="line">      ctx.dynsym-&gt;<span class="built_in">add_symbol</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_GOT)</span><br><span class="line">      ctx.got-&gt;<span class="built_in">add_got_symbol</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_CPLT) &#123;</span><br><span class="line">      sym-&gt;is_canonical = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// A canonical PLT needs to be visible from DSOs.</span></span><br><span class="line">      sym-&gt;is_exported = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// We can&#x27;t use .plt.got for a canonical PLT because otherwise</span></span><br><span class="line">      <span class="comment">// .plt.got and .got would refer each other, resulting in an</span></span><br><span class="line">      <span class="comment">// infinite loop at runtime.</span></span><br><span class="line">      ctx.plt-&gt;<span class="built_in">add_symbol</span>(ctx, sym);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_PLT) &#123;</span><br><span class="line">      <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_GOT)</span><br><span class="line">        ctx.pltgot-&gt;<span class="built_in">add_symbol</span>(ctx, sym);</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        ctx.plt-&gt;<span class="built_in">add_symbol</span>(ctx, sym);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_GOTTP)</span><br><span class="line">      ctx.got-&gt;<span class="built_in">add_gottp_symbol</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_TLSGD)</span><br><span class="line">      ctx.got-&gt;<span class="built_in">add_tlsgd_symbol</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_TLSDESC)</span><br><span class="line">      ctx.got-&gt;<span class="built_in">add_tlsdesc_symbol</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;flags &amp; NEEDS_COPYREL) &#123;</span><br><span class="line">      <span class="built_in">assert</span>(sym-&gt;file-&gt;is_dso);</span><br><span class="line">      SharedFile&lt;E&gt; *file = (SharedFile&lt;E&gt; *)sym-&gt;file;</span><br><span class="line">      sym-&gt;copyrel_readonly = file-&gt;<span class="built_in">is_readonly</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (sym-&gt;copyrel_readonly)</span><br><span class="line">        ctx.copyrel_relro-&gt;<span class="built_in">add_symbol</span>(ctx, sym);</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        ctx.copyrel-&gt;<span class="built_in">add_symbol</span>(ctx, sym);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// If a symbol needs copyrel, it is considered both imported</span></span><br><span class="line">      <span class="comment">// and exported.</span></span><br><span class="line">      <span class="built_in">assert</span>(sym-&gt;is_imported);</span><br><span class="line">      sym-&gt;is_exported = <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Aliases of this symbol are also copied so that they will be</span></span><br><span class="line">      <span class="comment">// resolved to the same address at runtime.</span></span><br><span class="line">      <span class="keyword">for</span> (Symbol&lt;E&gt; *alias : file-&gt;<span class="built_in">find_aliases</span>(sym)) &#123;</span><br><span class="line">        <span class="built_in">add_aux</span>(alias);</span><br><span class="line">        alias-&gt;is_imported = <span class="literal">true</span>;</span><br><span class="line">        alias-&gt;is_exported = <span class="literal">true</span>;</span><br><span class="line">        alias-&gt;has_copyrel = <span class="literal">true</span>;</span><br><span class="line">        alias-&gt;value = sym-&gt;value;</span><br><span class="line">        alias-&gt;copyrel_readonly = sym-&gt;copyrel_readonly;</span><br><span class="line">        ctx.dynsym-&gt;<span class="built_in">add_symbol</span>(ctx, alias);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_same_v&lt;E, PPC64V1&gt;)</span></span></span><br><span class="line"><span class="function">      <span class="title">if</span> <span class="params">(sym-&gt;flags &amp; NEEDS_OPD)</span></span></span><br><span class="line"><span class="function">        ctx.ppc64_opd-&gt;<span class="title">add_symbol</span><span class="params">(ctx, sym)</span></span>;</span><br><span class="line"></span><br><span class="line">    sym-&gt;flags = <span class="number">0</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.needs_tlsld)</span><br><span class="line">    ctx.got-&gt;<span class="built_in">add_tlsld</span>(ctx);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.has_textrel &amp;&amp; ctx.arg.warn_textrel)</span><br><span class="line">    <span class="built_in">Warn</span>(ctx) &lt;&lt; <span class="string">&quot;creating a DT_TEXTREL in an output file&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>将所有符合条件的符号添加到ctx.symbol_aux中，之后加入到对应的表中</p>
+<h1 id="compute-section-sizes"><a href="#compute-section-sizes" class="headerlink" title="compute_section_sizes"></a>compute_section_sizes</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Compute sizes of output sections while assigning offsets</span></span><br><span class="line"><span class="comment">// within an output section to input sections.</span></span><br><span class="line"><span class="built_in">compute_section_sizes</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>这里做了如下几件事情</p>
+<ol>
+<li>chunks里面找到所有符合条件的osec进行处理<ol>
+<li>划分group并且处理每个group的size和p2align</li>
+<li>计算与设置group的offset以及p2align</li>
+</ol>
+</li>
+<li>处理ARM的特殊情况</li>
+<li>根据arg的section_align设定特定osec的sh_addralign</li>
+</ol>
+<h2 id="chunks的处理"><a href="#chunks的处理" class="headerlink" title="chunks的处理"></a>chunks的处理</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">compute_section_sizes</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;compute_section_sizes&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">Group</span> &#123;</span></span><br><span class="line">    i64 size = <span class="number">0</span>;</span><br><span class="line">    i64 p2align = <span class="number">0</span>;</span><br><span class="line">    i64 offset = <span class="number">0</span>;</span><br><span class="line">    std::span&lt;InputSection&lt;E&gt; *&gt; members;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">	tbb::<span class="built_in">parallel_for_each</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *chunk) &#123;</span><br><span class="line">    OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>();</span><br><span class="line">    <span class="keyword">if</span> (!osec)</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// This pattern will be processed in the next loop.</span></span><br><span class="line">    <span class="keyword">if</span> <span class="built_in"><span class="keyword">constexpr</span></span> (needs_thunk&lt;E&gt;)</span><br><span class="line">      <span class="keyword">if</span> ((osec-&gt;shdr.sh_flags &amp; SHF_EXECINSTR) &amp;&amp; !ctx.arg.relocatable)</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Since one output section may contain millions of input sections,</span></span><br><span class="line">    <span class="comment">// we first split input sections into groups and assign offsets to</span></span><br><span class="line">    <span class="comment">// groups.</span></span><br><span class="line">    std::vector&lt;Group&gt; groups;</span><br><span class="line">    <span class="keyword">constexpr</span> i64 group_size = <span class="number">10000</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (std::span&lt;InputSection&lt;E&gt; *&gt; span : <span class="built_in">split</span>(osec-&gt;members, group_size))</span><br><span class="line">      groups.<span class="built_in">push_back</span>(Group&#123;.members = span&#125;);</span><br><span class="line"></span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(groups, [](Group &amp;group) &#123;</span><br><span class="line">      <span class="keyword">for</span> (InputSection&lt;E&gt; *isec : group.members) &#123;</span><br><span class="line">        group.size = <span class="built_in">align_to</span>(group.size, <span class="number">1</span> &lt;&lt; isec-&gt;p2align) + isec-&gt;sh_size;</span><br><span class="line">        group.p2align = std::max&lt;i64&gt;(group.p2align, isec-&gt;p2align);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    i64 offset = <span class="number">0</span>;</span><br><span class="line">    i64 p2align = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; groups.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">      offset = <span class="built_in">align_to</span>(offset, <span class="number">1</span> &lt;&lt; groups[i].p2align);</span><br><span class="line">      groups[i].offset = offset;</span><br><span class="line">      offset += groups[i].size;</span><br><span class="line">      p2align = std::<span class="built_in">max</span>(p2align, groups[i].p2align);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    osec-&gt;shdr.sh_size = offset;</span><br><span class="line">    osec-&gt;shdr.sh_addralign = <span class="number">1</span> &lt;&lt; p2align;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Assign offsets to input sections.</span></span><br><span class="line">    tbb::<span class="built_in">parallel_for_each</span>(groups, [](Group &amp;group) &#123;</span><br><span class="line">      i64 offset = group.offset;</span><br><span class="line">      <span class="keyword">for</span> (InputSection&lt;E&gt; *isec : group.members) &#123;</span><br><span class="line">        offset = <span class="built_in">align_to</span>(offset, <span class="number">1</span> &lt;&lt; isec-&gt;p2align);</span><br><span class="line">        isec-&gt;offset = offset;</span><br><span class="line">        offset += isec-&gt;sh_size;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;);</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>找到chunks中的osec</li>
+<li>将osec中的InputSections拆分为几个group并行计算</li>
+<li>针对每个group的每个InputSection<ol>
+<li>将group size根据isec的p2align计算出一个对齐的size，之后加上当前isec的size</li>
+<li>p2align更新为最大值</li>
+</ol>
+</li>
+<li>更新所有group的offset以及p2align</li>
+<li>更新osec的size和addralign</li>
+<li>对所有group中的input section设置offset</li>
+</ol>
+<h2 id="ARM的处理"><a href="#ARM的处理" class="headerlink" title="ARM的处理"></a>ARM的处理</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">compute_section_sizes</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line"></span><br><span class="line">	<span class="comment">// On ARM32 or ARM64, we may need to create so-called &quot;range extension</span></span><br><span class="line">  <span class="comment">// thunks&quot; to extend branch instructions reach, as they can jump only</span></span><br><span class="line">  <span class="comment">// to ±16 MiB or ±128 MiB, respecitvely.</span></span><br><span class="line">  <span class="comment">//</span></span><br><span class="line">  <span class="comment">// In the following loop, We compute the sizes of sections while</span></span><br><span class="line">  <span class="comment">// inserting thunks. This pass cannot be parallelized. That is,</span></span><br><span class="line">  <span class="comment">// create_range_extension_thunks is parallelized internally, but the</span></span><br><span class="line">  <span class="comment">// function itself is not thread-safe.</span></span><br><span class="line">  <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(needs_thunk&lt;E&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks) &#123;</span><br><span class="line">      OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>();</span><br><span class="line">      <span class="keyword">if</span> (osec &amp;&amp; (osec-&gt;shdr.sh_flags &amp; SHF_EXECINSTR) &amp;&amp; !ctx.arg.relocatable) &#123;</span><br><span class="line">        <span class="built_in">create_range_extension_thunks</span>(ctx, *osec);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (InputSection&lt;E&gt; *isec : osec-&gt;members)</span><br><span class="line">          osec-&gt;shdr.sh_addralign =</span><br><span class="line">            std::max&lt;u32&gt;(osec-&gt;shdr.sh_addralign, <span class="number">1</span> &lt;&lt; isec-&gt;p2align);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="设定osec的sh-addralign"><a href="#设定osec的sh-addralign" class="headerlink" title="设定osec的sh_addralign"></a>设定osec的sh_addralign</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">compute_section_sizes</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks)</span><br><span class="line">    <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>())</span><br><span class="line">      <span class="keyword">if</span> (u32 align = ctx.arg.section_align[osec-&gt;name])</span><br><span class="line">        osec-&gt;shdr.sh_addralign = std::max&lt;u32&gt;(osec-&gt;shdr.sh_addralign, align);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="sort-output-sections"><a href="#sort-output-sections" class="headerlink" title="sort_output_sections"></a>sort_output_sections</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Sort sections by section attributes so that we&#x27;ll have to</span></span><br><span class="line"><span class="comment">// create as few segments as possible.</span></span><br><span class="line"><span class="built_in">sort_output_sections</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sort_output_sections</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.section_order.<span class="built_in">empty</span>())</span><br><span class="line">    <span class="built_in">sort_output_sections_regular</span>(ctx);</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    <span class="built_in">sort_output_sections_by_order</span>(ctx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里对所有chunk进行了排序。</p>
+<p>其中顺序为</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ELF Header</span><br><span class="line">program header</span><br><span class="line">normal memory allocated sections</span><br><span class="line">non-memory-allocated sections</span><br><span class="line">section header</span><br></pre></td></tr></table></figure>
+
+<p>normal memory allocated sections的顺序会根据用户指定的顺序，或者使用一套regular的规则</p>
+<h2 id="regular"><a href="#regular" class="headerlink" title="regular"></a>regular</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sort_output_sections_regular</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="built_in">sort</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *a, Chunk&lt;E&gt; *b) &#123;</span><br><span class="line">	    <span class="comment">// Sort sections by segments</span></span><br><span class="line">	    i64 x = <span class="built_in">get_rank1</span>(a);</span><br><span class="line">	    i64 y = <span class="built_in">get_rank1</span>(b);</span><br><span class="line">	    <span class="keyword">if</span> (x != y)</span><br><span class="line">	      <span class="keyword">return</span> x &lt; y;</span><br><span class="line">	</span><br><span class="line">	    <span class="comment">// Ties are broken by additional rules</span></span><br><span class="line">	    <span class="keyword">return</span> <span class="built_in">get_rank2</span>(a) &lt; <span class="built_in">get_rank2</span>(b);</span><br><span class="line">	  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注释中对排序的规则进行了说明</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// We want to sort output chunks in the following order.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//   &lt;ELF header&gt;</span></span><br><span class="line"><span class="comment">//   &lt;program header&gt;</span></span><br><span class="line"><span class="comment">//   .interp</span></span><br><span class="line"><span class="comment">//   .note</span></span><br><span class="line"><span class="comment">//   .hash</span></span><br><span class="line"><span class="comment">//   .gnu.hash</span></span><br><span class="line"><span class="comment">//   .dynsym</span></span><br><span class="line"><span class="comment">//   .dynstr</span></span><br><span class="line"><span class="comment">//   .gnu.version</span></span><br><span class="line"><span class="comment">//   .gnu.version_r</span></span><br><span class="line"><span class="comment">//   .rela.dyn</span></span><br><span class="line"><span class="comment">//   .rela.plt</span></span><br><span class="line"><span class="comment">//   &lt;readonly data&gt;</span></span><br><span class="line"><span class="comment">//   &lt;readonly code&gt;</span></span><br><span class="line"><span class="comment">//   &lt;writable tdata&gt;</span></span><br><span class="line"><span class="comment">//   &lt;writable tbss&gt;</span></span><br><span class="line"><span class="comment">//   &lt;writable RELRO data&gt;</span></span><br><span class="line"><span class="comment">//   .got</span></span><br><span class="line"><span class="comment">//   .toc</span></span><br><span class="line"><span class="comment">//   &lt;writable RELRO bss&gt;</span></span><br><span class="line"><span class="comment">//   .relro_padding</span></span><br><span class="line"><span class="comment">//   &lt;writable non-RELRO data&gt;</span></span><br><span class="line"><span class="comment">//   &lt;writable non-RELRO bss&gt;</span></span><br><span class="line"><span class="comment">//   &lt;non-memory-allocated sections&gt;</span></span><br><span class="line"><span class="comment">//   &lt;section header&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>代码实现</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> get_rank1 = [&amp;](Chunk&lt;E&gt; *chunk) &#123;</span><br><span class="line">  u64 type = chunk-&gt;shdr.sh_type;</span><br><span class="line">  u64 flags = chunk-&gt;shdr.sh_flags;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.ehdr)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.phdr)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.interp)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">  <span class="keyword">if</span> (type == SHT_NOTE &amp;&amp; (flags &amp; SHF_ALLOC))</span><br><span class="line">    <span class="keyword">return</span> <span class="number">3</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.hash)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">4</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.gnu_hash)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">5</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.dynsym)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">6</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.dynstr)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">7</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.versym)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">8</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.verneed)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">9</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.reldyn)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">10</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.relplt)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">11</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.shdr)</span><br><span class="line">    <span class="keyword">return</span> INT32_MAX;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">bool</span> alloc = (flags &amp; SHF_ALLOC);</span><br><span class="line">  <span class="keyword">bool</span> writable = (flags &amp; SHF_WRITE);</span><br><span class="line">  <span class="keyword">bool</span> exec = (flags &amp; SHF_EXECINSTR);</span><br><span class="line">  <span class="keyword">bool</span> tls = (flags &amp; SHF_TLS);</span><br><span class="line">  <span class="keyword">bool</span> relro = <span class="built_in">is_relro</span>(ctx, chunk);</span><br><span class="line">  <span class="keyword">bool</span> is_bss = (type == SHT_NOBITS);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> (<span class="number">1</span> &lt;&lt; <span class="number">10</span>) | (!alloc &lt;&lt; <span class="number">9</span>) | (writable &lt;&lt; <span class="number">8</span>) | (exec &lt;&lt; <span class="number">7</span>) |</span><br><span class="line">         (!tls &lt;&lt; <span class="number">6</span>) | (!relro &lt;&lt; <span class="number">5</span>) | (is_bss &lt;&lt; <span class="number">4</span>);</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">auto</span> get_rank2 = [&amp;](Chunk&lt;E&gt; *chunk) -&gt; i64 &#123;</span><br><span class="line">  <span class="keyword">if</span> (chunk-&gt;shdr.sh_type == SHT_NOTE)</span><br><span class="line">    <span class="keyword">return</span> -chunk-&gt;shdr.sh_addralign;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.relro_padding)</span><br><span class="line">    <span class="keyword">return</span> INT_MAX;</span><br><span class="line">  <span class="keyword">if</span> (chunk-&gt;name == <span class="string">&quot;.toc&quot;</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.got)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>tls: This section holds Thread-Local Storage, meaning that each separate execution flow has its own distinct instance of this data.</p>
+</blockquote>
+<h2 id="order"><a href="#order" class="headerlink" title="order"></a>order</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Sort sections according to a --section-order argument.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">sort_output_sections_by_order</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="comment">// It is an error if a section order cannot be determined by a given</span></span><br><span class="line">	<span class="comment">// section order list.</span></span><br><span class="line">	<span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks)</span><br><span class="line">	  chunk-&gt;sect_order = <span class="built_in">get_rank</span>(chunk);</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// Sort output sections by --section-order</span></span><br><span class="line">	<span class="built_in">sort</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *a, Chunk&lt;E&gt; *b) &#123;</span><br><span class="line">	  <span class="keyword">return</span> a-&gt;sect_order &lt; b-&gt;sect_order;</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>所有的chunk设置sect_order，之后根据这个排序。这个功能我觉得就是类似于在链接脚本中按顺序写下段的名字然后按照脚本的顺序来排序</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> get_rank = [&amp;](Chunk&lt;E&gt; *chunk) -&gt; i64 &#123;</span><br><span class="line">  u64 flags = chunk-&gt;shdr.sh_flags;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.ehdr &amp;&amp; !(chunk-&gt;shdr.sh_flags &amp; SHF_ALLOC))</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-2</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.phdr &amp;&amp; !(chunk-&gt;shdr.sh_flags &amp; SHF_ALLOC))</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (chunk == ctx.shdr)</span><br><span class="line">    <span class="keyword">return</span> INT32_MAX;</span><br><span class="line">  <span class="keyword">if</span> (!(flags &amp; SHF_ALLOC))</span><br><span class="line">    <span class="keyword">return</span> INT32_MAX - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; <span class="keyword">const</span> SectionOrder &amp;arg : ctx.arg.section_order) &#123;</span><br><span class="line">    <span class="keyword">if</span> (arg.type == SectionOrder::SECTION &amp;&amp; arg.name == chunk-&gt;name)</span><br><span class="line">      <span class="keyword">return</span> i;</span><br><span class="line">    i++;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  std::string_view group = <span class="built_in">get_section_order_group</span>(*chunk);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.arg.section_order.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    SectionOrder arg = ctx.arg.section_order[i];</span><br><span class="line">    <span class="keyword">if</span> (arg.type == SectionOrder::GROUP &amp;&amp; arg.name == group)</span><br><span class="line">      <span class="keyword">return</span> i;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">Error</span>(ctx) &lt;&lt; <span class="string">&quot;--section-order: missing section specification for &quot;</span></span><br><span class="line">             &lt;&lt; chunk-&gt;name;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>针对ehdr，phdr，以及shdr强制指定一个rank</p>
+<p>之后根据arg的order查找优先级。如果没指定，则根据section_order_group再查优先级</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> std::string_view <span class="title">get_section_order_group</span><span class="params">(Chunk&lt;E&gt; &amp;chunk)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (chunk.shdr.sh_type == SHT_NOBITS)</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;BSS&quot;</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk.shdr.sh_flags &amp; SHF_EXECINSTR)</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;TEXT&quot;</span>;</span><br><span class="line">  <span class="keyword">if</span> (chunk.shdr.sh_flags &amp; SHF_WRITE)</span><br><span class="line">    <span class="keyword">return</span> <span class="string">&quot;DATA&quot;</span>;</span><br><span class="line">  <span class="keyword">return</span> <span class="string">&quot;RODATA&quot;</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读十 段排序</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-06-24 20:39:10</li>
+        <li>
+            本文链接：https://homura.live/2023/06/24/mold/mold-10-sort-section/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/06/19/mold/mold-9-unresolve-symbol/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">mold源码阅读九 未解析符号的处理</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%AE%B5%E6%8E%92%E5%BA%8F"><span class="nav-number">1.</span> <span class="nav-text">段排序</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#sort-init-fini"><span class="nav-number">2.</span> <span class="nav-text">sort_init_fini</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#sort-ctor-dtor"><span class="nav-number">3.</span> <span class="nav-text">sort_ctor_dtor</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#shuffle-sections"><span class="nav-number">4.</span> <span class="nav-text">shuffle_sections</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#copy-str"><span class="nav-number">5.</span> <span class="nav-text">copy str</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#scan-relocations"><span class="nav-number">6.</span> <span class="nav-text">scan_relocations</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#rel-scan"><span class="nav-number">6.1.</span> <span class="nav-text">rel scan</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#object-file"><span class="nav-number">6.1.1.</span> <span class="nav-text">object file</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#InputSection"><span class="nav-number">6.1.2.</span> <span class="nav-text">InputSection</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#scan-rel"><span class="nav-number">6.1.3.</span> <span class="nav-text">scan_rel</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#symbols-to-a-vec"><span class="nav-number">6.2.</span> <span class="nav-text">symbols to a vec</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#add-to-table"><span class="nav-number">6.3.</span> <span class="nav-text">add to table</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#compute-section-sizes"><span class="nav-number">7.</span> <span class="nav-text">compute_section_sizes</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#chunks%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">7.1.</span> <span class="nav-text">chunks的处理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ARM%E7%9A%84%E5%A4%84%E7%90%86"><span class="nav-number">7.2.</span> <span class="nav-text">ARM的处理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BE%E5%AE%9Aosec%E7%9A%84sh-addralign"><span class="nav-number">7.3.</span> <span class="nav-text">设定osec的sh_addralign</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#sort-output-sections"><span class="nav-number">8.</span> <span class="nav-text">sort_output_sections</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#regular"><span class="nav-number">8.1.</span> <span class="nav-text">regular</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#order"><span class="nav-number">8.2.</span> <span class="nav-text">order</span></a></li></ol></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

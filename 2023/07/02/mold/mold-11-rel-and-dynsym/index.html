@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读十一  relr and dynsym |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="推特画师Lyytoaoitori   construct_relr12345&#x2F;&#x2F; If --packed_dyn_relocs&#x3D;relr was given, base relocations are stored&#x2F;&#x2F; to a .relr.dyn section in a compressed form. Construct a compressed&#x2F;&#x2F; relocations now so">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读十一  relr and dynsym">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/07/02/mold/mold-11-rel-and-dynsym/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="推特画师Lyytoaoitori   construct_relr12345&#x2F;&#x2F; If --packed_dyn_relocs&#x3D;relr was given, base relocations are stored&#x2F;&#x2F; to a .relr.dyn section in a compressed form. Construct a compressed&#x2F;&#x2F; relocations now so">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-11-rel-and-dynsym/Untitled.png">
+<meta property="article:published_time" content="2023-07-02T08:04:13.000Z">
+<meta property="article:modified_time" content="2023-07-02T08:07:43.172Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta property="article:tag" content="got">
+<meta property="article:tag" content="rel">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-11-rel-and-dynsym/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读十一  relr and dynsym</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-07-02 16:04:13
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/got/">got</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/rel/">rel</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>4.1k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>20 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-11-rel-and-dynsym/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">推特画师Lyytoaoitori</center> 
+
+<h1 id="construct-relr"><a href="#construct-relr" class="headerlink" title="construct_relr"></a>construct_relr</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// If --packed_dyn_relocs=relr was given, base relocations are stored</span></span><br><span class="line"><span class="comment">// to a .relr.dyn section in a compressed form. Construct a compressed</span></span><br><span class="line"><span class="comment">// relocations now so that we can fix section sizes and file layout.</span></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.pack_dyn_relocs_relr)</span><br><span class="line">  <span class="built_in">construct_relr</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>-z pack-relative-relocs Alias for –pack-dyn-relocs=relr<br>-z nopack-relative-relocs</p>
+</blockquote>
+<p>将OutputSection以及Got中的relocations以压缩的形式存储到relr.dyn，在这之后rel段的大小和layout就固定了。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">construct_relr</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;construct_relr&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *chunk) &#123;</span><br><span class="line">    <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>())</span><br><span class="line">      osec-&gt;<span class="built_in">construct_relr</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  ctx.got-&gt;<span class="built_in">construct_relr</span>(ctx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="output-section"><a href="#output-section" class="headerlink" title="output section"></a>output section</h2><p>将output section中所有符合条件的rel段收集起来，最后再压缩。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> OutputSection&lt;E&gt;::<span class="built_in">construct_relr</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (!ctx.arg.pic)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">if</span> (!(<span class="keyword">this</span>-&gt;shdr.sh_flags &amp; SHF_ALLOC))</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">this</span>-&gt;shdr.sh_addralign % <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;))</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Skip it if it is a text section because .text doesn&#x27;t usually</span></span><br><span class="line">  <span class="comment">// contain any dynamic relocations.</span></span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">this</span>-&gt;shdr.sh_flags &amp; SHF_EXECINSTR)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Collect base relocations</span></span><br><span class="line">  std::vector&lt;std::vector&lt;u64&gt;&gt; <span class="built_in">shards</span>(members.<span class="built_in">size</span>());</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for</span>((i64)<span class="number">0</span>, (i64)members.<span class="built_in">size</span>(), [&amp;](i64 i) &#123;</span><br><span class="line">    InputSection&lt;E&gt; &amp;isec = *members[i];</span><br><span class="line">    <span class="keyword">if</span> ((<span class="number">1</span> &lt;&lt; isec.p2align) &lt; <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;))</span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">const</span> ElfRel&lt;E&gt; &amp;r : isec.<span class="built_in">get_rels</span>(ctx))</span><br><span class="line">      <span class="keyword">if</span> (r.r_type == E::R_ABS &amp;&amp; (r.r_offset % <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;)) == <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">if</span> (Symbol&lt;E&gt; &amp;sym = *isec.file.symbols[r.r_sym];</span><br><span class="line">            !sym.<span class="built_in">is_absolute</span>() &amp;&amp; !sym.is_imported)</span><br><span class="line">          shards[i].<span class="built_in">push_back</span>(isec.offset + r.r_offset);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compress them</span></span><br><span class="line">  std::vector&lt;u64&gt; pos = <span class="built_in">flatten</span>(shards);</span><br><span class="line">  relr = <span class="built_in">encode_relr</span>(pos, <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里要讲的是开头是否为pic的判断</p>
+<blockquote>
+<p>–pie, –pic-executable Create a position independent executable<br>–no-pie, –no-pic-executable</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">read_flag</span>(<span class="string">&quot;pie&quot;</span>) || <span class="built_in">read_flag</span>(<span class="string">&quot;pic-executable&quot;</span>)) &#123;</span><br><span class="line">  ctx.arg.pic = <span class="literal">true</span>;</span><br><span class="line">  ctx.arg.pie = <span class="literal">true</span>;</span><br><span class="line">&#125; <span class="keyword">else</span> <span class="keyword">if</span> (<span class="built_in">read_flag</span>(<span class="string">&quot;no-pie&quot;</span>) || <span class="built_in">read_flag</span>(<span class="string">&quot;no-pic-executable&quot;</span>)) &#123;</span><br><span class="line">  ctx.arg.pic = <span class="literal">false</span>;</span><br><span class="line">  ctx.arg.pie = <span class="literal">false</span>;</span><br></pre></td></tr></table></figure>
+
+<p>有两个概念，pic和pie</p>
+<p>pic：position-independent code</p>
+<p>pie：position-independent executable</p>
+<p>pic和pie是看似类似却是完全冲突的两个选项。</p>
+<p>pie是生成位置无关的可执行程序，所有变量（静态和全局变量，或者说局部变量外的变量）的地址在executable中已经确定，由于这个位置确定因此不需要got表，尽管地址确定但是executable可以加载到任意地址，因为确定的是executable的内部偏移。</p>
+<p>而pic通常是一个动态库，在运行时可以加载到任意位置，也就是说相对于加载这个pic库的executable的地址也是未知的，可能加载到前面，也可能加载到后面，确定的地址只有相对于这个pic库内部起始地址的偏移，因此需要利用got中的信息再计算具体加载后的地址。</p>
+<p>看到这些内容也就明白为什么不是pic的话就返回了，因为pie的话并不需要进行重定位来支持动态加载</p>
+<h2 id="got"><a href="#got" class="headerlink" title="got"></a>got</h2><p>got(global offset table)，保存了global符号的内存地址，比如说function或者全局变量，用于运行时重定位来解析这些地址。程序首次运行时got被初始化为未解析的地址，调用函数的时候通过rel.plt/rela.plt解析对应符号的地址，之后地址会被保存到got，供下次解析使用。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> GotSection&lt;E&gt;::<span class="built_in">construct_relr</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="built_in">assert</span>(ctx.arg.pack_dyn_relocs_relr);</span><br><span class="line"></span><br><span class="line">  std::vector&lt;u64&gt; pos;</span><br><span class="line">  <span class="keyword">for</span> (GotEntry&lt;E&gt; &amp;ent : <span class="built_in">get_got_entries</span>(ctx))</span><br><span class="line">    <span class="keyword">if</span> (ent.<span class="built_in">is_relr</span>(ctx))</span><br><span class="line">      pos.<span class="built_in">push_back</span>(ent.idx * <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;));</span><br><span class="line"></span><br><span class="line">  relr = <span class="built_in">encode_relr</span>(pos, <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="get-got-entries"><a href="#get-got-entries" class="headerlink" title="get_got_entries"></a>get_got_entries</h3><p>这个过程主要是从各个位置获取GotEntry</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">GotEntry</span> &#123;</span></span><br><span class="line">  <span class="function"><span class="keyword">bool</span> <span class="title">is_relr</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> <span class="keyword">const</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> r_type == E::R_RELATIVE &amp;&amp; ctx.arg.pack_dyn_relocs_relr;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  i64 idx = <span class="number">0</span>;</span><br><span class="line">  u64 val = <span class="number">0</span>;</span><br><span class="line">  i64 r_type = R_NONE;</span><br><span class="line">  Symbol&lt;E&gt; *sym = <span class="literal">nullptr</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>关于rel_type</p>
+<blockquote>
+<p>Relocation entries describe how to alter the following instruction and data fields (bit numbers appear in the lower box corners).</p>
+</blockquote>
+<p>这里提前引用部分elf spec中提到的在i386中下面会用到的几种rel type的含义</p>
+<p>R*_386_GLOB_DAT*</p>
+<blockquote>
+<p><em>This relocation type is used to set a global offset table entry to the address of the specified symbol. The special relocation type allows one to determine the correspondence between symbols and global offset table entries.</em></p>
+</blockquote>
+<p><em>R_386_RELATIVE</em></p>
+<blockquote>
+<p><em>The link editor creates this relocation type for dynamic linking. Its offset member gives a location within a shared object that contains a value representing a relative address. The dynamic linker computes the corresponding virtual address by adding the virtual address at which the shared object was loaded to the relative address. Relocation entries for this type must specify 0 for the symbol table index.</em></p>
+</blockquote>
+<p>关于其他的rel type参考信息</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://docs.oracle.com/cd/E19683-01/817-3677/x-j1h4h/index.html" >https://docs.oracle.com/cd/E19683-01/817-3677/x-j1h4h/index.html<i class="fas fa-external-link-alt"></i></a></p>
+<blockquote>
+<p>A R_386_TLS_TPOFF relocation is left outstanding against the GOT table for the runtime linker to fill in with the static TLS offset for symbol x.</p>
+</blockquote>
+<ol>
+<li><p>ordinary symbols</p>
+<ol>
+<li><p>针对imported的符号：需要dynamic linker resolve，因此rel_type设置为GLOB_DAT。同时链接时地址未知，因此地址为0</p>
+</li>
+<li><p>ifunc的符号，通常需要dynamic linker fix up，因此rel_type为R_IRELATIVE</p>
+<p>ifun: 间接函数。支持对一个函数创建多个实现，通过自己编写的resolver在运行时选择实现</p>
+<p><a class="link"   target="_blank" rel="noopener" href="http://sourceware.org/glibc/wiki/GNU_IFUNC" >http://sourceware.org/glibc/wiki/GNU_IFUNC<i class="fas fa-external-link-alt"></i></a></p>
+</li>
+<li><p>pic且relative的情况，需要rel_type为R_IRELATIVE，否则不需要rel_type</p>
+</li>
+</ol>
+<p>针对ordinary symbols获取地址时都是NO_PLT的，因为都是已知实现和地址，不需要动态链接。</p>
+</li>
+<li><p>TLVs</p>
+<p>TLV: thread local variarble</p>
+<p>根据是否为static的情况做不同的处理，是否为static由这两个编译选项所控制</p>
+<blockquote>
+<p>–Bdynamic, –dy Link against shared libraries (default)<br>–Bstatic, –dn, –static Do not link against shared libraries</p>
+</blockquote>
+</li>
+<li><p>tls</p>
+<ol>
+<li>针对符号是否为_TLS_MODULE_BASE_进行处理，唯一的区别是是否将符号关联进去，但是两者都需要设置rel_type为TLS_DESC</li>
+</ol>
+</li>
+<li><p>gottp_syms</p>
+<p>tp: thread pointer</p>
+<ol>
+<li>imported，这种符号所有信息未知，需要dynamic linker填充got entry，rel_type为R_TPOFF</li>
+<li>shared，知道offset，需要dynamic linker调整，rel_type为R_TPOFF</li>
+<li>other，链接时知道相对于tp的offset，所以能直接填写got entry</li>
+</ol>
+</li>
+<li><p>tlsld_idx</p>
+<ol>
+<li>是否为static。static的情况下不需要rel，同时设置地址为1（表示main executable)否则需要设置rel为R_DTPMOD</li>
+</ol>
+</li>
+</ol>
+<p>总结一下</p>
+<p>不需要设置rel_type的情况如下</p>
+<ol>
+<li>ordinary symbol，pic且非relative符号的情况下，也就是说非pic或者pic但是没有relative符号（即不需要重定位）的情况下），不需要设置rel_type</li>
+<li>TLVS为static的情况下不需要设置rel_type</li>
+<li>非shared以及imported的gottp symbol</li>
+<li>tlsld_idx不为1且是static的情况</li>
+</ol>
+<p>不过这里我有一个不明白的地方，为什么不需要rel_type的符号会在got中。查到的答案是</p>
+<ol>
+<li>作为函数的间接跳转入口:<br>所有函数,包括不需要重定位的函数,在第一次调用时都需要通过.got表来间接跳转。即使函数在链接时就已经获得了绝对地址,但仍需要通过.got表调用。</li>
+<li>访问全局变量:<br>程序中所有全局变量,包括不需要重定位的变量,都需要通过基址寄存器加上.got中的偏移量来访问。<br>即使变量的值在链接时就已经确定,但程序仍需要通过.got表访问。</li>
+<li>作为函数指针:<br>函数的地址可以被用作函数指针。而所有的函数指针,包括指向不需要重定位的函数的函数指针,都需要通过.got表来存取。</li>
+<li>链接器的要求:<br>链接器要求所有函数和变量,无论是否需要重定位,都需要一个.got表项。这样它才能在程序加载时准确构建.got表。</li>
+<li>兼容性考虑:<br>加入所有符号大大提高程序的兼容性。如果后续添加了需要重定位的符号,程序无需任何改动。<br>所以,总之,.got表中的所有符号都是程序加载时解析的。<br>即使符号不需要重定位,但仍需要通过.got表间接存取。主要是作为函数入口和变量、函数指针的访问入口。<br>另外链接器及兼容性的要求也促使符号加入.got表。</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Get .got and .rel.dyn contents.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// .got is a linker-synthesized constant pool whose entry is of pointer</span></span><br><span class="line"><span class="comment">// size. If we know a correct value for an entry, we&#x27;ll just set that value</span></span><br><span class="line"><span class="comment">// to the entry. Otherwise, we&#x27;ll create a dynamic relocation and let the</span></span><br><span class="line"><span class="comment">// dynamic linker to fill the entry at load-time.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Most GOT entries contain addresses of global variable. If a global</span></span><br><span class="line"><span class="comment">// variable is an imported symbol, we don&#x27;t know its address until runtime.</span></span><br><span class="line"><span class="comment">// GOT contains the addresses of such variables at runtime so that we can</span></span><br><span class="line"><span class="comment">// access imported global variables via GOT.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">// Thread-local variables (TLVs) also use GOT entries. We need them because</span></span><br><span class="line"><span class="comment">// TLVs are accessed in a different way than the ordinary global variables.</span></span><br><span class="line"><span class="comment">// Their addresses are not unique; each thread has its own copy of TLVs.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">static</span> std::vector&lt;GotEntry&lt;E&gt;&gt; <span class="built_in">get_got_entries</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  std::vector&lt;GotEntry&lt;E&gt;&gt; entries;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Create GOT entries for ordinary symbols</span></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : ctx.got-&gt;got_syms) &#123;</span><br><span class="line">    i64 idx = sym-&gt;<span class="built_in">get_got_idx</span>(ctx);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If a symbol is imported, let the dynamic linker to resolve it.</span></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;is_imported) &#123;</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, <span class="number">0</span>, E::R_GLOB_DAT, sym&#125;);</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// IFUNC always needs to be fixed up by the dynamic linker.</span></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;<span class="built_in">is_ifunc</span>()) &#123;</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, sym-&gt;<span class="built_in">get_addr</span>(ctx, NO_PLT), E::R_IRELATIVE&#125;);</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If we know an address at link-time, fill that GOT entry now.</span></span><br><span class="line">    <span class="comment">// It may need a base relocation, though.</span></span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.pic &amp;&amp; sym-&gt;<span class="built_in">is_relative</span>())</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, sym-&gt;<span class="built_in">get_addr</span>(ctx, NO_PLT), E::R_RELATIVE&#125;);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, sym-&gt;<span class="built_in">get_addr</span>(ctx, NO_PLT)&#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Create GOT entries for TLVs.</span></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : ctx.got-&gt;tlsgd_syms) &#123;</span><br><span class="line">    i64 idx = sym-&gt;<span class="built_in">get_tlsgd_idx</span>(ctx);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.is_static) &#123;</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, <span class="number">1</span>&#125;); <span class="comment">// One indicates the main executable file</span></span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx + <span class="number">1</span>, sym-&gt;<span class="built_in">get_addr</span>(ctx) - ctx.dtp_addr&#125;);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, <span class="number">0</span>, E::R_DTPMOD, sym&#125;);</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx + <span class="number">1</span>, <span class="number">0</span>, E::R_DTPOFF, sym&#125;);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(supports_tlsdesc&lt;E&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : ctx.got-&gt;tlsdesc_syms) &#123;</span><br><span class="line">      <span class="comment">// _TLS_MODULE_BASE_ is a linker-synthesized virtual symbol that</span></span><br><span class="line">      <span class="comment">// refers the begining of the TLS block.</span></span><br><span class="line">      <span class="keyword">if</span> (sym == ctx._TLS_MODULE_BASE_)</span><br><span class="line">        entries.<span class="built_in">push_back</span>(&#123;sym-&gt;<span class="built_in">get_tlsdesc_idx</span>(ctx), <span class="number">0</span>, E::R_TLSDESC&#125;);</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        entries.<span class="built_in">push_back</span>(&#123;sym-&gt;<span class="built_in">get_tlsdesc_idx</span>(ctx), <span class="number">0</span>, E::R_TLSDESC, sym&#125;);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : ctx.got-&gt;gottp_syms) &#123;</span><br><span class="line">    i64 idx = sym-&gt;<span class="built_in">get_gottp_idx</span>(ctx);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If we know nothing about the symbol, let the dynamic linker</span></span><br><span class="line">    <span class="comment">// to fill the GOT entry.</span></span><br><span class="line">    <span class="keyword">if</span> (sym-&gt;is_imported) &#123;</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, <span class="number">0</span>, E::R_TPOFF, sym&#125;);</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If we know the offset within the current thread vector,</span></span><br><span class="line">    <span class="comment">// let the dynamic linker to adjust it.</span></span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.shared) &#123;</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;idx, sym-&gt;<span class="built_in">get_addr</span>(ctx) - ctx.tls_begin, E::R_TPOFF&#125;);</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Otherwise, we know the offset from the thread pointer (TP) at</span></span><br><span class="line">    <span class="comment">// link-time, so we can fill the GOT entry directly.</span></span><br><span class="line">    entries.<span class="built_in">push_back</span>(&#123;idx, sym-&gt;<span class="built_in">get_addr</span>(ctx) - ctx.tp_addr&#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.got-&gt;tlsld_idx != <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.is_static)</span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;ctx.got-&gt;tlsld_idx, <span class="number">1</span>&#125;); <span class="comment">// 1 means the main executable</span></span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      entries.<span class="built_in">push_back</span>(&#123;ctx.got-&gt;tlsld_idx, <span class="number">0</span>, E::R_DTPMOD&#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> entries;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="get-addr"><a href="#get-addr" class="headerlink" title="get_addr"></a>get_addr</h2><p>这个函数是确定地址的过程。</p>
+<p>首先说明PLT（Procedure Linkage Table），用于存放函数调用的跳转指令。主要用于提供函数入口点，实现间接调用。第一次调用对应函数时plt段被链接器处理，链接到函数的真实地址，也就是GOT中存放的具体值。</p>
+<p>比如说某些符号在链接的时候是</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">call fun@PLT</span><br></pre></td></tr></table></figure>
+
+<p>当调用fun后，这里的代码就会变成</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">call *foo@GOT</span><br></pre></td></tr></table></figure>
+
+<p>另外是absolute符号，简单来说就是有一个固定的绝对地址的符号，因此可以直接获得其地址</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://stackoverflow.com/questions/33324076/what-is-absolute-symbol-and-how-to-define-it-in-c" >https://stackoverflow.com/questions/33324076/what-is-absolute-symbol-and-how-to-define-it-in-c<i class="fas fa-external-link-alt"></i></a></p>
+<ol>
+<li>针对frag，非alive则是0，否则从frag中获取地址，</li>
+<li>has copy rel，去从ctx中的copy_rel获取基地址</li>
+<li>PPC64</li>
+<li>plt，直接get_plt_addr</li>
+<li>input section为空，absolute符号直接返回value的地址</li>
+<li>input section非alive的情况<ol>
+<li>killed by icf，从leader中获取地址</li>
+<li>eh_frame，根据符号名获取eh_frame中对应位置的地址</li>
+<li>否则返回0</li>
+</ol>
+</li>
+<li>普通的input section，直接isec→get_addr + value</li>
+</ol>
+<p>下面代码中出现的value的含义如下，属于Symbol的成员</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// `value` contains symbol value. If it&#x27;s an absolute symbol, it is</span></span><br><span class="line"><span class="comment">// equivalent to its address. If it belongs to an input section or a</span></span><br><span class="line"><span class="comment">// section fragment, value is added to the base of the input section</span></span><br><span class="line"><span class="comment">// to yield an address.</span></span><br><span class="line"><span class="comment">// u64 value = 0;</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> u64 SectionFragment&lt;E&gt;::<span class="built_in">get_addr</span>(Context&lt;E&gt; &amp;ctx) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">return</span> output_section.shdr.sh_addr + offset;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// `value` contains symbol value. If it&#x27;s an absolute symbol, it is</span></span><br><span class="line"><span class="comment">// equivalent to its address. If it belongs to an input section or a</span></span><br><span class="line"><span class="comment">// section fragment, value is added to the base of the input section</span></span><br><span class="line"><span class="comment">// to yield an address.</span></span><br><span class="line"><span class="comment">// u64 value = 0;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> u64 Symbol&lt;E&gt;::<span class="built_in">get_plt_addr</span>(Context&lt;E&gt; &amp;ctx) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">if</span> (i32 idx = <span class="built_in">get_plt_idx</span>(ctx); idx != <span class="number">-1</span>)</span><br><span class="line">    <span class="keyword">return</span> ctx.plt-&gt;shdr.sh_addr + E::plt_hdr_size + idx * E::plt_size;</span><br><span class="line">  <span class="keyword">return</span> ctx.pltgot-&gt;shdr.sh_addr + <span class="built_in">get_pltgot_idx</span>(ctx) * E::pltgot_size;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> i32 Symbol&lt;E&gt;::<span class="built_in">get_pltgot_idx</span>(Context&lt;E&gt; &amp;ctx) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">return</span> (aux_idx == <span class="number">-1</span>) ? <span class="number">-1</span> : ctx.symbol_aux[aux_idx].pltgot_idx;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span>&lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">bool</span> InputSection&lt;E&gt;::<span class="built_in">is_killed_by_icf</span>() <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">this</span>-&gt;leader &amp;&amp; <span class="keyword">this</span>-&gt;leader != <span class="keyword">this</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> u64 Symbol&lt;E&gt;::<span class="built_in">get_addr</span>(Context&lt;E&gt; &amp;ctx, i64 flags) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">if</span> (SectionFragment&lt;E&gt; *frag = <span class="built_in">get_frag</span>()) &#123;</span><br><span class="line">    <span class="keyword">if</span> (!frag-&gt;is_alive) &#123;</span><br><span class="line">      <span class="comment">// This condition is met if a non-alloc section refers an</span></span><br><span class="line">      <span class="comment">// alloc section and if the referenced piece of data is</span></span><br><span class="line">      <span class="comment">// garbage-collected. Typically, this condition occurs if a</span></span><br><span class="line">      <span class="comment">// debug info section refers a string constant in .rodata.</span></span><br><span class="line">      <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> frag-&gt;<span class="built_in">get_addr</span>(ctx) + value;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (has_copyrel) &#123;</span><br><span class="line">    <span class="keyword">return</span> copyrel_readonly</span><br><span class="line">      ? ctx.copyrel_relro-&gt;shdr.sh_addr + value</span><br><span class="line">      : ctx.copyrel-&gt;shdr.sh_addr + value;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_same_v&lt;E, PPC64V1&gt;)</span></span></span><br><span class="line"><span class="function">    <span class="title">if</span> <span class="params">(!(flags &amp; NO_OPD) &amp;&amp; has_opd(ctx))</span></span></span><br><span class="line"><span class="function">      <span class="keyword">return</span> <span class="title">get_opd_addr</span><span class="params">(ctx)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!(flags &amp; NO_PLT) &amp;&amp; <span class="built_in">has_plt</span>(ctx)) &#123;</span><br><span class="line">    <span class="built_in">assert</span>(is_imported || <span class="built_in">is_ifunc</span>());</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">get_plt_addr</span>(ctx);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  InputSection&lt;E&gt; *isec = <span class="built_in">get_input_section</span>();</span><br><span class="line">  <span class="keyword">if</span> (!isec)</span><br><span class="line">    <span class="keyword">return</span> value; <span class="comment">// absolute symbol</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!isec-&gt;is_alive) &#123;</span><br><span class="line">    <span class="keyword">if</span> (isec-&gt;<span class="built_in">is_killed_by_icf</span>())</span><br><span class="line">      <span class="keyword">return</span> isec-&gt;leader-&gt;<span class="built_in">get_addr</span>() + value;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (isec-&gt;<span class="built_in">name</span>() == <span class="string">&quot;.eh_frame&quot;</span>) &#123;</span><br><span class="line">      <span class="comment">// .eh_frame contents are parsed and reconstructed by the linker,</span></span><br><span class="line">      <span class="comment">// so pointing to a specific location in a source .eh_frame</span></span><br><span class="line">      <span class="comment">// section doesn&#x27;t make much sense. However, CRT files contain</span></span><br><span class="line">      <span class="comment">// symbols pointing to the very beginning and ending of the section.</span></span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">name</span>() == <span class="string">&quot;__EH_FRAME_BEGIN__&quot;</span> || <span class="built_in">name</span>() == <span class="string">&quot;__EH_FRAME_LIST__&quot;</span> ||</span><br><span class="line">          <span class="built_in">name</span>() == <span class="string">&quot;.eh_frame_seg&quot;</span> || <span class="built_in">esym</span>().st_type == STT_SECTION)</span><br><span class="line">        <span class="keyword">return</span> ctx.eh_frame-&gt;shdr.sh_addr;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">name</span>() == <span class="string">&quot;__FRAME_END__&quot;</span> || <span class="built_in">name</span>() == <span class="string">&quot;__EH_FRAME_LIST_END__&quot;</span>)</span><br><span class="line">        <span class="keyword">return</span> ctx.eh_frame-&gt;shdr.sh_addr + ctx.eh_frame-&gt;shdr.sh_size;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// ARM object files contain &quot;$d&quot; local symbol at the beginning</span></span><br><span class="line">      <span class="comment">// of data sections. Their values are not significant for .eh_frame,</span></span><br><span class="line">      <span class="comment">// so we just treat them as offset 0.</span></span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">name</span>() == <span class="string">&quot;$d&quot;</span> || <span class="built_in">name</span>().<span class="built_in">starts_with</span>(<span class="string">&quot;$d.&quot;</span>))</span><br><span class="line">        <span class="keyword">return</span> ctx.eh_frame-&gt;shdr.sh_addr;</span><br><span class="line"></span><br><span class="line">      <span class="built_in">Fatal</span>(ctx) &lt;&lt; <span class="string">&quot;symbol referring .eh_frame is not supported: &quot;</span></span><br><span class="line">                 &lt;&lt; *<span class="keyword">this</span> &lt;&lt; <span class="string">&quot; &quot;</span> &lt;&lt; *file;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// The control can reach here if there&#x27;s a relocation that refers</span></span><br><span class="line">    <span class="comment">// a local symbol belonging to a comdat group section. This is a</span></span><br><span class="line">    <span class="comment">// violation of the spec, as all relocations should use only global</span></span><br><span class="line">    <span class="comment">// symbols of comdat members. However, .eh_frame tends to have such</span></span><br><span class="line">    <span class="comment">// relocations.</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> isec-&gt;<span class="built_in">get_addr</span>() + value;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="dynsym-finalize"><a href="#dynsym-finalize" class="headerlink" title="dynsym finalize"></a>dynsym finalize</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Reserve a space for dynamic symbol strings in .dynstr and sort</span></span><br><span class="line"><span class="comment">// .dynsym contents if necessary. Beyond this point, no symbol will</span></span><br><span class="line"><span class="comment">// be added to .dynsym.</span></span><br><span class="line">ctx.dynsym-&gt;<span class="built_in">finalize</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>为dynamic symbol的字符串在dynstr中留出空间，并且排序dynsym的内容。在这之后不会有符号被加入到dynsym，因此这里dynstr section的大小以及排布确定下来了。</p>
+<p>具体的处理过程如下</p>
+<ol>
+<li>symbols排序，local在前global在后，和elf中的格式一样。</li>
+<li>处理gnu_hash的情况</li>
+<li>设置dynsym_offset后计算dynstr的size</li>
+<li>更新DynsymSection的shdr的信息</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> DynsymSection&lt;E&gt;::<span class="built_in">finalize</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;DynsymSection::finalize&quot;</span>)</span></span>;</span><br><span class="line">  <span class="keyword">if</span> (symbols.<span class="built_in">empty</span>())</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Sort symbols. In any symtab, local symbols must precede global symbols.</span></span><br><span class="line">  <span class="keyword">auto</span> first_global = std::<span class="built_in">stable_partition</span>(symbols.<span class="built_in">begin</span>() + <span class="number">1</span>, symbols.<span class="built_in">end</span>(),</span><br><span class="line">                                            [&amp;](Symbol&lt;E&gt; *sym) &#123;</span><br><span class="line">    <span class="keyword">return</span> sym-&gt;<span class="built_in">is_local</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// We also place undefined symbols before defined symbols for .gnu.hash.</span></span><br><span class="line">  <span class="comment">// Defined symbols are sorted by their hashes for .gnu.hash.</span></span><br><span class="line">  <span class="keyword">if</span> (ctx.gnu_hash) &#123;</span><br><span class="line">    <span class="comment">// Count the number of exported symbols to compute the size of .gnu.hash.</span></span><br><span class="line">    i64 num_exported = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (i64 i = <span class="number">1</span>; i &lt; symbols.<span class="built_in">size</span>(); i++)</span><br><span class="line">      <span class="keyword">if</span> (symbols[i]-&gt;is_exported)</span><br><span class="line">        num_exported++;</span><br><span class="line"></span><br><span class="line">    u32 num_buckets = num_exported / ctx.gnu_hash-&gt;LOAD_FACTOR + <span class="number">1</span>;</span><br><span class="line">    ctx.gnu_hash-&gt;num_buckets = num_buckets;</span><br><span class="line"></span><br><span class="line">    tbb::<span class="built_in">parallel_for</span>((i64)(first_global - symbols.<span class="built_in">begin</span>()), (i64)symbols.<span class="built_in">size</span>(),</span><br><span class="line">                      [&amp;](i64 i) &#123;</span><br><span class="line">      Symbol&lt;E&gt; &amp;sym = *symbols[i];</span><br><span class="line">      sym.<span class="built_in">set_dynsym_idx</span>(ctx, i);</span><br><span class="line">      sym.<span class="built_in">set_djb_hash</span>(ctx, <span class="built_in">djb_hash</span>(sym.<span class="built_in">name</span>()));</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    tbb::<span class="built_in">parallel_sort</span>(first_global, symbols.<span class="built_in">end</span>(),</span><br><span class="line">                       [&amp;](Symbol&lt;E&gt; *a, Symbol&lt;E&gt; *b) &#123;</span><br><span class="line">      <span class="keyword">if</span> (a-&gt;is_exported != b-&gt;is_exported)</span><br><span class="line">        <span class="keyword">return</span> b-&gt;is_exported;</span><br><span class="line"></span><br><span class="line">      u32 h1 = a-&gt;<span class="built_in">get_djb_hash</span>(ctx) % num_buckets;</span><br><span class="line">      u32 h2 = b-&gt;<span class="built_in">get_djb_hash</span>(ctx) % num_buckets;</span><br><span class="line">      <span class="keyword">return</span> std::<span class="built_in">tuple</span>(h1, a-&gt;<span class="built_in">get_dynsym_idx</span>(ctx)) &lt;</span><br><span class="line">             std::<span class="built_in">tuple</span>(h2, b-&gt;<span class="built_in">get_dynsym_idx</span>(ctx));</span><br><span class="line">    &#125;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compute .dynstr size</span></span><br><span class="line">  ctx.dynstr-&gt;dynsym_offset = ctx.dynstr-&gt;shdr.sh_size;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">1</span>; i &lt; symbols.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    symbols[i]-&gt;<span class="built_in">set_dynsym_idx</span>(ctx, i);</span><br><span class="line">    ctx.dynstr-&gt;shdr.sh_size += symbols[i]-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// ELF&#x27;s symbol table sh_info holds the offset of the first global symbol.</span></span><br><span class="line">  <span class="keyword">this</span>-&gt;shdr.sh_info = first_global - symbols.<span class="built_in">begin</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">void</span> Symbol&lt;E&gt;::<span class="built_in">set_dynsym_idx</span>(Context&lt;E&gt; &amp;ctx, i32 idx) &#123;</span><br><span class="line">  <span class="built_in">assert</span>(aux_idx != <span class="number">-1</span>);</span><br><span class="line">  ctx.symbol_aux[aux_idx].dynsym_idx = idx;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里的ctx.symbol_aux[aux_idx].dynsym_idx是在之前的scan_relocations的过程中设置的，对应的dynsym_idx默认为-1</p>
+<h1 id="report-undef-error"><a href="#report-undef-error" class="headerlink" title="report_undef_error"></a>report_undef_error</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Print reports about undefined symbols, if needed.</span></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.unresolved_symbols == UNRESOLVED_ERROR)</span><br><span class="line">  <span class="built_in">report_undef_errors</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Report all undefined symbols, grouped by symbol.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">report_undef_errors</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">constexpr</span> i64 max_errors = <span class="number">3</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (<span class="keyword">auto</span> &amp;pair : ctx.undef_errors) &#123;</span><br><span class="line">    std::string_view sym_name = pair.first;</span><br><span class="line">    std::span&lt;std::string&gt; errors = pair.second;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.demangle)</span><br><span class="line">      sym_name = <span class="built_in">demangle</span>(sym_name);</span><br><span class="line"></span><br><span class="line">    std::stringstream ss;</span><br><span class="line">    ss &lt;&lt; <span class="string">&quot;undefined symbol: &quot;</span> &lt;&lt; sym_name &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; errors.<span class="built_in">size</span>() &amp;&amp; i &lt; max_errors; i++)</span><br><span class="line">      ss &lt;&lt; errors[i];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (errors.<span class="built_in">size</span>() &gt; max_errors)</span><br><span class="line">      ss &lt;&lt; <span class="string">&quot;&gt;&gt;&gt; referenced &quot;</span> &lt;&lt; (errors.<span class="built_in">size</span>() - max_errors) &lt;&lt; <span class="string">&quot; more times\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.unresolved_symbols == UNRESOLVED_ERROR)</span><br><span class="line">      <span class="built_in">Error</span>(ctx) &lt;&lt; ss.<span class="built_in">str</span>();</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (ctx.arg.unresolved_symbols == UNRESOLVED_WARN)</span><br><span class="line">      <span class="built_in">Warn</span>(ctx) &lt;&lt; ss.<span class="built_in">str</span>();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  ctx.<span class="built_in">checkpoint</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>报告之前在claim_unresolved_symbols中收集的undef的错误信息</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读十一  relr and dynsym</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-07-02 16:04:13</li>
+        <li>
+            本文链接：https://homura.live/2023/07/02/mold/mold-11-rel-and-dynsym/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/06/24/mold/mold-10-sort-section/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">mold源码阅读十 段排序</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#construct-relr"><span class="nav-number">1.</span> <span class="nav-text">construct_relr</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#output-section"><span class="nav-number">1.1.</span> <span class="nav-text">output section</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#got"><span class="nav-number">1.2.</span> <span class="nav-text">got</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#get-got-entries"><span class="nav-number">1.2.1.</span> <span class="nav-text">get_got_entries</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#get-addr"><span class="nav-number">1.3.</span> <span class="nav-text">get_addr</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#dynsym-finalize"><span class="nav-number">2.</span> <span class="nav-text">dynsym finalize</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#report-undef-error"><span class="nav-number">3.</span> <span class="nav-text">report_undef_error</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

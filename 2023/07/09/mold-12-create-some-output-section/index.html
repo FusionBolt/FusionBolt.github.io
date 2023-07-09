@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读十二 创建一些输出段 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:105296500_p0   Fill gnu.version section contents123456&#x2F;&#x2F; Fill .gnu.version_d section contents.if (ctx.verdef)  ctx.verdef-&gt;construct(ctx);&#x2F;&#x2F; Fill .gnu.version_r section contents.ctx.verneed-">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读十二 创建一些输出段">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/07/09/mold-12-create-some-output-section/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:105296500_p0   Fill gnu.version section contents123456&#x2F;&#x2F; Fill .gnu.version_d section contents.if (ctx.verdef)  ctx.verdef-&gt;construct(ctx);&#x2F;&#x2F; Fill .gnu.version_r section contents.ctx.verneed-">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-12-create-some-output-section/105296500_p0_master1200.jpg">
+<meta property="article:published_time" content="2023-07-09T08:35:19.000Z">
+<meta property="article:modified_time" content="2023-07-09T08:43:28.528Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold">
+<meta property="article:tag" content="eh_frame">
+<meta property="article:tag" content="symtab">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-12-create-some-output-section/105296500_p0_master1200.jpg">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读十二 创建一些输出段</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-07-09 16:35:19
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/eh-frame/">eh_frame</a>&nbsp;
+                    </li>
+                
+                    <li>
+                        | <a href="/tags/symtab/">symtab</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>4.7k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>24 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-12-create-some-output-section/105296500_p0_master1200.jpg"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:105296500_p0</center> 
+
+<h1 id="Fill-gnu-version-section-contents"><a href="#Fill-gnu-version-section-contents" class="headerlink" title="Fill gnu.version section contents"></a>Fill gnu.version section contents</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Fill .gnu.version_d section contents.</span></span><br><span class="line"><span class="keyword">if</span> (ctx.verdef)</span><br><span class="line">  ctx.verdef-&gt;<span class="built_in">construct</span>(ctx);</span><br><span class="line"></span><br><span class="line"><span class="comment">// Fill .gnu.version_r section contents.</span></span><br><span class="line">ctx.verneed-&gt;<span class="built_in">construct</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>这里对verdef和verneed段进行构造，实际写入内容。其中包含了字符串信息，因此还会将字符串写入dynstr中。</p>
+<h2 id="verdef"><a href="#verdef" class="headerlink" title="verdef"></a>verdef</h2><p>对于VerdefSection中的contents是多组ElfVerDef + ElfVerdaux。前者是verdef的信息，后者则是指向对应字符串在dynstr中的offset。</p>
+<p>需要将ctx.arg.version_definitions以及output自身的信息写入到verdef段中，因此这样的数据实际有ctx.arg.version_definitions.size() + 1组。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">| verdef | verdaux | verdef | verdaux |</span><br><span class="line">						/                  /	</span><br><span class="line">|     dynstr0    |    dynstr1    | ... | dynstrn |</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">VerdefSection</span> :</span> <span class="keyword">public</span> Chunk&lt;E&gt; &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">VerdefSection</span>() &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;name = <span class="string">&quot;.gnu.version_d&quot;</span>;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_type = SHT_GNU_VERDEF;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_flags = SHF_ALLOC;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_addralign = <span class="number">8</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">update_shdr</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> <span class="keyword">override</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">copy_buf</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> <span class="keyword">override</span></span>;</span><br><span class="line"></span><br><span class="line">  std::vector&lt;u8&gt; contents;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>每次写入的时候会先在当前位置写入ElfVerDef的信息，之后写入ElfVerdaux的信息，同时在这个过程中更新当前位置的指针。传入的verstr实际保存在ctx.dynstr中，而Verdaux中保存的是则是verstr在dynstr中的offset，而VerDef仅保存索引，hash等信息。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> VerdefSection&lt;E&gt;::<span class="built_in">construct</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;fill_verdef&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.version_definitions.<span class="built_in">empty</span>())</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Resize .gnu.version</span></span><br><span class="line">  ctx.versym-&gt;contents.<span class="built_in">resize</span>(ctx.dynsym-&gt;symbols.<span class="built_in">size</span>(), <span class="number">1</span>);</span><br><span class="line">  ctx.versym-&gt;contents[<span class="number">0</span>] = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Allocate a buffer for .gnu.version_d.</span></span><br><span class="line">  contents.<span class="built_in">resize</span>((<span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerdef&lt;E&gt;) + <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerdaux&lt;E&gt;)) *</span><br><span class="line">                  (ctx.arg.version_definitions.<span class="built_in">size</span>() + <span class="number">1</span>));</span><br><span class="line"></span><br><span class="line">  u8 *buf = (u8 *)&amp;contents[<span class="number">0</span>];</span><br><span class="line">  u8 *ptr = buf;</span><br><span class="line">  ElfVerdef&lt;E&gt; *verdef = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> write = [&amp;](std::string_view verstr, i64 idx, i64 flags) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_info++;</span><br><span class="line">    <span class="keyword">if</span> (verdef)</span><br><span class="line">      verdef-&gt;vd_next = ptr - (u8 *)verdef;</span><br><span class="line"></span><br><span class="line">    verdef = (ElfVerdef&lt;E&gt; *)ptr;</span><br><span class="line">    ptr += <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerdef&lt;E&gt;);</span><br><span class="line"></span><br><span class="line">    verdef-&gt;vd_version = <span class="number">1</span>;</span><br><span class="line">    verdef-&gt;vd_flags = flags;</span><br><span class="line">    verdef-&gt;vd_ndx = idx;</span><br><span class="line">    verdef-&gt;vd_cnt = <span class="number">1</span>;</span><br><span class="line">    verdef-&gt;vd_hash = <span class="built_in">elf_hash</span>(verstr);</span><br><span class="line">    verdef-&gt;vd_aux = <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerdef&lt;E&gt;);</span><br><span class="line"></span><br><span class="line">    ElfVerdaux&lt;E&gt; *aux = (ElfVerdaux&lt;E&gt; *)ptr;</span><br><span class="line">    ptr += <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerdaux&lt;E&gt;);</span><br><span class="line">    aux-&gt;vda_name = ctx.dynstr-&gt;<span class="built_in">add_string</span>(verstr);</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  std::string_view basename = ctx.arg.soname.<span class="built_in">empty</span>() ?</span><br><span class="line">    ctx.arg.output : ctx.arg.soname;</span><br><span class="line">  <span class="built_in">write</span>(basename, <span class="number">1</span>, VER_FLG_BASE);</span><br><span class="line"></span><br><span class="line">  i64 idx = <span class="number">2</span>;</span><br><span class="line">  <span class="keyword">for</span> (std::string_view verstr : ctx.arg.version_definitions)</span><br><span class="line">    <span class="built_in">write</span>(verstr, idx++, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : std::span&lt;Symbol&lt;E&gt; *&gt;(ctx.dynsym-&gt;symbols).<span class="built_in">subspan</span>(<span class="number">1</span>))</span><br><span class="line">    ctx.versym-&gt;contents[sym-&gt;<span class="built_in">get_dynsym_idx</span>(ctx)] = sym-&gt;ver_idx;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ver_idx的值是</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">static constexpr u32 VER_NDX_LOCAL = 0;</span><br><span class="line">static constexpr u32 VER_NDX_GLOBAL = 1;</span><br><span class="line">static constexpr u32 VER_NDX_LAST_RESERVED = 1;</span><br></pre></td></tr></table></figure>
+
+<h2 id="verneed"><a href="#verneed" class="headerlink" title="verneed"></a>verneed</h2><p>这里的数据格式和vardef不太一样，content是一个Verneed接着多个Vednaux构成。每个Verneed表示一个文件的开始。由于这里是针对dynsym处理，因此实际Vednaux的数量和dynsym的数量相同。在分配空间的时候注释也有写到allocate large enought buffer，避免了每个文件一个dynsym的极端场景。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">|verneed|vednaux|vednaux|...|verneed|vednaux|vednaux|vednaux|</span><br></pre></td></tr></table></figure>
+
+<p>另外不在dso或者sym-&gt;ver_idx &lt;= VER_NDX_LAST_RESERVED的sym，这些符号并不需要填充verneed字段，因此会先被过滤掉。之后由于content是以一个文件为一个小组，为了后面添加信息方便会根据soname以及ver_idx进行排序。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> VerneedSection&lt;E&gt;::<span class="built_in">construct</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;fill_verneed&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (ctx.dynsym-&gt;symbols.<span class="built_in">empty</span>())</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Create a list of versioned symbols and sort by file and version.</span></span><br><span class="line">  std::vector&lt;Symbol&lt;E&gt; *&gt; <span class="built_in">syms</span>(ctx.dynsym-&gt;symbols.<span class="built_in">begin</span>() + <span class="number">1</span>,</span><br><span class="line">                                ctx.dynsym-&gt;symbols.<span class="built_in">end</span>());</span><br><span class="line"></span><br><span class="line">  std::<span class="built_in">erase_if</span>(syms, [](Symbol&lt;E&gt; *sym) &#123;</span><br><span class="line">    <span class="keyword">return</span> !sym-&gt;file-&gt;is_dso || sym-&gt;ver_idx &lt;= VER_NDX_LAST_RESERVED;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (syms.<span class="built_in">empty</span>())</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">sort</span>(syms, [](Symbol&lt;E&gt; *a, Symbol&lt;E&gt; *b) &#123;</span><br><span class="line">    <span class="keyword">return</span> std::<span class="built_in">tuple</span>(((SharedFile&lt;E&gt; *)a-&gt;file)-&gt;soname, a-&gt;ver_idx) &lt;</span><br><span class="line">           std::<span class="built_in">tuple</span>(((SharedFile&lt;E&gt; *)b-&gt;file)-&gt;soname, b-&gt;ver_idx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Resize of .gnu.version</span></span><br><span class="line">  ctx.versym-&gt;contents.<span class="built_in">resize</span>(ctx.dynsym-&gt;symbols.<span class="built_in">size</span>(), <span class="number">1</span>);</span><br><span class="line">  ctx.versym-&gt;contents[<span class="number">0</span>] = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Allocate a large enough buffer for .gnu.version_r.</span></span><br><span class="line">  contents.<span class="built_in">resize</span>((<span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerneed&lt;E&gt;) + <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVernaux&lt;E&gt;)) * syms.<span class="built_in">size</span>());</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Fill .gnu.version_r.</span></span><br><span class="line">  u8 *buf = (u8 *)&amp;contents[<span class="number">0</span>];</span><br><span class="line">  u8 *ptr = buf;</span><br><span class="line">  ElfVerneed&lt;E&gt; *verneed = <span class="literal">nullptr</span>;</span><br><span class="line">  ElfVernaux&lt;E&gt; *aux = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">  u16 veridx = VER_NDX_LAST_RESERVED + ctx.arg.version_definitions.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    <span class="keyword">if</span> (i == <span class="number">0</span> || syms[i - <span class="number">1</span>]-&gt;file != syms[i]-&gt;file) &#123;</span><br><span class="line">      <span class="built_in">start_group</span>(syms[i]-&gt;file);</span><br><span class="line">      <span class="built_in">add_entry</span>(syms[i]);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (syms[i - <span class="number">1</span>]-&gt;ver_idx != syms[i]-&gt;ver_idx) &#123;</span><br><span class="line">      <span class="built_in">add_entry</span>(syms[i]);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ctx.versym-&gt;contents[syms[i]-&gt;<span class="built_in">get_dynsym_idx</span>(ctx)] = veridx;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Resize .gnu.version_r to fit to its contents.</span></span><br><span class="line">  contents.<span class="built_in">resize</span>(ptr - buf);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>处理过程中根据如果是第一个符号或者连续两个符号不是相同的file就start_group。</p>
+<p>要注意ctx.versym-&gt;contents又重新resize了一次，在后面遍历符号的时候又会再次写入，或许是因为verdef是根据选项来决定是否执行的。两次resize实际上size是相同的，而verneed中并非所有符号都会写入versym→content，部分被过滤的符号是没有再次写入的，也就是说被过滤的符号会保留verneed的部分。</p>
+<p>接着来看一下start_group的部分。这个函数中会sh_info递增，处理verneed（关联一个file），并且aux置空。也就是说VerneedSection的sh_info存放的是ElfVerneed的数量。每个ElfVerneed关联了一个文件，以及aux的size。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> start_group = [&amp;](InputFile&lt;E&gt; *file) &#123;</span><br><span class="line">  <span class="keyword">this</span>-&gt;shdr.sh_info++;</span><br><span class="line">  <span class="keyword">if</span> (verneed)</span><br><span class="line">    verneed-&gt;vn_next = ptr - (u8 *)verneed;</span><br><span class="line"></span><br><span class="line">  verneed = (ElfVerneed&lt;E&gt; *)ptr;</span><br><span class="line">  ptr += <span class="built_in"><span class="keyword">sizeof</span></span>(*verneed);</span><br><span class="line">  verneed-&gt;vn_version = <span class="number">1</span>;</span><br><span class="line">  verneed-&gt;vn_file = ctx.dynstr-&gt;<span class="built_in">find_string</span>(((SharedFile&lt;E&gt; *)file)-&gt;soname);</span><br><span class="line">  verneed-&gt;vn_aux = <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVerneed&lt;E&gt;);</span><br><span class="line">  aux = <span class="literal">nullptr</span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>在add_entry中会递增当前的verneed的计数，将信息填写到ElfVernaux中，并且更新当前aux的指针</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">auto</span> add_entry = [&amp;](Symbol&lt;E&gt; *sym) &#123;</span><br><span class="line">  verneed-&gt;vn_cnt++;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (aux)</span><br><span class="line">    aux-&gt;vna_next = <span class="built_in"><span class="keyword">sizeof</span></span>(ElfVernaux&lt;E&gt;);</span><br><span class="line">  aux = (ElfVernaux&lt;E&gt; *)ptr;</span><br><span class="line">  ptr += <span class="built_in"><span class="keyword">sizeof</span></span>(*aux);</span><br><span class="line"></span><br><span class="line">  std::string_view verstr = sym-&gt;<span class="built_in">get_version</span>();</span><br><span class="line">  aux-&gt;vna_hash = <span class="built_in">elf_hash</span>(verstr);</span><br><span class="line">  aux-&gt;vna_other = ++veridx;</span><br><span class="line">  aux-&gt;vna_name = ctx.dynstr-&gt;<span class="built_in">add_string</span>(verstr);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h1 id="create-output-symtab"><a href="#create-output-symtab" class="headerlink" title="create_output_symtab"></a>create_output_symtab</h1><p>这个过程是用于创建symtab和strtab，创建的时候会实际选择哪些符号要写到文件中。我们熟悉的strip，如果添加了链接选项那么就是在这里开始生效的。</p>
+<p>相关的链接选项在mold中有如下几个</p>
+<blockquote>
+<p>-s, –strip-all             Strip .symtab section</p>
+</blockquote>
+<blockquote>
+<p>–retain-symbols-file FILE  Keep only symbols listed in FILE</p>
+</blockquote>
+<blockquote>
+<p>discard_all</p>
+</blockquote>
+<p>strip大家都很熟悉了，就是去掉生成文件中的symtab段</p>
+<p>retain-symbols-file则是会产生一个符号文件，包含程序的调试信息，也就是说生成的文件说不包含符号信息，所有符号都在符号文件中。</p>
+<p>discard_all是丢弃目标程序中未直接使用的信息，其中就包含符号表和调试信息。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Compute .symtab and .strtab sizes for each file.</span></span><br><span class="line"><span class="built_in">create_output_symtab</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">create_output_symtab</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;compute_symtab_size&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.chunks, [&amp;](Chunk&lt;E&gt; *chunk) &#123;</span><br><span class="line">    chunk-&gt;<span class="built_in">compute_symtab_size</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">compute_symtab_size</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.dsos, [&amp;](SharedFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;<span class="built_in">compute_symtab_size</span>(ctx);</span><br><span class="line">  &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="chunk"><a href="#chunk" class="headerlink" title="chunk"></a>chunk</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Chunk::compute_symtab_size</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// Some synethetic sections add local symbols to the output.</span></span><br><span class="line"><span class="comment">// For example, range extension thunks adds function_name@thunk</span></span><br><span class="line"><span class="comment">// symbol for each thunk entry. The following members are used</span></span><br><span class="line"><span class="comment">// for such synthesizing symbols.</span></span><br><span class="line"><span class="function"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="title">compute_symtab_size</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>对于chunk来说，不是所有的都需要做这一步操作的。在mold中仅针对OutputSection，Got，Plt，PltGot这几个chunk来处理。</p>
+<p>实际要做的就是遍历所有符号更新其strtab_size以及num_local_symtab（用于标记local符号的数量，也就是这个阶段要计算的symtab size），不论是哪一种chunk都是如此，下面就不再赘述，只贴代码了。</p>
+<h3 id="OutputSection"><a href="#OutputSection" class="headerlink" title="OutputSection"></a>OutputSection</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Compute spaces needed for thunk symbols</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> OutputSection&lt;E&gt;::<span class="built_in">compute_symtab_size</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.strip_all || ctx.arg.retain_symbols_file || ctx.arg.relocatable)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(needs_thunk&lt;E&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">this</span>-&gt;num_local_symtab = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_same_v&lt;E, ARM32&gt;)</span></span></span><br><span class="line"><span class="function">      <span class="keyword">this</span>-&gt;strtab_size </span>= <span class="number">9</span>; <span class="comment">// for &quot;$t&quot;, &quot;$a&quot; and &quot;$d&quot; symbols</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (std::unique_ptr&lt;RangeExtensionThunk&lt;E&gt;&gt; &amp;thunk : thunks) &#123;</span><br><span class="line">      <span class="comment">// For ARM32, we emit additional symbol &quot;$t&quot;, &quot;$a&quot; and &quot;$d&quot; for</span></span><br><span class="line">      <span class="comment">// each thunk to mark the beginning of ARM code.</span></span><br><span class="line">      <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(std::is_same_v&lt;E, ARM32&gt;)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">this</span>-&gt;num_local_symtab +</span>= thunk-&gt;symbols.<span class="built_in">size</span>() * <span class="number">4</span>;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">this</span>-&gt;num_local_symtab += thunk-&gt;symbols.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">      <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : thunk-&gt;symbols)</span><br><span class="line">        <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$thunk&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意这里relocatable的段也不会算入symtab size中，因为地址并非固定，需要加载时重定位，如果把符号放入输出文件中，会使得重定位更加困难，并且加载时会失效。</p>
+<p>need_thunk：</p>
+<ol>
+<li>输出段中代码间隔比较大，直接跳转无法到达的时候需要thunk来中专</li>
+<li>跳转的src和dest指令集不兼容需要thunk翻译</li>
+<li>地址随机化(ASLR: Address space layout randomization)时需要thunk动态计算目标地址</li>
+<li>地址运行时才能确定时需要thunk计算地址</li>
+</ol>
+<p>基本上都是一些无法直接跳转的情况，也因此会引入新的符号。而thunk本质上是一个新的代码段，需要符号进行表示，用以被其他代码识别。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">bool</span> needs_thunk = <span class="keyword">requires</span> &#123; E::thunk_size; &#125;;</span><br></pre></td></tr></table></figure>
+
+<p>根据mold代码中的实现，目前需要thunk的是ARM32，ARM64，PPC64V1，PPC64V2</p>
+<h3 id="got"><a href="#got" class="headerlink" title="got"></a>got</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> GotSection&lt;E&gt;::<span class="built_in">compute_symtab_size</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.strip_all || ctx.arg.retain_symbols_file)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;strtab_size = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">this</span>-&gt;num_local_symtab = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : got_syms) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$got&quot;</span>);</span><br><span class="line">    <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : gottp_syms) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$gottp&quot;</span>);</span><br><span class="line">    <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : tlsgd_syms) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$tlsgd&quot;</span>);</span><br><span class="line">    <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : tlsdesc_syms) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$tlsdesc&quot;</span>);</span><br><span class="line">    <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (tlsld_idx != <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$tlsld&quot;</span>);</span><br><span class="line">    <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="PLT"><a href="#PLT" class="headerlink" title="PLT"></a>PLT</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> PltSection&lt;E&gt;::<span class="built_in">compute_symtab_size</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.strip_all || ctx.arg.retain_symbols_file)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;num_local_symtab = symbols.<span class="built_in">size</span>();</span><br><span class="line">  <span class="keyword">this</span>-&gt;strtab_size = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : symbols)</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$plt&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="PLTGOT"><a href="#PLTGOT" class="headerlink" title="PLTGOT"></a>PLTGOT</h3><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> PltGotSection&lt;E&gt;::<span class="built_in">compute_symtab_size</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.strip_all || ctx.arg.retain_symbols_file)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;num_local_symtab = symbols.<span class="built_in">size</span>();</span><br><span class="line">  <span class="keyword">this</span>-&gt;strtab_size = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : symbols)</span><br><span class="line">    <span class="keyword">this</span>-&gt;strtab_size += sym-&gt;<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="built_in"><span class="keyword">sizeof</span></span>(<span class="string">&quot;$pltgot&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="obj"><a href="#obj" class="headerlink" title="obj"></a>obj</h2><p>在obj中，主要计算了local和global符号的名字占用的空间，用于更新strtable_size，另外还会更新对应的output_sym_indices</p>
+<p>要注意的是计算名字空间的时候，这里的名字需要使用null结尾，因此size还需要加一。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> ObjectFile&lt;E&gt;::<span class="built_in">compute_symtab_size</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.strip_all)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;output_sym_indices.<span class="built_in">resize</span>(<span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(), <span class="number">-1</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">auto</span> is_alive = [&amp;](Symbol&lt;E&gt; &amp;sym) -&gt; <span class="keyword">bool</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (!ctx.arg.gc_sections)</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (SectionFragment&lt;E&gt; *frag = sym.<span class="built_in">get_frag</span>())</span><br><span class="line">      <span class="keyword">return</span> frag-&gt;is_alive;</span><br><span class="line">    <span class="keyword">if</span> (InputSection&lt;E&gt; *isec = sym.<span class="built_in">get_input_section</span>())</span><br><span class="line">      <span class="keyword">return</span> isec-&gt;is_alive;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compute the size of local symbols</span></span><br><span class="line">  <span class="keyword">if</span> (!ctx.arg.discard_all &amp;&amp; !ctx.arg.strip_all &amp;&amp; !ctx.arg.retain_symbols_file) &#123;</span><br><span class="line">    <span class="keyword">for</span> (i64 i = <span class="number">1</span>; i &lt; <span class="keyword">this</span>-&gt;first_global; i++) &#123;</span><br><span class="line">      Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (<span class="built_in">is_alive</span>(sym) &amp;&amp; <span class="built_in">should_write_to_local_symtab</span>(ctx, sym)) &#123;</span><br><span class="line">        <span class="keyword">this</span>-&gt;strtab_size += sym.<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="number">1</span>;</span><br><span class="line">        <span class="keyword">this</span>-&gt;output_sym_indices[i] = <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">        sym.write_to_symtab = <span class="literal">true</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compute the size of global symbols.</span></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="keyword">this</span>-&gt;first_global; i &lt; <span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym.file == <span class="keyword">this</span> &amp;&amp; <span class="built_in">is_alive</span>(sym) &amp;&amp;</span><br><span class="line">        (!ctx.arg.retain_symbols_file || sym.write_to_symtab)) &#123;</span><br><span class="line">      <span class="keyword">this</span>-&gt;strtab_size += sym.<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="number">1</span>;</span><br><span class="line">      <span class="comment">// Global symbols can be demoted to local symbols based on visibility,</span></span><br><span class="line">      <span class="comment">// version scripts etc.</span></span><br><span class="line">      <span class="keyword">if</span> (sym.<span class="built_in">is_local</span>(ctx))</span><br><span class="line">        <span class="keyword">this</span>-&gt;output_sym_indices[i] = <span class="keyword">this</span>-&gt;num_local_symtab++;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        <span class="keyword">this</span>-&gt;output_sym_indices[i] = <span class="keyword">this</span>-&gt;num_global_symtab++;</span><br><span class="line">      sym.write_to_symtab = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于local symbol除了要判断alive之外，还有一个should_write_to_local_symtab的判断，除了更新size外还会更新write_to_symtab</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">bool</span> <span class="title">should_write_to_local_symtab</span><span class="params">(Context&lt;E&gt; &amp;ctx, Symbol&lt;E&gt; &amp;sym)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (sym.<span class="built_in">get_type</span>() == STT_SECTION)</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Local symbols are discarded if --discard-local is given or they</span></span><br><span class="line">  <span class="comment">// are in a mergeable section. I *believe* we exclude symbols in</span></span><br><span class="line">  <span class="comment">// mergeable sections because (1) there are too many and (2) they are</span></span><br><span class="line">  <span class="comment">// merged, so their origins shouldn&#x27;t matter, but I don&#x27;t really</span></span><br><span class="line">  <span class="comment">// know the rationale. Anyway, this is the behavior of the</span></span><br><span class="line">  <span class="comment">// traditional linkers.</span></span><br><span class="line">  <span class="keyword">if</span> (sym.<span class="built_in">name</span>().<span class="built_in">starts_with</span>(<span class="string">&quot;.L&quot;</span>)) &#123;</span><br><span class="line">    <span class="keyword">if</span> (ctx.arg.discard_locals)</span><br><span class="line">      <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (InputSection&lt;E&gt; *isec = sym.<span class="built_in">get_input_section</span>())</span><br><span class="line">      <span class="keyword">if</span> (isec-&gt;<span class="built_in">shdr</span>().sh_flags &amp; SHF_MERGE)</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>-X, –discard-locals        Discard temporary local symbols</p>
+</blockquote>
+<p>本地符号以本地标签为前缀开头，这个标签通常为.L，这里主要是对discard_locals进行处理，另外属于SHF_MERGE的段也不会写到local，根据这里注释的意思是SHF_MERGE段段符号太多了，并且是merge以后的，所以其来源不重要，并且传统的链接器都是这么做的。（我对这块也不了解，只能按照注释所说的来看了）</p>
+<p>还有一个sym.is_local的判断看起来比较疑惑。根据注释所描述，global sym会基于visibility和version scripts等因素变成local sym，比如说设置某个global sym的可见性为特定范围，或者对应的脚本。当全局符号降级为local的时候则不再对外可见，因此不再占用全局符号表的空间。</p>
+<p>代码里的判断是这样的</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">inline</span> <span class="keyword">bool</span> Symbol&lt;E&gt;::<span class="built_in">is_local</span>(Context&lt;E&gt; &amp;ctx) <span class="keyword">const</span> &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.relocatable)</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">esym</span>().st_bind == STB_LOCAL;</span><br><span class="line">  <span class="keyword">return</span> !is_imported &amp;&amp; !is_exported;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于relocatable来说，如果st_bind为STB_LOCAL，那么这个符号一定是local的</p>
+<p>对于非imported以及非exported的全局符号，通常是模块内部实现细节使用，不能外部访问。比如说有如下几种情况</p>
+<ol>
+<li>静态全局符号，只能模块内部可见（因为静态符号的作用域限定在模块内，因此会被认为是local符号，对全局静态变量的访问只需要通过内存地址，而不需要符号名进行绑定）</li>
+<li>匿名全局符号，没有被显示的使用export或者extern等进行标记，并且对外部是不可见的。比如说在.c中定义了一个全局变量，但是外部无法访问到。</li>
+<li>未使用的全局符号，不会被访问，同时会被优化掉</li>
+</ol>
+<p>因此这些情况属于local，记入num_local_symtab</p>
+<p>关于imported和exported的计算过程，可以参考之前第五期的文章，其中有根据可见性来设置exported和imported的部分</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/29/mold/mold-5-symbol/" >https://homura.live/2023/04/29/mold/mold-5-symbol/<i class="fas fa-external-link-alt"></i></a></p>
+<h2 id="dso"><a href="#dso" class="headerlink" title="dso"></a>dso</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> SharedFile&lt;E&gt;::<span class="built_in">compute_symtab_size</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.strip_all)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;output_sym_indices.<span class="built_in">resize</span>(<span class="keyword">this</span>-&gt;elf_syms.<span class="built_in">size</span>(), <span class="number">-1</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compute the size of global symbols.</span></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="keyword">this</span>-&gt;first_global; i &lt; <span class="keyword">this</span>-&gt;symbols.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    Symbol&lt;E&gt; &amp;sym = *<span class="keyword">this</span>-&gt;symbols[i];</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (sym.file == <span class="keyword">this</span> &amp;&amp; (sym.is_imported || sym.is_exported) &amp;&amp;</span><br><span class="line">        (!ctx.arg.retain_symbols_file || sym.write_to_symtab)) &#123;</span><br><span class="line">      <span class="keyword">this</span>-&gt;strtab_size += sym.<span class="built_in">name</span>().<span class="built_in">size</span>() + <span class="number">1</span>;</span><br><span class="line">      <span class="keyword">this</span>-&gt;output_sym_indices[i] = <span class="keyword">this</span>-&gt;num_global_symtab++;</span><br><span class="line">      sym.write_to_symtab = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里的要点就是imported或者exported才需要计入num_global_symtab</p>
+<h1 id="eh-frame-construct"><a href="#eh-frame-construct" class="headerlink" title="eh_frame_construct"></a>eh_frame_construct</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// .eh_frame is a special section from the linker&#x27;s point of view,</span></span><br><span class="line"><span class="comment">// as its contents are parsed and reconstructed by the linker,</span></span><br><span class="line"><span class="comment">// unlike other sections that are regarded as opaque bytes.</span></span><br><span class="line"><span class="comment">// Here, we construct output .eh_frame contents.</span></span><br><span class="line">ctx.eh_frame-&gt;<span class="built_in">construct</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>由于eh_frame在mold中自行做了parse的，因此需要再手动构造output中eh_frame的部分，在构造的过程中主要是消除重复的部分，另外各个段是由offset以及idx关联起来的，更新这些信息也是必要的工作。</p>
+<p>关于mold自行parse eh_frame的部分可以参考第二期的内容<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/05/mold/mold-2-read-shared-files/" >https://homura.live/2023/04/05/mold/mold-2-read-shared-files/<i class="fas fa-external-link-alt"></i></a></p>
+<p>在构造的过程主要由如下几部分组成</p>
+<ol>
+<li>确保输入存在eh_frame，不存在则无需构造</li>
+<li>删除dead fed，重新设置offset</li>
+<li>uniquify cie，重新设置offset</li>
+<li>fde idx的更新</li>
+<li>重新设置文件中存储的fde的offset</li>
+<li>填充最后的null word</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">EhFrameSection</span> :</span> <span class="keyword">public</span> Chunk&lt;E&gt; &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">EhFrameSection</span>() &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;name = <span class="string">&quot;.eh_frame&quot;</span>;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_type = SHT_PROGBITS;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_flags = SHF_ALLOC;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_addralign = <span class="built_in"><span class="keyword">sizeof</span></span>(Word&lt;E&gt;);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">construct</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">apply_reloc</span><span class="params">(Context&lt;E&gt; &amp;ctx, <span class="keyword">const</span> ElfRel&lt;E&gt; &amp;rel, u64 offset, u64 val)</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">void</span> <span class="title">copy_buf</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> <span class="keyword">override</span></span>;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> EhFrameSection&lt;E&gt;::<span class="built_in">construct</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;eh_frame&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// If .eh_frame is missing in all input files, we don&#x27;t want to</span></span><br><span class="line">  <span class="comment">// create an output .eh_frame section.</span></span><br><span class="line">  <span class="keyword">if</span> (std::<span class="built_in">all_of</span>(ctx.objs.<span class="built_in">begin</span>(), ctx.objs.<span class="built_in">end</span>(),</span><br><span class="line">                  [](ObjectFile&lt;E&gt; *file) &#123; <span class="keyword">return</span> file-&gt;cies.<span class="built_in">empty</span>(); &#125;)) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;shdr.sh_size = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Remove dead FDEs and assign them offsets within their corresponding</span></span><br><span class="line">  <span class="comment">// CIE group.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    std::<span class="built_in">erase_if</span>(file-&gt;fdes, [](FdeRecord&lt;E&gt; &amp;fde) &#123; <span class="keyword">return</span> !fde.is_alive; &#125;);</span><br><span class="line"></span><br><span class="line">    i64 offset = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">for</span> (FdeRecord&lt;E&gt; &amp;fde : file-&gt;fdes) &#123;</span><br><span class="line">      fde.output_offset = offset;</span><br><span class="line">      offset += fde.<span class="built_in">size</span>(*file);</span><br><span class="line">    &#125;</span><br><span class="line">    file-&gt;fde_size = offset;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Uniquify CIEs and assign offsets to them.</span></span><br><span class="line">  std::vector&lt;CieRecord&lt;E&gt; *&gt; leaders;</span><br><span class="line">  <span class="keyword">auto</span> find_leader = [&amp;](CieRecord&lt;E&gt; &amp;cie) -&gt; CieRecord&lt;E&gt; * &#123;</span><br><span class="line">    <span class="keyword">for</span> (CieRecord&lt;E&gt; *leader : leaders)</span><br><span class="line">      <span class="keyword">if</span> (cie.<span class="built_in">equals</span>(*leader))</span><br><span class="line">        <span class="keyword">return</span> leader;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">  &#125;;</span><br><span class="line"></span><br><span class="line">  i64 offset = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs) &#123;</span><br><span class="line">    <span class="keyword">for</span> (CieRecord&lt;E&gt; &amp;cie : file-&gt;cies) &#123;</span><br><span class="line">      <span class="keyword">if</span> (CieRecord&lt;E&gt; *leader = <span class="built_in">find_leader</span>(cie)) &#123;</span><br><span class="line">        cie.output_offset = leader-&gt;output_offset;</span><br><span class="line">      &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        cie.output_offset = offset;</span><br><span class="line">        cie.is_leader = <span class="literal">true</span>;</span><br><span class="line">        offset += cie.<span class="built_in">size</span>();</span><br><span class="line">        leaders.<span class="built_in">push_back</span>(&amp;cie);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Assign FDE offsets to files.</span></span><br><span class="line">  i64 idx = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs) &#123;</span><br><span class="line">    file-&gt;fde_idx = idx;</span><br><span class="line">    idx += file-&gt;fdes.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">    file-&gt;fde_offset = offset;</span><br><span class="line">    offset += file-&gt;fde_size;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// .eh_frame must end with a null word.</span></span><br><span class="line">  <span class="keyword">this</span>-&gt;shdr.sh_size = offset + <span class="number">4</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="gdb-index"><a href="#gdb-index" class="headerlink" title="gdb index"></a>gdb index</h1><p>gdb-index是用于加速gdb的段，对应的链接选项</p>
+<blockquote>
+<p>–gdb-index                 Create .gdb_index for faster gdb startup</p>
+</blockquote>
+<p>这边就不具体详细介绍了，有兴趣的可以自行看一下资料</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://sourceware.org/gdb/onlinedocs/gdb/Index-Files.html" >https://sourceware.org/gdb/onlinedocs/gdb/Index-Files.html<i class="fas fa-external-link-alt"></i></a></p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Handle --gdb-index.</span></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.gdb_index)</span><br><span class="line">  ctx.gdb_index-&gt;<span class="built_in">construct</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// This page explains the format of .gdb_index:</span></span><br><span class="line"><span class="comment">// https://sourceware.org/gdb/onlinedocs/gdb/Index-Section-Format.html</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="keyword">void</span> GdbIndexSection&lt;E&gt;::<span class="built_in">construct</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;GdbIndexSection::construct&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  std::<span class="keyword">atomic_bool</span> has_debug_info = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Read debug sections</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    <span class="keyword">if</span> (file-&gt;debug_info) &#123;</span><br><span class="line">      <span class="comment">// Read compilation units from .debug_info.</span></span><br><span class="line">      file-&gt;compunits = <span class="built_in">read_compunits</span>(ctx, *file);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Count the number of address areas contained in this file.</span></span><br><span class="line">      file-&gt;num_areas = <span class="built_in">estimate_address_areas</span>(ctx, *file);</span><br><span class="line">      has_debug_info = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!has_debug_info)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Initialize `area_offset` and `compunits_idx`.</span></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.objs.<span class="built_in">size</span>() - <span class="number">1</span>; i++) &#123;</span><br><span class="line">    ctx.objs[i + <span class="number">1</span>]-&gt;area_offset =</span><br><span class="line">      ctx.objs[i]-&gt;area_offset + ctx.objs[i]-&gt;num_areas * <span class="number">20</span>;</span><br><span class="line">    ctx.objs[i + <span class="number">1</span>]-&gt;compunits_idx =</span><br><span class="line">      ctx.objs[i]-&gt;compunits_idx + ctx.objs[i]-&gt;compunits.<span class="built_in">size</span>();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Read .debug_gnu_pubnames and .debug_gnu_pubtypes.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    file-&gt;gdb_names = <span class="built_in">read_pubnames</span>(ctx, *file);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Estimate the unique number of pubnames.</span></span><br><span class="line">  HyperLogLog estimator;</span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    HyperLogLog e;</span><br><span class="line">    <span class="keyword">for</span> (GdbIndexName &amp;name : file-&gt;gdb_names)</span><br><span class="line">      e.<span class="built_in">insert</span>(name.hash);</span><br><span class="line">    estimator.<span class="built_in">merge</span>(e);</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Uniquify pubnames by inserting all name strings into a concurrent</span></span><br><span class="line">  <span class="comment">// hashmap.</span></span><br><span class="line">  map.<span class="built_in">resize</span>(estimator.<span class="built_in">get_cardinality</span>() * <span class="number">2</span>);</span><br><span class="line">  tbb::enumerable_thread_specific&lt;i64&gt; num_names;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    <span class="keyword">for</span> (GdbIndexName &amp;name : file-&gt;gdb_names) &#123;</span><br><span class="line">      MapEntry *ent;</span><br><span class="line">      <span class="keyword">bool</span> inserted;</span><br><span class="line">      std::<span class="built_in">tie</span>(ent, inserted) = map.<span class="built_in">insert</span>(name.name, name.hash, &#123;file, name.hash&#125;);</span><br><span class="line">      <span class="keyword">if</span> (inserted)</span><br><span class="line">        num_names.<span class="built_in">local</span>()++;</span><br><span class="line"></span><br><span class="line">      ObjectFile&lt;E&gt; *old_val = ent-&gt;owner;</span><br><span class="line">      <span class="keyword">while</span> (file-&gt;priority &lt; old_val-&gt;priority &amp;&amp;</span><br><span class="line">             !ent-&gt;owner.<span class="built_in">compare_exchange_weak</span>(old_val, file));</span><br><span class="line"></span><br><span class="line">      ent-&gt;num_attrs++;</span><br><span class="line">      name.entry_idx = ent - map.values;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Assign offsets for names and attributes within each file.</span></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    <span class="keyword">for</span> (GdbIndexName &amp;name : file-&gt;gdb_names) &#123;</span><br><span class="line">      MapEntry &amp;ent = map.values[name.entry_idx];</span><br><span class="line">      <span class="keyword">if</span> (ent.owner == file) &#123;</span><br><span class="line">        ent.attr_offset = file-&gt;attrs_size;</span><br><span class="line">        file-&gt;attrs_size += (ent.num_attrs + <span class="number">1</span>) * <span class="number">4</span>;</span><br><span class="line">        ent.name_offset = file-&gt;names_size;</span><br><span class="line">        file-&gt;names_size += name.name.<span class="built_in">size</span>() + <span class="number">1</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compute per-file name and attributes offsets.</span></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.objs.<span class="built_in">size</span>() - <span class="number">1</span>; i++)</span><br><span class="line">    ctx.objs[i + <span class="number">1</span>]-&gt;attrs_offset =</span><br><span class="line">      ctx.objs[i]-&gt;attrs_offset + ctx.objs[i]-&gt;attrs_size;</span><br><span class="line"></span><br><span class="line">  ctx.objs[<span class="number">0</span>]-&gt;names_offset =</span><br><span class="line">    ctx.objs.<span class="built_in">back</span>()-&gt;attrs_offset + ctx.objs.<span class="built_in">back</span>()-&gt;attrs_size;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; ctx.objs.<span class="built_in">size</span>() - <span class="number">1</span>; i++)</span><br><span class="line">    ctx.objs[i + <span class="number">1</span>]-&gt;names_offset =</span><br><span class="line">      ctx.objs[i]-&gt;names_offset + ctx.objs[i]-&gt;names_size;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// .gdb_index contains an on-disk hash table for pubnames and</span></span><br><span class="line">  <span class="comment">// pubtypes. We aim 75% utilization. As per the format specification,</span></span><br><span class="line">  <span class="comment">// It must be a power of two.</span></span><br><span class="line">  i64 num_symtab_entries =</span><br><span class="line">    std::max&lt;i64&gt;(<span class="built_in">bit_ceil</span>(num_names.<span class="built_in">combine</span>(std::<span class="built_in">plus</span>()) * <span class="number">4</span> / <span class="number">3</span>), <span class="number">16</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Now that we can compute the size of this section.</span></span><br><span class="line">  ObjectFile&lt;E&gt; &amp;last = *ctx.objs.<span class="built_in">back</span>();</span><br><span class="line">  i64 compunits_size = (last.compunits_idx + last.compunits.<span class="built_in">size</span>()) * <span class="number">16</span>;</span><br><span class="line">  i64 areas_size = last.area_offset + last.num_areas * <span class="number">20</span>;</span><br><span class="line">  i64 offset = <span class="built_in"><span class="keyword">sizeof</span></span>(header);</span><br><span class="line"></span><br><span class="line">  header.cu_list_offset = offset;</span><br><span class="line">  offset += compunits_size;</span><br><span class="line"></span><br><span class="line">  header.cu_types_offset = offset;</span><br><span class="line">  header.areas_offset = offset;</span><br><span class="line">  offset += areas_size;</span><br><span class="line"></span><br><span class="line">  header.symtab_offset = offset;</span><br><span class="line">  offset += num_symtab_entries * <span class="number">8</span>;</span><br><span class="line"></span><br><span class="line">  header.const_pool_offset = offset;</span><br><span class="line">  offset += last.names_offset + last.names_size;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">this</span>-&gt;shdr.sh_size = offset;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读十二 创建一些输出段</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-07-09 16:35:19</li>
+        <li>
+            本文链接：https://homura.live/2023/07/09/mold-12-create-some-output-section/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/07/02/Other/dissuasive-self-presentation/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">令人劝退的自我介绍</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Fill-gnu-version-section-contents"><span class="nav-number">1.</span> <span class="nav-text">Fill gnu.version section contents</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#verdef"><span class="nav-number">1.1.</span> <span class="nav-text">verdef</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#verneed"><span class="nav-number">1.2.</span> <span class="nav-text">verneed</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#create-output-symtab"><span class="nav-number">2.</span> <span class="nav-text">create_output_symtab</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#chunk"><span class="nav-number">2.1.</span> <span class="nav-text">chunk</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#OutputSection"><span class="nav-number">2.1.1.</span> <span class="nav-text">OutputSection</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#got"><span class="nav-number">2.1.2.</span> <span class="nav-text">got</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PLT"><span class="nav-number">2.1.3.</span> <span class="nav-text">PLT</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PLTGOT"><span class="nav-number">2.1.4.</span> <span class="nav-text">PLTGOT</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#obj"><span class="nav-number">2.2.</span> <span class="nav-text">obj</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#dso"><span class="nav-number">2.3.</span> <span class="nav-text">dso</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#eh-frame-construct"><span class="nav-number">3.</span> <span class="nav-text">eh_frame_construct</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#gdb-index"><span class="nav-number">4.</span> <span class="nav-text">gdb index</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            mold源码阅读十五 最后的收尾工作 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="pixiv:92983280   这一期没什么比较硬的重点知识，仅做为补全整个过程来补充，可以轻松愉快的食用。 write dependency123&#x2F;&#x2F; Handle --dependency-fileif (!ctx.arg.dependency_file.empty())  write_dependency_file(ctx);  将所有依赖，也就是链接过程中所有读取的文件，并且写入到文件">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mold源码阅读十五 最后的收尾工作">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/07/29/mold/mold-15-end/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="pixiv:92983280   这一期没什么比较硬的重点知识，仅做为补全整个过程来补充，可以轻松愉快的食用。 write dependency123&#x2F;&#x2F; Handle --dependency-fileif (!ctx.arg.dependency_file.empty())  write_dependency_file(ctx);  将所有依赖，也就是链接过程中所有读取的文件，并且写入到文件">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-15-end/Untitled.png">
+<meta property="article:published_time" content="2023-07-29T12:11:48.000Z">
+<meta property="article:modified_time" content="2023-07-29T12:12:39.334Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="mold]">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-15-end/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">mold源码阅读十五 最后的收尾工作</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2023-07-29 20:11:48
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/mold/">mold]</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.1k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>11 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-15-end/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:92983280</center> 
+
+<p>这一期没什么比较硬的重点知识，仅做为补全整个过程来补充，可以轻松愉快的食用。</p>
+<h1 id="write-dependency"><a href="#write-dependency" class="headerlink" title="write dependency"></a>write dependency</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Handle --dependency-file</span></span><br><span class="line"><span class="keyword">if</span> (!ctx.arg.dependency_file.<span class="built_in">empty</span>())</span><br><span class="line">  <span class="built_in">write_dependency_file</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>将所有依赖，也就是链接过程中所有读取的文件，并且写入到文件中。可以用于确认某个文件是否被加入到链接过程中。</p>
+<blockquote>
+<p>–dependency-file=FILE      Write Makefile-style dependency rules to FILE</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Write Makefile-style dependency rules to a file specified by</span></span><br><span class="line"><span class="comment">// --dependency-file. This is analogous to the compiler&#x27;s -M flag.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">write_dependency_file</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  std::vector&lt;std::string&gt; deps;</span><br><span class="line">  std::unordered_set&lt;std::string&gt; seen;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;MappedFile&lt;Context&lt;E&gt;&gt;&gt; &amp;mf : ctx.mf_pool)</span><br><span class="line">    <span class="keyword">if</span> (!mf-&gt;parent)</span><br><span class="line">      <span class="keyword">if</span> (std::string path = <span class="built_in">path_clean</span>(mf-&gt;name); seen.<span class="built_in">insert</span>(path).second)</span><br><span class="line">        deps.<span class="built_in">push_back</span>(path);</span><br><span class="line"></span><br><span class="line">  std::ofstream out;</span><br><span class="line">  out.<span class="built_in">open</span>(ctx.arg.dependency_file);</span><br><span class="line">  <span class="keyword">if</span> (out.<span class="built_in">fail</span>())</span><br><span class="line">    <span class="built_in">Fatal</span>(ctx) &lt;&lt; <span class="string">&quot;--dependency-file: cannot open &quot;</span> &lt;&lt; ctx.arg.dependency_file</span><br><span class="line">               &lt;&lt; <span class="string">&quot;: &quot;</span> &lt;&lt; <span class="built_in">errno_string</span>();</span><br><span class="line"></span><br><span class="line">  out &lt;&lt; ctx.arg.output &lt;&lt; <span class="string">&quot;:&quot;</span>;</span><br><span class="line">  <span class="keyword">for</span> (std::string &amp;s : deps)</span><br><span class="line">    out &lt;&lt; <span class="string">&quot; &quot;</span> &lt;&lt; s;</span><br><span class="line">  out &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::string &amp;s : deps)</span><br><span class="line">    out &lt;&lt; <span class="string">&quot;\n&quot;</span> &lt;&lt; s &lt;&lt; <span class="string">&quot;:\n&quot;</span>;</span><br><span class="line">  out.<span class="built_in">close</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="clean-lto-object"><a href="#clean-lto-object" class="headerlink" title="clean lto object"></a>clean lto object</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ctx.has_lto_object)</span><br><span class="line">  <span class="built_in">lto_cleanup</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>清理lto相关的文件，lto相关的操作都是类似于插件的形式执行的，以适配不同编译器产生的lto文件</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">lto_cleanup</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="function">Timer <span class="title">t</span><span class="params">(ctx, <span class="string">&quot;lto_cleanup&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (cleanup_hook)</span><br><span class="line">    <span class="built_in">cleanup_hook</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个cleanup_hook也是在前面注册插件的时候要注册的</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> PluginStatus <span class="title">register_cleanup_hook</span><span class="params">(CleanupHandler fn)</span> </span>&#123;</span><br><span class="line">  LOG &lt;&lt; <span class="string">&quot;register_cleanup_hook\n&quot;</span>;</span><br><span class="line">  cleanup_hook = fn;</span><br><span class="line">  <span class="keyword">return</span> LDPS_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="print-map"><a href="#print-map" class="headerlink" title="print map"></a>print map</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ctx.arg.print_map)</span><br><span class="line">    <span class="built_in">print_map</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>–Map FILE Write map file to a given file</p>
+</blockquote>
+<p>收集信息并建立了section到symbol的map，之后遍历所有的chunk，进行打印。</p>
+<ol>
+<li>首先会打印一行chunk的信息</li>
+<li>如果不是osec那么会继续打印下一个chunk，否则之后会接着打印osec内部的所有members的信息</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">print_map</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  std::ostream *out = &amp;std::cout;</span><br><span class="line">  std::unique_ptr&lt;std::ofstream&gt; file;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!ctx.arg.Map.<span class="built_in">empty</span>()) &#123;</span><br><span class="line">    file = <span class="built_in">open_output_file</span>(ctx);</span><br><span class="line">    out = file.<span class="built_in">get</span>();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Construct a section-to-symbol map.</span></span><br><span class="line">  Map&lt;E&gt; map = <span class="built_in">get_map</span>(ctx);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Print a mapfile.</span></span><br><span class="line">  *out &lt;&lt; <span class="string">&quot;               VMA       Size Align Out     In      Symbol\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Chunk&lt;E&gt; *osec : ctx.chunks) &#123;</span><br><span class="line">    *out &lt;&lt; std::showbase</span><br><span class="line">         &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">18</span>) &lt;&lt; std::hex &lt;&lt; (u64)osec-&gt;shdr.sh_addr &lt;&lt; std::dec</span><br><span class="line">         &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">11</span>) &lt;&lt; (u64)osec-&gt;shdr.sh_size</span><br><span class="line">         &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">6</span>) &lt;&lt; (u64)osec-&gt;shdr.sh_addralign</span><br><span class="line">         &lt;&lt; <span class="string">&quot; &quot;</span> &lt;&lt; osec-&gt;name &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (osec-&gt;<span class="built_in">kind</span>() != OUTPUT_SECTION)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    std::span&lt;InputSection&lt;E&gt; *&gt; members = ((OutputSection&lt;E&gt; *)osec)-&gt;members;</span><br><span class="line">    <span class="function">std::vector&lt;std::string&gt; <span class="title">bufs</span><span class="params">(members.size())</span></span>;</span><br><span class="line"></span><br><span class="line">    tbb::<span class="built_in">parallel_for</span>((i64)<span class="number">0</span>, (i64)members.<span class="built_in">size</span>(), [&amp;](i64 i) &#123;</span><br><span class="line">      InputSection&lt;E&gt; *mem = members[i];</span><br><span class="line">      std::ostringstream ss;</span><br><span class="line">      opt_demangle = ctx.arg.demangle;</span><br><span class="line">      u64 addr = osec-&gt;shdr.sh_addr + mem-&gt;offset;</span><br><span class="line"></span><br><span class="line">      ss &lt;&lt; std::showbase</span><br><span class="line">         &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">18</span>) &lt;&lt; std::hex &lt;&lt; addr &lt;&lt; std::dec</span><br><span class="line">         &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">11</span>) &lt;&lt; (u64)mem-&gt;sh_size</span><br><span class="line">         &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">6</span>) &lt;&lt; (<span class="number">1</span> &lt;&lt; (u64)mem-&gt;p2align)</span><br><span class="line">         &lt;&lt; <span class="string">&quot;         &quot;</span> &lt;&lt; *mem &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">typename</span> Map&lt;E&gt;::const_accessor acc;</span><br><span class="line">      <span class="keyword">if</span> (map.<span class="built_in">find</span>(acc, mem))</span><br><span class="line">        <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : acc-&gt;second)</span><br><span class="line">          ss &lt;&lt; std::showbase</span><br><span class="line">             &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">18</span>) &lt;&lt; std::hex &lt;&lt; sym-&gt;<span class="built_in">get_addr</span>(ctx) &lt;&lt; std::dec</span><br><span class="line">             &lt;&lt; <span class="string">&quot;          0     0                 &quot;</span></span><br><span class="line">             &lt;&lt; *sym &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">      bufs[i] = ss.<span class="built_in">str</span>();</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (std::string &amp;str : bufs)</span><br><span class="line">      *out &lt;&lt; str;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">static</span> Map&lt;E&gt; <span class="title">get_map</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  Map&lt;E&gt; map;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for_each</span>(ctx.objs, [&amp;](ObjectFile&lt;E&gt; *file) &#123;</span><br><span class="line">    <span class="keyword">for</span> (Symbol&lt;E&gt; *sym : file-&gt;symbols) &#123;</span><br><span class="line">      <span class="keyword">if</span> (sym-&gt;file != file || sym-&gt;<span class="built_in">get_type</span>() == STT_SECTION)</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (InputSection&lt;E&gt; *isec = sym-&gt;<span class="built_in">get_input_section</span>()) &#123;</span><br><span class="line">        <span class="built_in">assert</span>(file == &amp;isec-&gt;file);</span><br><span class="line">        <span class="keyword">typename</span> Map&lt;E&gt;::accessor acc;</span><br><span class="line">        map.<span class="built_in">insert</span>(acc, &#123;isec, &#123;&#125;&#125;);</span><br><span class="line">        acc-&gt;second.<span class="built_in">push_back</span>(sym);</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (map.<span class="built_in">size</span>() &lt;= <span class="number">1</span>)</span><br><span class="line">    <span class="keyword">return</span> map;</span><br><span class="line"></span><br><span class="line">  tbb::<span class="built_in">parallel_for</span>(map.<span class="built_in">range</span>(), [](<span class="keyword">const</span> <span class="keyword">typename</span> Map&lt;E&gt;::range_type &amp;range) &#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> it = range.<span class="built_in">begin</span>(); it != range.<span class="built_in">end</span>(); it++) &#123;</span><br><span class="line">      std::vector&lt;Symbol&lt;E&gt; *&gt; &amp;vec = it-&gt;second;</span><br><span class="line">      <span class="built_in">sort</span>(vec, [](Symbol&lt;E&gt; *a, Symbol&lt;E&gt; *b) &#123; <span class="keyword">return</span> a-&gt;value &lt; b-&gt;value; &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;);</span><br><span class="line">  <span class="keyword">return</span> map;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="stats"><a href="#stats" class="headerlink" title="stats"></a>stats</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Show stats numbers</span></span><br><span class="line"><span class="keyword">if</span> (ctx.arg.stats)</span><br><span class="line">  <span class="built_in">show_stats</span>(ctx);</span><br></pre></td></tr></table></figure>
+
+<p>在链接的过程中对于许多操作都会使用一个Counter记录数量，比如说符号的个数等，这里就是打印那些记录的信息</p>
+<blockquote>
+<p>–stats                     Print input statistics</p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> E&gt;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">show_stats</span><span class="params">(Context&lt;E&gt; &amp;ctx)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *obj : ctx.objs) &#123;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">defined</span><span class="params">(<span class="string">&quot;defined_syms&quot;</span>)</span></span>;</span><br><span class="line">    defined += obj-&gt;first_global - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">undefined</span><span class="params">(<span class="string">&quot;undefined_syms&quot;</span>)</span></span>;</span><br><span class="line">    undefined += obj-&gt;symbols.<span class="built_in">size</span>() - obj-&gt;first_global;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (std::unique_ptr&lt;InputSection&lt;E&gt;&gt; &amp;sec : obj-&gt;sections) &#123;</span><br><span class="line">      <span class="keyword">if</span> (!sec || !sec-&gt;is_alive)</span><br><span class="line">        <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">      <span class="function"><span class="keyword">static</span> Counter <span class="title">alloc</span><span class="params">(<span class="string">&quot;reloc_alloc&quot;</span>)</span></span>;</span><br><span class="line">      <span class="function"><span class="keyword">static</span> Counter <span class="title">nonalloc</span><span class="params">(<span class="string">&quot;reloc_nonalloc&quot;</span>)</span></span>;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">if</span> (sec-&gt;<span class="built_in">shdr</span>().sh_flags &amp; SHF_ALLOC)</span><br><span class="line">        alloc += sec-&gt;<span class="built_in">get_rels</span>(ctx).<span class="built_in">size</span>();</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        nonalloc += sec-&gt;<span class="built_in">get_rels</span>(ctx).<span class="built_in">size</span>();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">comdats</span><span class="params">(<span class="string">&quot;comdats&quot;</span>)</span></span>;</span><br><span class="line">    comdats += obj-&gt;comdat_groups.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">removed_comdats</span><span class="params">(<span class="string">&quot;removed_comdat_mem&quot;</span>)</span></span>;</span><br><span class="line">    <span class="keyword">for</span> (ComdatGroupRef&lt;E&gt; &amp;ref : obj-&gt;comdat_groups)</span><br><span class="line">      <span class="keyword">if</span> (ref.group-&gt;owner != obj-&gt;priority)</span><br><span class="line">        removed_comdats += ref.members.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">num_cies</span><span class="params">(<span class="string">&quot;num_cies&quot;</span>)</span></span>;</span><br><span class="line">    num_cies += obj-&gt;cies.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">num_unique_cies</span><span class="params">(<span class="string">&quot;num_unique_cies&quot;</span>)</span></span>;</span><br><span class="line">    <span class="keyword">for</span> (CieRecord&lt;E&gt; &amp;cie : obj-&gt;cies)</span><br><span class="line">      <span class="keyword">if</span> (cie.is_leader)</span><br><span class="line">        num_unique_cies++;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">num_fdes</span><span class="params">(<span class="string">&quot;num_fdes&quot;</span>)</span></span>;</span><br><span class="line">    num_fdes +=  obj-&gt;fdes.<span class="built_in">size</span>();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">static</span> Counter <span class="title">num_bytes</span><span class="params">(<span class="string">&quot;total_input_bytes&quot;</span>)</span></span>;</span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;MappedFile&lt;Context&lt;E&gt;&gt;&gt; &amp;mf : ctx.mf_pool)</span><br><span class="line">    num_bytes += mf-&gt;size;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">static</span> Counter <span class="title">num_input_sections</span><span class="params">(<span class="string">&quot;input_sections&quot;</span>)</span></span>;</span><br><span class="line">  <span class="keyword">for</span> (ObjectFile&lt;E&gt; *file : ctx.objs)</span><br><span class="line">    num_input_sections += file-&gt;sections.<span class="built_in">size</span>();</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">static</span> Counter <span class="title">num_output_chunks</span><span class="params">(<span class="string">&quot;output_chunks&quot;</span>, ctx.chunks.size())</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">static</span> Counter <span class="title">num_objs</span><span class="params">(<span class="string">&quot;num_objs&quot;</span>, ctx.objs.size())</span></span>;</span><br><span class="line">  <span class="function"><span class="keyword">static</span> Counter <span class="title">num_dsos</span><span class="params">(<span class="string">&quot;num_dsos&quot;</span>, ctx.dsos.size())</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">if</span> <span class="title">constexpr</span> <span class="params">(needs_thunk&lt;E&gt;)</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">static</span> Counter <span class="title">thunk_bytes</span><span class="params">(<span class="string">&quot;thunk_bytes&quot;</span>)</span></span>;</span><br><span class="line">    <span class="keyword">for</span> (Chunk&lt;E&gt; *chunk : ctx.chunks)</span><br><span class="line">      <span class="keyword">if</span> (OutputSection&lt;E&gt; *osec = chunk-&gt;<span class="built_in">to_osec</span>())</span><br><span class="line">        <span class="keyword">for</span> (std::unique_ptr&lt;RangeExtensionThunk&lt;E&gt;&gt; &amp;thunk : osec-&gt;thunks)</span><br><span class="line">          thunk_bytes += thunk-&gt;<span class="built_in">size</span>();</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Counter::<span class="built_in">print</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;MergedSection&lt;E&gt;&gt; &amp;sec : ctx.merged_sections)</span><br><span class="line">    sec-&gt;<span class="built_in">print_stats</span>(ctx);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Counter is used to collect statistics numbers.</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">Counter</span> &#123;</span></span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">Counter</span>(std::string_view name, i64 value = <span class="number">0</span>) : <span class="built_in">name</span>(name), <span class="built_in">values</span>(value) &#123;</span><br><span class="line">    <span class="keyword">static</span> std::mutex mu;</span><br><span class="line">    <span class="function">std::scoped_lock <span class="title">lock</span><span class="params">(mu)</span></span>;</span><br><span class="line">    instances.<span class="built_in">push_back</span>(<span class="keyword">this</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Counter &amp;<span class="keyword">operator</span>++(<span class="keyword">int</span>) &#123;</span><br><span class="line">    <span class="keyword">if</span> (enabled)</span><br><span class="line">      values.<span class="built_in">local</span>()++;</span><br><span class="line">    <span class="keyword">return</span> *<span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  Counter &amp;<span class="keyword">operator</span>+=(<span class="keyword">int</span> delta) &#123;</span><br><span class="line">    <span class="keyword">if</span> (enabled)</span><br><span class="line">      values.<span class="built_in">local</span>() += delta;</span><br><span class="line">    <span class="keyword">return</span> *<span class="keyword">this</span>;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">print</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">bool</span> enabled = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line">  <span class="function">i64 <span class="title">get_value</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">  std::string_view name;</span><br><span class="line">  tbb::enumerable_thread_specific&lt;i64&gt; values;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">static</span> <span class="keyword">inline</span> std::vector&lt;Counter *&gt; instances;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">Counter::print</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="built_in">sort</span>(instances, [](Counter *a, Counter *b) &#123;</span><br><span class="line">    <span class="keyword">return</span> a-&gt;<span class="built_in">get_value</span>() &gt; b-&gt;<span class="built_in">get_value</span>();</span><br><span class="line">  &#125;);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (Counter *c : instances)</span><br><span class="line">    std::cout &lt;&lt; std::<span class="built_in">setw</span>(<span class="number">20</span>) &lt;&lt; std::right &lt;&lt; c-&gt;name</span><br><span class="line">              &lt;&lt; <span class="string">&quot;=&quot;</span> &lt;&lt; c-&gt;<span class="built_in">get_value</span>() &lt;&lt; <span class="string">&quot;\n&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> MergedSection&lt;E&gt;::<span class="built_in">print_stats</span>(Context&lt;E&gt; &amp;ctx) &#123;</span><br><span class="line">  i64 used = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; map.nbuckets; i++)</span><br><span class="line">    <span class="keyword">if</span> (map.keys[i])</span><br><span class="line">      used++;</span><br><span class="line"></span><br><span class="line">  <span class="built_in">SyncOut</span>(ctx) &lt;&lt; <span class="keyword">this</span>-&gt;name</span><br><span class="line">               &lt;&lt; <span class="string">&quot; estimation=&quot;</span> &lt;&lt; estimator.<span class="built_in">get_cardinality</span>()</span><br><span class="line">               &lt;&lt; <span class="string">&quot; actual=&quot;</span> &lt;&lt; used;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="perf"><a href="#perf" class="headerlink" title="perf"></a>perf</h1><p>之前在各个过程中都会创建许多timer，在这个过程中把timer收集到的时间信息全部打印出来</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ctx.arg.perf)</span><br><span class="line">  <span class="built_in">print_timer_records</span>(ctx.timer_records);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">print_timer_records</span><span class="params">(</span></span></span><br><span class="line"><span class="params"><span class="function">    tbb::concurrent_vector&lt;std::unique_ptr&lt;TimerRecord&gt;&gt; &amp;records)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">for</span> (i64 i = records.<span class="built_in">size</span>() - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i--)</span><br><span class="line">    records[i]-&gt;<span class="built_in">stop</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (i64 i = <span class="number">0</span>; i &lt; records.<span class="built_in">size</span>(); i++) &#123;</span><br><span class="line">    TimerRecord &amp;inner = *records[i];</span><br><span class="line">    <span class="keyword">if</span> (inner.parent)</span><br><span class="line">      <span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (i64 j = i - <span class="number">1</span>; j &gt;= <span class="number">0</span>; j--) &#123;</span><br><span class="line">      TimerRecord &amp;outer = *records[j];</span><br><span class="line">      <span class="keyword">if</span> (outer.start &lt;= inner.start &amp;&amp; inner.end &lt;= outer.end) &#123;</span><br><span class="line">        inner.parent = &amp;outer;</span><br><span class="line">        outer.children.<span class="built_in">push_back</span>(&amp;inner);</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  std::cout &lt;&lt; <span class="string">&quot;     User   System     Real  Name\n&quot;</span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">for</span> (std::unique_ptr&lt;TimerRecord&gt; &amp;rec : records)</span><br><span class="line">    <span class="keyword">if</span> (!rec-&gt;parent)</span><br><span class="line">      <span class="built_in">print_rec</span>(*rec, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">  std::cout &lt;&lt; std::flush;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="on-complete"><a href="#on-complete" class="headerlink" title="on_complete"></a>on_complete</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (on_complete)</span><br><span class="line">    <span class="built_in">on_complete</span>();</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !defined(_WIN32) &amp;&amp; !defined(__APPLE__)</span></span><br><span class="line">  <span class="keyword">if</span> (ctx.arg.fork)</span><br><span class="line">    on_complete = fork_child();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>因为退出一个大量内存占用的程序很慢，因此这里会fork一个子进程来进行实际的清理工作，主进程直接退出，能够提升结束的速度，让用户不可见的清理操作放到后台执行。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> MOLD_X86_64</span></span><br><span class="line"><span class="comment">// Exiting from a program with large memory usage is slow --</span></span><br><span class="line"><span class="comment">// it may take a few hundred milliseconds. To hide the latency,</span></span><br><span class="line"><span class="comment">// we fork a child and let it do the actual linking work.</span></span><br><span class="line"><span class="function">std::function&lt;<span class="title">void</span><span class="params">()</span>&gt; <span class="title">fork_child</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="keyword">int</span> pipefd[<span class="number">2</span>];</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">pipe</span>(pipefd) == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">perror</span>(<span class="string">&quot;pipe&quot;</span>);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">pid_t</span> pid = fork();</span><br><span class="line">  <span class="keyword">if</span> (pid == <span class="number">-1</span>) &#123;</span><br><span class="line">    <span class="built_in">perror</span>(<span class="string">&quot;fork&quot;</span>);</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (pid &gt; <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// Parent</span></span><br><span class="line">    <span class="built_in">close</span>(pipefd[<span class="number">1</span>]);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">char</span> buf[<span class="number">1</span>];</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">read</span>(pipefd[<span class="number">0</span>], buf, <span class="number">1</span>) == <span class="number">1</span>)</span><br><span class="line">      _exit(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> status;</span><br><span class="line">    <span class="built_in">waitpid</span>(pid, &amp;status, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">WIFEXITED</span>(status))</span><br><span class="line">      _exit(<span class="built_in">WEXITSTATUS</span>(status));</span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">WIFSIGNALED</span>(status))</span><br><span class="line">      <span class="built_in">raise</span>(<span class="built_in">WTERMSIG</span>(status));</span><br><span class="line">    _exit(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Child</span></span><br><span class="line">  <span class="built_in">close</span>(pipefd[<span class="number">0</span>]);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> [=] &#123;</span><br><span class="line">    <span class="keyword">char</span> buf[] = &#123;<span class="number">1</span>&#125;;</span><br><span class="line">    [[maybe_unused]] <span class="keyword">int</span> n = <span class="built_in">write</span>(pipefd[<span class="number">1</span>], buf, <span class="number">1</span>);</span><br><span class="line">    <span class="built_in">assert</span>(n == <span class="number">1</span>);</span><br><span class="line">  &#125;;</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<h1 id="on-exit"><a href="#on-exit" class="headerlink" title="on_exit"></a>on_exit</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (ctx.arg.quick_exit)</span><br><span class="line">  _exit(<span class="number">0</span>);</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> (std::function&lt;<span class="built_in"><span class="keyword">void</span></span>()&gt; &amp;fn : ctx.on_exit)</span><br><span class="line">  <span class="built_in">fn</span>();</span><br><span class="line"></span><br><span class="line">ctx.<span class="built_in">checkpoint</span>();</span><br></pre></td></tr></table></figure>
+
+<p>直接exit或者调用exit的清理的函数</p>
+<blockquote>
+<p>–quick-exit Use quick_exit to exit (default)<br>–no-quick-exit</p>
+</blockquote>
+<p>在mold中有的只有一处，在icf_sections中创建的map需要在这里销毁，但是也可能在lto的过程中注册了其他的exit函数。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Since free&#x27;ing the map is slow, postpone it.</span></span><br><span class="line">ctx.on_exit.<span class="built_in">push_back</span>([=] &#123; <span class="keyword">delete</span> map; &#125;);</span><br></pre></td></tr></table></figure>
+
+<p>最后在返回之前会再调用checkpoint检查是否有错误。</p>
+<p>至此，整个mold的链接过程已经完全结束了。下一期会进行一个总结，并且记录一下一些自己的想法</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：mold源码阅读十五 最后的收尾工作</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2023-07-29 20:11:48</li>
+        <li>
+            本文链接：https://homura.live/2023/07/29/mold/mold-15-end/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2023/07/26/mold/mold-14-fix-file-layout-and-create-output/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">mold源码阅读十四 固定文件layout以及创建输出</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2023&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#write-dependency"><span class="nav-number">1.</span> <span class="nav-text">write dependency</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#clean-lto-object"><span class="nav-number">2.</span> <span class="nav-text">clean lto object</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#print-map"><span class="nav-number">3.</span> <span class="nav-text">print map</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#stats"><span class="nav-number">4.</span> <span class="nav-text">stats</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#perf"><span class="nav-number">5.</span> <span class="nav-text">perf</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#on-complete"><span class="nav-number">6.</span> <span class="nav-text">on_complete</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#on-exit"><span class="nav-number">7.</span> <span class="nav-text">on_exit</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -9,7 +9,7 @@
     
     <title>
         
-            初探黑塞文学 |
+            mold源码阅读十六 回顾整个流程 |
         
         Homura&#39;s Blog
     </title>
@@ -26,18 +26,20 @@
     KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
     KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
   </script>
-    <meta name="description" content="黑塞的作品中我最早有所了解的是《在轮下》，从b站up主黄鸭兄的视频中了解了整个故事，当时觉得从内容到立意都挺有意思。后来看到黄鸭兄视频中提到《荒原狼》的内容，其中魔剧院中从人驯服狼到狼驯服人的场景震撼到了我，因此选择了这本书作为自己接触黑塞文学的开始。书中从开始到结尾都远超预期，处处让我惊叹，剧情本身的安排，对主人公心理的描写，以及最后的魔剧院的部分，全部引诱着我沉迷于黑塞的故事世界，使我对黑塞的">
+    <meta name="description" content="pixiv:80173499   内容回顾在以往十六期的博客中，我们沿着mold中的main函数一路追寻了下去，直到结束。 首先我们熟悉了文件结构以及项目目录等，查看了如何读取不同类型的文件，其中最关键的是obj，dso，lto三种，分析了不同类型的差异及其特有的处理方式。同时在查看如何解析elf的过程中了解elf头，了解了mold对象的构造，以及elf中信息查找段、符号等的方式。 当我们收集齐">
 <meta property="og:type" content="article">
-<meta property="og:title" content="初探黑塞文学">
-<meta property="og:url" content="https://fusionbolt.github.io/2023/07/30/first-look-at-hesse-literature/index.html">
+<meta property="og:title" content="mold源码阅读十六 回顾整个流程">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/08/05/mold/mold-16-summary/index.html">
 <meta property="og:site_name" content="Homura&#39;s Blog">
-<meta property="og:description" content="黑塞的作品中我最早有所了解的是《在轮下》，从b站up主黄鸭兄的视频中了解了整个故事，当时觉得从内容到立意都挺有意思。后来看到黄鸭兄视频中提到《荒原狼》的内容，其中魔剧院中从人驯服狼到狼驯服人的场景震撼到了我，因此选择了这本书作为自己接触黑塞文学的开始。书中从开始到结尾都远超预期，处处让我惊叹，剧情本身的安排，对主人公心理的描写，以及最后的魔剧院的部分，全部引诱着我沉迷于黑塞的故事世界，使我对黑塞的">
+<meta property="og:description" content="pixiv:80173499   内容回顾在以往十六期的博客中，我们沿着mold中的main函数一路追寻了下去，直到结束。 首先我们熟悉了文件结构以及项目目录等，查看了如何读取不同类型的文件，其中最关键的是obj，dso，lto三种，分析了不同类型的差异及其特有的处理方式。同时在查看如何解析elf的过程中了解elf头，了解了mold对象的构造，以及elf中信息查找段、符号等的方式。 当我们收集齐">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:published_time" content="2023-07-30T12:10:13.000Z">
-<meta property="article:modified_time" content="2023-07-30T12:10:30.583Z">
+<meta property="og:image" content="https://fusionbolt.github.io/images/mold-16-summary/Untitled.png">
+<meta property="article:published_time" content="2023-08-05T10:17:42.000Z">
+<meta property="article:modified_time" content="2023-08-05T10:31:22.234Z">
 <meta property="article:author" content="Homura">
-<meta property="article:tag" content="黑塞">
+<meta property="article:tag" content="mold">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-16-summary/Untitled.png">
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
@@ -214,7 +216,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">初探黑塞文学</span>
+            <span class="title-hover-animation">mold源码阅读十六 回顾整个流程</span>
         </div>
 
         
@@ -232,7 +234,7 @@
                     <div class="meta-info">
                         <div class="article-meta-info">
     <span class="article-date article-meta-item">
-        <i class="fas fa-edit"></i>&nbsp;2023-07-30 20:10:13
+        <i class="fas fa-edit"></i>&nbsp;2023-08-05 18:17:42
     </span>
     
         <span class="article-categories article-meta-item">
@@ -240,7 +242,7 @@
             <ul>
                 
                     <li>
-                        <a href="/categories/Reading/">Reading</a>&nbsp;
+                        <a href="/categories/Linker/">Linker</a>&nbsp;
                     </li>
                 
             </ul>
@@ -252,7 +254,7 @@
             <ul>
                 
                     <li>
-                        <a href="/tags/%E9%BB%91%E5%A1%9E/">黑塞</a>&nbsp;
+                        <a href="/tags/mold/">mold</a>&nbsp;
                     </li>
                 
             </ul>
@@ -262,12 +264,12 @@
     
     
         <span class="article-wordcount article-meta-item">
-            <i class="fas fa-file-word"></i>&nbsp;<span>917 字</span>
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.7k 字</span>
         </span>
     
     
         <span class="article-min2read article-meta-item">
-            <i class="fas fa-clock"></i>&nbsp;<span>3 分钟</span>
+            <i class="fas fa-clock"></i>&nbsp;<span>5 分钟</span>
         </span>
     
     
@@ -283,12 +285,31 @@
         
 
         <div class="article-content markdown-body">
-            <p>黑塞的作品中我最早有所了解的是《在轮下》，从b站up主黄鸭兄的视频中了解了整个故事，当时觉得从内容到立意都挺有意思。后来看到黄鸭兄视频中提到《荒原狼》的内容，其中魔剧院中从人驯服狼到狼驯服人的场景震撼到了我，因此选择了这本书作为自己接触黑塞文学的开始。书中从开始到结尾都远超预期，处处让我惊叹，剧情本身的安排，对主人公心理的描写，以及最后的魔剧院的部分，全部引诱着我沉迷于黑塞的故事世界，使我对黑塞的作品充满了好感。</p>
-<p>后来想要接触到更多黑塞的作品，看到《悉达多》是其代表作，遂开始读了起来，读完后觉得非常有黑塞的风格，同时开始坚定的认为黑塞的作品就是我想要看到的，黑塞的故事所传达的精神内核就是我想要追寻的。之后朋友回给我的一封邮件中提及到《德米安》，他在大学时也看了许多黑塞的作品，我也不由分说的开始阅读了起来。不出意外，这本书同样也让我感到非常满足。</p>
-<p>黑塞的作品中那种强有力的吸引力到底是什么？对我来说或许是从中表现出的对自我的剖析与追求，对人生的探索，在人群中仍然抱有强烈的自我，等等。词汇匮乏的我难以用一个词语概括这一切，只能粗略的认为它们都属于精神的世界，属于人类的内核，我对这些内容产生的更多是感受，看到相似的内容会觉得“这个东西一定也是属于同一类”。</p>
-<p>看到个别书评提到黑塞的一些书籍都是翻译的功劳之类的，但翻译只是片面的文字描述罢了，而且翻译不论怎么做都要忠实于作者的原意，黑塞的作品中所展现出的灵魂是不会被不同的文字形式所覆写。就像我最初开始接触荒原狼一样，并不是因为文笔是如何的，而是黑塞笔下的故事本身向我伸出了无形的手，而我甘愿被其所拉入黑塞的故事世界。</p>
-<p>不同的人对一本书的评价是不同的，除去每个人角度不同外的原因外，作品的喜好也是因人而异的。对我来说黑塞的作品正是我最喜欢的，同时其传达的内容也是我所追求的。有的人比较喜欢那些比较正面、能鼓励人心的故事，曾看到有人说喜欢西西弗的故事，被其勇气所感染，但我却不会被这种故事所打动。我更喜欢探寻人类的灵魂，或者发掘更多隐藏在故事背后的真相，这样的故事更多是在讲述着什么，而不是着重于赞扬与批判，这种判别是不可避免的，但上升到更显眼的层面似乎就开始有点变质了。</p>
-<p>黑塞的作品还有不少未看，希望这些能给我带来更多的满足与惊喜，也希望能够发现其他笔下故事能带给我类似感受的作家，借此更加深入自我的内核，同时去感受这些作家们的精神世界。</p>
+            <p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/mold-16-summary/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:80173499</center> 
+
+<h1 id="内容回顾"><a href="#内容回顾" class="headerlink" title="内容回顾"></a>内容回顾</h1><p>在以往十六期的博客中，我们沿着mold中的main函数一路追寻了下去，直到结束。</p>
+<p>首先我们熟悉了<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/12/mold/mold-0/" >文件结构以及项目目录<i class="fas fa-external-link-alt"></i></a>等，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/#read-file" >查看了如何读取不同类型的文件<i class="fas fa-external-link-alt"></i></a>，其中最关键的是<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/#ObjectFile" >obj<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/05/mold/mold-2-read-shared-files/" >dso<i class="fas fa-external-link-alt"></i></a>，lto三种，分析了不同类型的差异及其特有的处理方式。同时在查看如何解析elf的过程中了解elf头，了解了<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/#InputFile" >mold对象的构造<i class="fas fa-external-link-alt"></i></a>，以及elf中信息查找段、符号等的方式。</p>
+<p>当我们收集齐输入的文件信息后就要开始对这些文件进行处理。首先做的是<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/09/mold/mold-3-symbol-resolve/#dso-uniquely" >dso去重，避免多个同名dso导致的错误<i class="fas fa-external-link-alt"></i></a>。接下来是最重要部分：符号信息解析。符号相关的过程有许多包括<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/09/mold/mold-3-symbol-resolve/#%E7%AC%A6%E5%8F%B7%E5%86%B3%E8%AE%AE" >符号决议<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/29/mold/mold-5-symbol/#compute-import-export" >符号的导入导出<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/29/mold/mold-5-symbol/" >动态链接的符号的版本确定<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/19/mold/mold-9-unresolve-symbol/#claim-unresolved-symbols" >处理未解析的符号<i class="fas fa-external-link-alt"></i></a>等等。之后还对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/16/mold/mold-4-mergeable-section/" >mergeable的段进行合并<i class="fas fa-external-link-alt"></i></a>。</p>
+<p>处理完符号相关的信息后开始<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/10/mold/mold-8-create-output-section/#create-output-sections" >创建输出文件<i class="fas fa-external-link-alt"></i></a>，准备将许多input section合成一个output section。此时需要对于常见synthetic<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/10/mold/mold-8-create-output-section/#add-synthetic-symbols" >符号<i class="fas fa-external-link-alt"></i></a>与段的构造，并且将它们放到输出的文件中。在实际输出文件之前还需要确定文件内部布局，主要对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/24/mold/mold-10-sort-section/" >段排序<i class="fas fa-external-link-alt"></i></a>，其中包括chunks之间排序，以及output section内部保存的input section的顺序。</p>
+<p>当文件布局确定后我们就可以<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/02/mold/mold-11-rel-and-dynsym/" >创建rel相关的段，将符号写入对应的符号表<i class="fas fa-external-link-alt"></i></a>，计算段内的一些信息，对部分<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/05/20/mold/mold-7-before-create-output-section/#Create-Synthetic-Sections" >synthetic段构造<i class="fas fa-external-link-alt"></i></a>等等。之后<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/15/mold/mold-13-compute-shdr-and-set-osec-offsets/#compute-section-headers" >更新section对应的shdr<i class="fas fa-external-link-alt"></i></a>，以及<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/15/mold/mold-13-compute-shdr-and-set-osec-offsets/" >更新段的虚拟地址<i class="fas fa-external-link-alt"></i></a>，对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/26/mold/mold-14-fix-file-layout-and-create-output/#fix-synthetic-symbols" >synthetic符号的值进行修正<i class="fas fa-external-link-alt"></i></a>等。通过这些操作来确定下文件载入内存中的布局。</p>
+<p>最后再将这些<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/26/mold/mold-14-fix-file-layout-and-create-output/#copy-chunks" >拷贝到输出文件<i class="fas fa-external-link-alt"></i></a>中。在拷贝的同时还做了许多操作，比如说段的重定位，填写ehdr以及其他synthetic段中的信息。</p>
+<p>在整个过程中也有许多检查，比如符号重复定义或者未定义。还有许多优化，例如对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/05/07/mold/mold-6-section-size-reduce/#gc-sections" >section进行标记来回收无用段<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/15/mold/mold-13-compute-shdr-and-set-osec-offsets/#set-virtual-addresses-by-order" >安排输出段的位置<i class="fas fa-external-link-alt"></i></a>使得相同读写权限的段尽可能在一个页内，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/05/07/mold/mold-6-section-size-reduce/#icf-sections" >消除重复的ehframe项<i class="fas fa-external-link-alt"></i></a>，段压缩等等。</p>
+<p>以上就是链接器mold的概况。</p>
+<h1 id="想法"><a href="#想法" class="headerlink" title="想法"></a>想法</h1><p>最初会开始看链接器的实现是因为感到好奇，加上之前每次遇到链接相关的问题第一反应是头大，觉得解决不了。后来看到mold这个链接器，其中的代码量还在我能串一遍理解的范畴，因此开始了读代码的过程。读的时候做着记录，后来想着干脆开一个系列博客，我在读的时候经常容易跳过某些细节，写博客的过程中会强制自己对这些细节进行强制思考。</p>
+<p>经过了十六期的文章后，整个mold的链接过程基本上就全部过了一遍，而我对于链接器工作的整个流程有了更详细的认知。以前对于链接的模糊印象就是简单的相似段合并，符号解析（但是不知道符号解析具体是在做什么），生成可执行文件或者library，但现在我对于这些部分有了更多的了解，并且还知道了链接过程不止有这些，还有包括synthetic的符号和段的处理，虚拟地址计算，重定位操作等等。</p>
+<p>除此之外还看到了许多未曾想到的东西，在看到一些处理过程后，对动态链接以及加载的过程也有了更多的了解，还有一些之前从未想过能如何联系到一起的想法，比如说相同attribute的段放在一起，避免单独成页，减少运行时的内存等。</p>
+<p>虽然学到了很多东西但是还是有很多地方其实是一知半解，阅读源码远不如实际写来困难，虽然能够大致讲出整个链接器的结构是怎样的，但是对链接器来说最重要的还是各种边边角角的细节，或者意想不到的东西都会在写的过程中出现。我现在在造各种轮子玩，想自己做出各种东西并且串联起来，或许会有一天也会需要造自己的linker吧。</p>
+<p>在源码通读的过程可能花了过久的时间，有些低效。但很多东西我一开始确实没意识到，很多问题都没有提出，不过查看了前面的这些过程后，现在开始阅读不仅是了解了有什么，还让我能够提出一些问题。</p>
+<p>在博客内容写作的过程也不太熟练，最近也是为自己博客写作感到焦虑。不论是内容详细程度，以及排版，内容划分做的都不太好。在学习的时候看到maskray聚聚的文章，多少受到了一些启发，意识到自己过于注重于原来的代码怎么写，对于代码背后的原理关注的相对较少，这其实才是要学习的本质内容，又不是学习代码技巧。在后面几期也在有意识的进行改正，之后写其他阅读代码的博客时也会继续试着这样来做。</p>
+<p>排版上试了不同的方案，比如说最早是放一段读一段，后来又尝试一次讲完一个流程然后贴整段代码，之后再对其中需要更加深入的细节加入小标题来做。不过感觉怎么都很别扭，markdown似乎没什么办法分成代码和文字两列，最后还是觉得先讲清楚流程再放代码了。</p>
+<h1 id="后续"><a href="#后续" class="headerlink" title="后续"></a>后续</h1><p>如果后续勤快的话还会继续更新一些东西，除了这样通读外，还想针对特定主题进行贯穿一遍，而且还有一些没有详细看细节但是比较重要的东西。（总觉得说出这样的话就会懒得更了…）</p>
+<p>比如说各种synthetic的符号更详细的介绍， 梳理做的各种优化，header的生成，为动态链接做的准备（got，plt等），数据压缩与解压，为重定位所做的各种操作，最终产物的地址计算与关联等等，这些其实都还比较模糊，没有一个确切的印象，需要单独串联起来理解整个过程。</p>
 
         </div>
 
@@ -296,11 +317,11 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：初探黑塞文学</li>
+        <li>本文标题：mold源码阅读十六 回顾整个流程</li>
         <li>本文作者：Homura</li>
-        <li>创建时间：2023-07-30 20:10:13</li>
+        <li>创建时间：2023-08-05 18:17:42</li>
         <li>
-            本文链接：https://homura.live/2023/07/30/first-look-at-hesse-literature/
+            本文链接：https://homura.live/2023/08/05/mold/mold-16-summary/
         </li>
         <li>
             版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
@@ -317,7 +338,7 @@
                     <div class="article-prev">
                         <a class="prev"
                            rel="prev"
-                           href="/2023/08/05/mold/mold-16-summary/"
+                           href="/2023/08/05/mold-16-summary/"
                         >
                             <span class="left arrow-icon flex-center">
                               <i class="fas fa-chevron-left"></i>
@@ -333,10 +354,10 @@
                     <div class="article-next">
                         <a class="next"
                            rel="next"
-                           href="/2023/07/30/Reading/the-red-and-black/"
+                           href="/2023/07/30/first-look-at-hesse-literature/"
                         >
                             <span class="title flex-center">
-                                <span class="post-nav-title-item">红与黑</span>
+                                <span class="post-nav-title-item">初探黑塞文学</span>
                                 <span class="post-nav-item">下一篇</span>
                             </span>
                             <span class="right arrow-icon flex-center">
@@ -468,7 +489,7 @@
         <aside class="page-aside">
             <div class="post-toc-wrap">
     <div class="post-toc">
-        
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%85%E5%AE%B9%E5%9B%9E%E9%A1%BE"><span class="nav-number">1.</span> <span class="nav-text">内容回顾</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%83%B3%E6%B3%95"><span class="nav-number">2.</span> <span class="nav-text">想法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%8E%E7%BB%AD"><span class="nav-number">3.</span> <span class="nav-text">后续</span></a></li></ol>
     </div>
 </div>
         </aside>

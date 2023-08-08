@@ -9,7 +9,7 @@
     
     <title>
         
-            mold源码阅读十六 回顾整个流程 |
+            欲望 |
         
         Homura&#39;s Blog
     </title>
@@ -26,20 +26,17 @@
     KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
     KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
   </script>
-    <meta name="description" content="pixiv:80173499   内容回顾在以往十六期的博客中，我们沿着mold中的main函数一路追寻了下去，直到结束。 首先我们熟悉了文件结构以及项目目录等，查看了如何读取不同类型的文件，其中最关键的是obj，dso，lto三种，分析了不同类型的差异及其特有的处理方式。同时在查看如何解析elf的过程中了解elf头，了解了mold对象的构造，以及elf中信息查找段、符号等的方式。 当我们收集齐">
+    <meta name="description" content="人因欲望而前进，但又经常会因为欲望无法实现，又或者不可能实现而苦恼不已。在《诗人十四个》中有这样的一段话  有追求，就有落空的可能。应对此事只有两种策略：一是通过觉悟认识到追求的虚幻性，从而放下我执；二是用人格和意志的力量勉力支撑，直到人生尽头。  尽管原文是针对个人的追求，针对个人遇到的挫折与苦难，但我觉得针对欲望仍然是如此，同时还认为个人追求其实也是一种个人的欲望。要不放下自己的执念，要不就是">
 <meta property="og:type" content="article">
-<meta property="og:title" content="mold源码阅读十六 回顾整个流程">
-<meta property="og:url" content="https://fusionbolt.github.io/2023/08/05/mold-16-summary/index.html">
+<meta property="og:title" content="欲望">
+<meta property="og:url" content="https://fusionbolt.github.io/2023/08/08/desire/index.html">
 <meta property="og:site_name" content="Homura&#39;s Blog">
-<meta property="og:description" content="pixiv:80173499   内容回顾在以往十六期的博客中，我们沿着mold中的main函数一路追寻了下去，直到结束。 首先我们熟悉了文件结构以及项目目录等，查看了如何读取不同类型的文件，其中最关键的是obj，dso，lto三种，分析了不同类型的差异及其特有的处理方式。同时在查看如何解析elf的过程中了解elf头，了解了mold对象的构造，以及elf中信息查找段、符号等的方式。 当我们收集齐">
+<meta property="og:description" content="人因欲望而前进，但又经常会因为欲望无法实现，又或者不可能实现而苦恼不已。在《诗人十四个》中有这样的一段话  有追求，就有落空的可能。应对此事只有两种策略：一是通过觉悟认识到追求的虚幻性，从而放下我执；二是用人格和意志的力量勉力支撑，直到人生尽头。  尽管原文是针对个人的追求，针对个人遇到的挫折与苦难，但我觉得针对欲望仍然是如此，同时还认为个人追求其实也是一种个人的欲望。要不放下自己的执念，要不就是">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://fusionbolt.github.io/images/mold-16-summary/Untitled.png">
-<meta property="article:published_time" content="2023-08-05T10:17:42.000Z">
-<meta property="article:modified_time" content="2023-08-05T10:31:28.965Z">
+<meta property="article:published_time" content="2023-08-08T14:09:56.000Z">
+<meta property="article:modified_time" content="2023-08-08T14:10:48.958Z">
 <meta property="article:author" content="Homura">
-<meta property="article:tag" content="mold">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://fusionbolt.github.io/images/mold-16-summary/Untitled.png">
 
     <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
@@ -216,7 +213,7 @@
     <div class="article-content-container">
 
         <div class="article-title">
-            <span class="title-hover-animation">mold源码阅读十六 回顾整个流程</span>
+            <span class="title-hover-animation">欲望</span>
         </div>
 
         
@@ -234,7 +231,7 @@
                     <div class="meta-info">
                         <div class="article-meta-info">
     <span class="article-date article-meta-item">
-        <i class="fas fa-edit"></i>&nbsp;2023-08-05 18:17:42
+        <i class="fas fa-edit"></i>&nbsp;2023-08-08 22:09:56
     </span>
     
         <span class="article-categories article-meta-item">
@@ -242,34 +239,23 @@
             <ul>
                 
                     <li>
-                        <a href="/categories/Linker/">Linker</a>&nbsp;
+                        <a href="/categories/Thinking/">Thinking</a>&nbsp;
                     </li>
                 
             </ul>
         </span>
     
-    
-        <span class="article-tags article-meta-item">
-            <i class="fas fa-tags"></i>&nbsp;
-            <ul>
-                
-                    <li>
-                        <a href="/tags/mold/">mold</a>&nbsp;
-                    </li>
-                
-            </ul>
-        </span>
     
 
     
     
         <span class="article-wordcount article-meta-item">
-            <i class="fas fa-file-word"></i>&nbsp;<span>1.7k 字</span>
+            <i class="fas fa-file-word"></i>&nbsp;<span>885 字</span>
         </span>
     
     
         <span class="article-min2read article-meta-item">
-            <i class="fas fa-clock"></i>&nbsp;<span>5 分钟</span>
+            <i class="fas fa-clock"></i>&nbsp;<span>2 分钟</span>
         </span>
     
     
@@ -285,31 +271,15 @@
         
 
         <div class="article-content markdown-body">
-            <p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="/images/mold-16-summary/Untitled.png"
-                      alt="Untitled"
-                ></p>
-<center style="font-size:14px;color:#C0C0C0;text-decoration:underline">pixiv:80173499</center> 
-
-<h1 id="内容回顾"><a href="#内容回顾" class="headerlink" title="内容回顾"></a>内容回顾</h1><p>在以往十六期的博客中，我们沿着mold中的main函数一路追寻了下去，直到结束。</p>
-<p>首先我们熟悉了<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/12/mold/mold-0/" >文件结构以及项目目录<i class="fas fa-external-link-alt"></i></a>等，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/#read-file" >查看了如何读取不同类型的文件<i class="fas fa-external-link-alt"></i></a>，其中最关键的是<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/#ObjectFile" >obj<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/05/mold/mold-2-read-shared-files/" >dso<i class="fas fa-external-link-alt"></i></a>，lto三种，分析了不同类型的差异及其特有的处理方式。同时在查看如何解析elf的过程中了解elf头，了解了<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/02/26/mold/mold-1-read-input-files/#InputFile" >mold对象的构造<i class="fas fa-external-link-alt"></i></a>，以及elf中信息查找段、符号等的方式。</p>
-<p>当我们收集齐输入的文件信息后就要开始对这些文件进行处理。首先做的是<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/09/mold/mold-3-symbol-resolve/#dso-uniquely" >dso去重，避免多个同名dso导致的错误<i class="fas fa-external-link-alt"></i></a>。接下来是最重要部分：符号信息解析。符号相关的过程有许多包括<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/09/mold/mold-3-symbol-resolve/#%E7%AC%A6%E5%8F%B7%E5%86%B3%E8%AE%AE" >符号决议<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/29/mold/mold-5-symbol/#compute-import-export" >符号的导入导出<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/29/mold/mold-5-symbol/" >动态链接的符号的版本确定<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/19/mold/mold-9-unresolve-symbol/#claim-unresolved-symbols" >处理未解析的符号<i class="fas fa-external-link-alt"></i></a>等等。之后还对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/04/16/mold/mold-4-mergeable-section/" >mergeable的段进行合并<i class="fas fa-external-link-alt"></i></a>。</p>
-<p>处理完符号相关的信息后开始<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/10/mold/mold-8-create-output-section/#create-output-sections" >创建输出文件<i class="fas fa-external-link-alt"></i></a>，准备将许多input section合成一个output section。此时需要对于常见synthetic<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/10/mold/mold-8-create-output-section/#add-synthetic-symbols" >符号<i class="fas fa-external-link-alt"></i></a>与段的构造，并且将它们放到输出的文件中。在实际输出文件之前还需要确定文件内部布局，主要对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/06/24/mold/mold-10-sort-section/" >段排序<i class="fas fa-external-link-alt"></i></a>，其中包括chunks之间排序，以及output section内部保存的input section的顺序。</p>
-<p>当文件布局确定后我们就可以<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/02/mold/mold-11-rel-and-dynsym/" >创建rel相关的段，将符号写入对应的符号表<i class="fas fa-external-link-alt"></i></a>，计算段内的一些信息，对部分<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/05/20/mold/mold-7-before-create-output-section/#Create-Synthetic-Sections" >synthetic段构造<i class="fas fa-external-link-alt"></i></a>等等。之后<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/15/mold/mold-13-compute-shdr-and-set-osec-offsets/#compute-section-headers" >更新section对应的shdr<i class="fas fa-external-link-alt"></i></a>，以及<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/15/mold/mold-13-compute-shdr-and-set-osec-offsets/" >更新段的虚拟地址<i class="fas fa-external-link-alt"></i></a>，对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/26/mold/mold-14-fix-file-layout-and-create-output/#fix-synthetic-symbols" >synthetic符号的值进行修正<i class="fas fa-external-link-alt"></i></a>等。通过这些操作来确定下文件载入内存中的布局。</p>
-<p>最后再将这些<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/26/mold/mold-14-fix-file-layout-and-create-output/#copy-chunks" >拷贝到输出文件<i class="fas fa-external-link-alt"></i></a>中。在拷贝的同时还做了许多操作，比如说段的重定位，填写ehdr以及其他synthetic段中的信息。</p>
-<p>在整个过程中也有许多检查，比如符号重复定义或者未定义。还有许多优化，例如对<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/05/07/mold/mold-6-section-size-reduce/#gc-sections" >section进行标记来回收无用段<i class="fas fa-external-link-alt"></i></a>，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/07/15/mold/mold-13-compute-shdr-and-set-osec-offsets/#set-virtual-addresses-by-order" >安排输出段的位置<i class="fas fa-external-link-alt"></i></a>使得相同读写权限的段尽可能在一个页内，<a class="link"   target="_blank" rel="noopener" href="https://homura.live/2023/05/07/mold/mold-6-section-size-reduce/#icf-sections" >消除重复的ehframe项<i class="fas fa-external-link-alt"></i></a>，段压缩等等。</p>
-<p>以上就是链接器mold的概况。</p>
-<h1 id="想法"><a href="#想法" class="headerlink" title="想法"></a>想法</h1><p>最初会开始看链接器的实现是因为感到好奇，加上之前每次遇到链接相关的问题第一反应是头大，觉得解决不了。后来看到mold这个链接器，其中的代码量还在我能串一遍理解的范畴，因此开始了读代码的过程。读的时候做着记录，后来想着干脆开一个系列博客，我在读的时候经常容易跳过某些细节，写博客的过程中会强制自己对这些细节进行强制思考。</p>
-<p>经过了十六期的文章后，整个mold的链接过程基本上就全部过了一遍，而我对于链接器工作的整个流程有了更详细的认知。以前对于链接的模糊印象就是简单的相似段合并，符号解析（但是不知道符号解析具体是在做什么），生成可执行文件或者library，但现在我对于这些部分有了更多的了解，并且还知道了链接过程不止有这些，还有包括synthetic的符号和段的处理，虚拟地址计算，重定位操作等等。</p>
-<p>除此之外还看到了许多未曾想到的东西，在看到一些处理过程后，对动态链接以及加载的过程也有了更多的了解，还有一些之前从未想过能如何联系到一起的想法，比如说相同attribute的段放在一起，避免单独成页，减少运行时的内存等。</p>
-<p>虽然学到了很多东西但是还是有很多地方其实是一知半解，阅读源码远不如实际写来困难，虽然能够大致讲出整个链接器的结构是怎样的，但是对链接器来说最重要的还是各种边边角角的细节，或者意想不到的东西都会在写的过程中出现。我现在在造各种轮子玩，想自己做出各种东西并且串联起来，或许会有一天也会需要造自己的linker吧。</p>
-<p>在源码通读的过程可能花了过久的时间，有些低效。但很多东西我一开始确实没意识到，很多问题都没有提出，不过查看了前面的这些过程后，现在开始阅读不仅是了解了有什么，还让我能够提出一些问题。</p>
-<p>在博客内容写作的过程也不太熟练，最近也是为自己博客写作感到焦虑。不论是内容详细程度，以及排版，内容划分做的都不太好。在学习的时候看到maskray聚聚的文章，多少受到了一些启发，意识到自己过于注重于原来的代码怎么写，对于代码背后的原理关注的相对较少，这其实才是要学习的本质内容，又不是学习代码技巧。在后面几期也在有意识的进行改正，之后写其他阅读代码的博客时也会继续试着这样来做。</p>
-<p>排版上试了不同的方案，比如说最早是放一段读一段，后来又尝试一次讲完一个流程然后贴整段代码，之后再对其中需要更加深入的细节加入小标题来做。不过感觉怎么都很别扭，markdown似乎没什么办法分成代码和文字两列，最后还是觉得先讲清楚流程再放代码了。</p>
-<h1 id="后续"><a href="#后续" class="headerlink" title="后续"></a>后续</h1><p>如果后续勤快的话还会继续更新一些东西，除了这样通读外，还想针对特定主题进行贯穿一遍，而且还有一些没有详细看细节但是比较重要的东西。（总觉得说出这样的话就会懒得更了…）</p>
-<p>比如说各种synthetic的符号更详细的介绍， 梳理做的各种优化，header的生成，为动态链接做的准备（got，plt等），数据压缩与解压，为重定位所做的各种操作，最终产物的地址计算与关联等等，这些其实都还比较模糊，没有一个确切的印象，需要单独串联起来理解整个过程。</p>
+            <p>人因欲望而前进，但又经常会因为欲望无法实现，又或者不可能实现而苦恼不已。在《诗人十四个》中有这样的一段话</p>
+<blockquote>
+<p>有追求，就有落空的可能。应对此事只有两种策略：一是通过觉悟认识到追求的虚幻性，从而放下我执；二是用人格和意志的力量勉力支撑，直到人生尽头。</p>
+</blockquote>
+<p>尽管原文是针对个人的追求，针对个人遇到的挫折与苦难，但我觉得针对欲望仍然是如此，同时还认为个人追求其实也是一种个人的欲望。要不放下自己的执念，要不就是像西西弗一样不论是否能到达终点，仍然不断前进。</p>
+<p>此时的我正被欲望所吞噬，不论是想要变好的欲望，还是对于金钱或者爱情，但同时又因为自己无法实现其中任何一者而备受折磨。欲望是带给人前进的动力，但是当看不到前进的路时就会感到无力，但同时如果又无法放下到达目的地的执念，只会有心力被消耗。</p>
+<p>恰巧最近还在看《瓦尔登湖》，就目前所看的部分与欲望十分贴近的观点是“简单的生活，减少被世俗欲望所影响”。在俗世中最容易被提及的则是金钱，而在书中最先提及的部分也是和金钱相关，人们为了金钱付出了太多，但是却放弃了许多其他的东西。之后还提及了和别人的交际，认为和人们相处很快会感到乏味，思索或者劳作的人总会孤独，独处更加有益身心。我却觉得这些观点上有些极端。作者的主要观点我觉得实在表达要直接去做真正要做的，而不是被无关的事情所影响，这样的观点我也是非常认同，基于这个观点上来说，如果人的欲望是发自自己内心的，或许也可以等价为自己想做的事情，那即便为此去做些俗世的追求也并没有什么不好。而对作者来说，脱离世俗是他更好的达成自己欲望的一部分，不论是为了追求更多的知识，与大自然接触，这仍然是他的欲望。</p>
+<p>但发自内心的又是什么呢？这个答案的细节一定是因人而异，但每个人发现的答案一定有类似点，即不受外界环境影响，无论在哪里都会有这样的想法。如果只是人云亦云，我想那无法称之为发自内心，而是作为人群的欲望罢了，不论是名声，财富。但是如果你摆脱了人群仍然想要得到这些，那去追寻我想也无妨。</p>
+<p>欲望，一直都被认为是魔鬼般的存在，但我现在却不这样想了。我现在处于认为人生没有意义的状态，甚至对我来说活着就是尽可能满足自己的欲望，没有欲望的人，很难想象要怎么活下去。但我是一个十分贪婪的人，又不肯放弃哪些欲望，而且自身能力不够又无法抵达，这样的人路在何方呢？或许有朝一日会找到答案吧。</p>
 
         </div>
 
@@ -317,11 +287,11 @@
             <div class="post-copyright-info">
                 <div class="article-copyright-info-container">
     <ul>
-        <li>本文标题：mold源码阅读十六 回顾整个流程</li>
+        <li>本文标题：欲望</li>
         <li>本文作者：Homura</li>
-        <li>创建时间：2023-08-05 18:17:42</li>
+        <li>创建时间：2023-08-08 22:09:56</li>
         <li>
-            本文链接：https://homura.live/2023/08/05/mold-16-summary/
+            本文链接：https://homura.live/2023/08/08/desire/
         </li>
         <li>
             版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
@@ -335,29 +305,14 @@
         
             <div class="article-nav">
                 
-                    <div class="article-prev">
-                        <a class="prev"
-                           rel="prev"
-                           href="/2023/08/06/flood-of-time/"
-                        >
-                            <span class="left arrow-icon flex-center">
-                              <i class="fas fa-chevron-left"></i>
-                            </span>
-                            <span class="title flex-center">
-                                <span class="post-nav-title-item">时间的洪流</span>
-                                <span class="post-nav-item">上一篇</span>
-                            </span>
-                        </a>
-                    </div>
-                
                 
                     <div class="article-next">
                         <a class="next"
                            rel="next"
-                           href="/2023/08/05/mold/mold-16-summary/"
+                           href="/2023/08/06/flood-of-time/"
                         >
                             <span class="title flex-center">
-                                <span class="post-nav-title-item">mold源码阅读十六 回顾整个流程</span>
+                                <span class="post-nav-title-item">时间的洪流</span>
                                 <span class="post-nav-item">下一篇</span>
                             </span>
                             <span class="right arrow-icon flex-center">
@@ -489,7 +444,7 @@
         <aside class="page-aside">
             <div class="post-toc-wrap">
     <div class="post-toc">
-        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%86%85%E5%AE%B9%E5%9B%9E%E9%A1%BE"><span class="nav-number">1.</span> <span class="nav-text">内容回顾</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%83%B3%E6%B3%95"><span class="nav-number">2.</span> <span class="nav-text">想法</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%90%8E%E7%BB%AD"><span class="nav-number">3.</span> <span class="nav-text">后续</span></a></li></ol>
+        
     </div>
 </div>
         </aside>

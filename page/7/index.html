@@ -211,6 +211,93 @@
                 
 
                 <h3 class="home-article-title">
+                    <a href="/2022/06/26/llvm-pass/llvm-pass-1/">
+                        LLVM Pass 其一：PassManager
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        
+现身吧，青眼亚白龙！ 把他给我烧的一干二净，毁灭的焦热疾风弹！ 
+
+上一期我们讲到了每个Pass基本的结构，这期我们从PassManager开始讲述Pass从创建到执行的整个流程，以及涉及到的种种问题
+声明include/llvm/IR/PassM...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Jun 26 2022 19:51:06 GMT+0800">2022-06-26</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/06/26/llvm-pass/llvm-pass-1/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2022/06/19/llvm-pass/llvm-pass-0/">
+                        LLVM Pass 其零：新的Pass机制
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        
+以高攻击力著称的传说之龙。任何编程语言和目标平台都能被粉碎，其破坏力不可估量 
+
+在目前的LLVM中存在两套Pass相关的机制，一套是基本上已经过时的被称为LegacyPass的机制（codegen的部分还没有迁移完毕），另一套则是现在主要使用的P...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Jun 19 2022 14:57:30 GMT+0800">2022-06-19</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/06/19/llvm-pass/llvm-pass-0/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
                     <a href="/2022/05/21/Other/driver-and-train/">
                         司机与列车
                     </a>
@@ -569,93 +656,6 @@ pixiv:68232005
     </div>
 
     <a href="/2022/04/10/rc-lang-dev/rc-lang-dev-14/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/04/04/rc-lang-dev/rc-lang-dev-13/">
-                        Rc-lang开发周记13 另一些Parser
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        
-pixiv:40165995 
-
-本周的内容主要就是添加剩下的一些parser，主要是和类相关的，同时还添加了数组的下标索引。内容稍微少一些，我觉得也没有太多值得讲的，基本上就是确定语法 + 直接写实现。代码写的也不多，花了不少时间在另一篇博客上，...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Mon Apr 04 2022 10:21:54 GMT+0800">2022-04-04</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/04/04/rc-lang-dev/rc-lang-dev-13/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/03/29/Problem/solve-ci-and-link/">
-                        与CI和链接大战三百回合
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        
-攻撃隊、出撃！Vorwärts！ pixiv:54707001 
-
-噩梦开始的地方在C#的CI测试中（目前仅开启了ubuntu）DllImport报错DllNotFoundException。而报错的位置是我对自己搞的一个capi做的C#包装
-本地...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Tue Mar 29 2022 23:34:17 GMT+0800">2022-03-29</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Debug/">Debug</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/03/29/Problem/solve-ci-and-link/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
 </div>
 
             </li>

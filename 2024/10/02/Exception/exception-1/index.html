@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM异常实现一 LLVM IR |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="这一期我们通过编译C++到LLVM代码来查看这部分的实现。在此之前我们需要了解一些简单的基础知识，之后我们将从一个最小抛出异常的代码开始，逐渐复杂化这个例子，查看生成不同的LLVM IR来理解整个过程。 函数调用首先一个编译一个函数调用的过程中，LLVM常用的指令有call和invoke两类。 call是简单的一个函数调用，不会包含任何异常等。 invoke则用于调用可能抛出异常的函数，同时指令参">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM异常实现一 LLVM IR">
+<meta property="og:url" content="https://fusionbolt.github.io/2024/10/02/Exception/exception-1/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="这一期我们通过编译C++到LLVM代码来查看这部分的实现。在此之前我们需要了解一些简单的基础知识，之后我们将从一个最小抛出异常的代码开始，逐渐复杂化这个例子，查看生成不同的LLVM IR来理解整个过程。 函数调用首先一个编译一个函数调用的过程中，LLVM常用的指令有call和invoke两类。 call是简单的一个函数调用，不会包含任何异常等。 invoke则用于调用可能抛出异常的函数，同时指令参">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2024-10-02T03:28:03.000Z">
+<meta property="article:modified_time" content="2024-10-02T03:30:49.797Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Exception">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM异常实现一 LLVM IR</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2024-10-02 11:28:03
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Exception/">Exception</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>4.5k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>24 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>这一期我们通过编译C++到LLVM代码来查看这部分的实现。在此之前我们需要了解一些简单的基础知识，之后我们将从一个最小抛出异常的代码开始，逐渐复杂化这个例子，查看生成不同的LLVM IR来理解整个过程。</p>
+<h1 id="函数调用"><a href="#函数调用" class="headerlink" title="函数调用"></a>函数调用</h1><p>首先一个编译一个函数调用的过程中，LLVM常用的指令有call和invoke两类。</p>
+<p>call是简单的一个函数调用，不会包含任何异常等。</p>
+<p>invoke则用于调用可能抛出异常的函数，同时指令参数中还要添加用于处理异常代码的label</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;result&gt; = [tail | musttail | notail ] call [fast-math flags] [cconv] [ret attrs] [<span class="built_in">addrspace</span>(&lt;num&gt;)]</span><br><span class="line">           &lt;ty&gt;|&lt;fnty&gt; &lt;fnptrval&gt;(&lt;function args&gt;) [fn attrs] [ operand bundles ]</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;result&gt; = invoke [cconv] [ret attrs] [<span class="built_in">addrspace</span>(&lt;num&gt;)] &lt;ty&gt;|&lt;fnty&gt; &lt;fnptrval&gt;(&lt;function args&gt;) [fn attrs]</span><br><span class="line">              [operand bundles] to label &lt;normal label&gt; unwind label &lt;exception label&gt;</span><br></pre></td></tr></table></figure>
+
+<p><a class="link"   target="_blank" rel="noopener" href="https://llvm.org/docs/LangRef.html#invoke-instruction" >https://llvm.org/docs/LangRef.html#invoke-instruction<i class="fas fa-external-link-alt"></i></a></p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://llvm.org/docs/LangRef.html#call-instruction" >https://llvm.org/docs/LangRef.html#call-instruction<i class="fas fa-external-link-alt"></i></a></p>
+<p>具体使用案例可以参考后面的throw a except without try这一部分</p>
+<h1 id="only-throw-string"><a href="#only-throw-string" class="headerlink" title="only throw string"></a>only throw string</h1><p>这是上期中展示过的代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f1</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="string">&quot;error&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f3</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">f1</span>();</span><br><span class="line">    <span class="built_in">f2</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这是使用clang生成的ll</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@.str = <span class="keyword">private</span> unnamed_addr constant [<span class="number">6</span> x i8] c<span class="string">&quot;error\00&quot;</span>, align <span class="number">1</span></span><br><span class="line">@_ZTIPKc = external constant i8*</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline nounwind optnone ssp uwtable</span><br><span class="line">define <span class="keyword">void</span> @_Z2f1v() #<span class="number">0</span> &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  store i32 <span class="number">1</span>, i32* %<span class="number">1</span>, align <span class="number">4</span></span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline optnone ssp uwtable</span><br><span class="line">define <span class="keyword">void</span> @_Z2f2v() #<span class="number">1</span> &#123;</span><br><span class="line">  %<span class="number">1</span> = call i8* @__cxa_allocate_exception(i64 <span class="number">8</span>) #<span class="number">2</span></span><br><span class="line">  %<span class="number">2</span> = bitcast i8* %<span class="number">1</span> to i8**</span><br><span class="line">  store i8* getelementptr <span class="built_in">inbounds</span> ([<span class="number">6</span> x i8], [<span class="number">6</span> x i8]* @.str, i64 <span class="number">0</span>, i64 <span class="number">0</span>), i8** %<span class="number">2</span>, align <span class="number">16</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_throw(i8* %<span class="number">1</span>, i8* <span class="built_in">bitcast</span> (i8** @_ZTIPKc to i8*), i8* null) #<span class="number">3</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare i8* @__cxa_allocate_exception(i64)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_throw(i8*, i8*, i8*)</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline optnone ssp uwtable</span><br><span class="line">define <span class="keyword">void</span> @_Z2f3v() #<span class="number">1</span> &#123;</span><br><span class="line">  call <span class="keyword">void</span> @_Z2f1v()</span><br><span class="line">  call <span class="keyword">void</span> @_Z2f2v()</span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>现在回来看，在需要抛出异常的函数中在进入的时候就分配了一个exception对象，并且将抛出的字符串写入，调用的方式也是简单的call。</p>
+<p>对于调用者来说仍然使用的是call，而不是invoke，我认为因为这里throw以后不会进行捕获处理，而是直接挂掉，invoke最大的特点是要传递一个异常处理的label</p>
+<p>这个例子只有__cxa_allocate_exception和__cxa_throw的声明（以下简称alloc和throw，其他函数用类似的简称规则），接下来我们看一个稍微复杂一些的例子。</p>
+<h1 id="throw-a-except-without-try"><a href="#throw-a-except-without-try" class="headerlink" title="throw a except without try"></a>throw a except without try</h1><p>现在我们不只是抛出一个字符串，而是抛出一个异常对象。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdexcept&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> std::<span class="built_in">runtime_error</span>(<span class="string">&quot;&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">f2</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">@.str = <span class="keyword">private</span> unnamed_addr constant [<span class="number">1</span> x i8] zeroinitializer, align <span class="number">1</span></span><br><span class="line">@_ZTISt13runtime_error = external constant ptr</span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z2f2v() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = call ptr @__cxa_allocate_exception(i64 <span class="number">16</span>) #<span class="number">3</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>) %<span class="number">3</span>, ptr noundef @.str)</span><br><span class="line">          to label %<span class="number">4</span> unwind label %<span class="number">5</span></span><br><span class="line"></span><br><span class="line"><span class="number">4</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_throw(ptr %<span class="number">3</span>, ptr @_ZTISt13runtime_error, ptr @_ZNSt13runtime_errorD1Ev) #<span class="number">4</span></span><br><span class="line">  unreachable</span><br><span class="line"></span><br><span class="line"><span class="number">5</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">6</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">7</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">7</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">8</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">8</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_free_exception(ptr %<span class="number">3</span>) #<span class="number">3</span></span><br><span class="line">  br label %<span class="number">9</span></span><br><span class="line"></span><br><span class="line"><span class="number">9</span>:                                                ; preds = %<span class="number">5</span></span><br><span class="line">  %<span class="number">10</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">11</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">12</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">10</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">13</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">12</span>, i32 %<span class="number">11</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">13</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_allocate_exception(i64)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>), ptr noundef) unnamed_addr #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare i32 @__gxx_personality_v0(...)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_free_exception(ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind</span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorD1Ev(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>)) unnamed_addr #<span class="number">2</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_throw(ptr, ptr, ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z1fv() #<span class="number">0</span> &#123;</span><br><span class="line">  call <span class="keyword">void</span> @_Z2f2v()</span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先我们来翻译一下一些mangled后的符号。</p>
+<p>_ZNSt13runtime_errorD1Ev：构造函数</p>
+<p>_ZTISt13runtime_error：typeinfo for std::runtime_error</p>
+<p>这里发生了些许变化。</p>
+<ol>
+<li>首先函数的声明增加了一个attribute，personality ptr @__gxx_personality_v0，这指定了异常处理时用什么函数进行响应。</li>
+<li>构造runtime_error的过程是nounwind，即会抛出异常的，因此使用invoke调用，而这里构造过程的this指针而是传递了__cxa_allocate_exception的返回值。</li>
+<li>在成功构造以后则将分配的异常对象以及runtime_error的类型传递给__cxa_throw。</li>
+<li>在失败后则是针对构造时抛出异常的处理，这里具体做了以下几件事情<ol>
+<li>clean up</li>
+<li>extract value（取出landing pad中的异常值和异常类型）</li>
+<li>free异常</li>
+<li>进行<a class="link"   target="_blank" rel="noopener" href="https://llvm.org/docs/LangRef.html#resume-instruction" >resume<i class="fas fa-external-link-alt"></i></a>，交给调用者进行处理。</li>
+</ol>
+</li>
+</ol>
+<p>此外这里出现了更多函数的声明。除了alloc和throw exception，以及runtime_error的构造函数外，多了__cxa_free_exception以及__gxx_personality_v0两个过程。__cxa_free_exception是用于释放最初构造的异常对象，__gxx_personality_v0则是libstdc++中的用于异常处理的函数，后续的文章中我们会提到具体实现。</p>
+<h1 id="throw-exception-with-try-catch"><a href="#throw-exception-with-try-catch" class="headerlink" title="throw exception with try catch"></a>throw exception with try catch</h1><p>在我们抛出对象后，再引入catch</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdexcept&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> std::<span class="built_in">runtime_error</span>(<span class="string">&quot;&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">try</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">f2</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in"><span class="keyword">catch</span></span>(<span class="keyword">const</span> std::exception&amp; e)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cerr &lt;&lt; e.<span class="built_in">what</span>() &lt;&lt; <span class="string">&#x27;\n&#x27;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br></pre></td><td class="code"><pre><span class="line">$__clang_call_terminate = comdat any</span><br><span class="line"></span><br><span class="line">@.str = <span class="keyword">private</span> unnamed_addr constant [<span class="number">1</span> x i8] zeroinitializer, align <span class="number">1</span></span><br><span class="line">@_ZTISt13runtime_error = external constant ptr</span><br><span class="line">@_ZTISt9exception = external constant ptr</span><br><span class="line">@_ZSt4cerr = external global %<span class="string">&quot;class.std::basic_ostream&quot;</span>, align <span class="number">8</span></span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z2f2v() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = call ptr @__cxa_allocate_exception(i64 <span class="number">16</span>) #<span class="number">5</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>) %<span class="number">3</span>, ptr noundef @.str)</span><br><span class="line">          to label %<span class="number">4</span> unwind label %<span class="number">5</span></span><br><span class="line"></span><br><span class="line"><span class="number">4</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_throw(ptr %<span class="number">3</span>, ptr @_ZTISt13runtime_error, ptr @_ZNSt13runtime_errorD1Ev) #<span class="number">6</span></span><br><span class="line">  unreachable</span><br><span class="line"></span><br><span class="line"><span class="number">5</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">6</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">7</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">7</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">8</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">8</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_free_exception(ptr %<span class="number">3</span>) #<span class="number">5</span></span><br><span class="line">  br label %<span class="number">9</span></span><br><span class="line"></span><br><span class="line"><span class="number">9</span>:                                                ; preds = %<span class="number">5</span></span><br><span class="line">  %<span class="number">10</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">11</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">12</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">10</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">13</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">12</span>, i32 %<span class="number">11</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">13</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_allocate_exception(i64)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>), ptr noundef) unnamed_addr #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare i32 @__gxx_personality_v0(...)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_free_exception(ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind</span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorD1Ev(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>)) unnamed_addr #<span class="number">2</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_throw(ptr, ptr, ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z1fv() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_Z2f2v()</span><br><span class="line">          to label %<span class="number">4</span> unwind label %<span class="number">5</span></span><br><span class="line"></span><br><span class="line"><span class="number">4</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  br label %<span class="number">25</span></span><br><span class="line"></span><br><span class="line"><span class="number">5</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">6</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          <span class="keyword">catch</span> ptr @_ZTISt9exception</span><br><span class="line">  %<span class="number">7</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">7</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">8</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">8</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  br label %<span class="number">9</span></span><br><span class="line"></span><br><span class="line"><span class="number">9</span>:                                                ; preds = %<span class="number">5</span></span><br><span class="line">  %<span class="number">10</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">11</span> = call i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr @_ZTISt9exception) #<span class="number">5</span></span><br><span class="line">  %<span class="number">12</span> = icmp eq i32 %<span class="number">10</span>, %<span class="number">11</span></span><br><span class="line">  br i1 %<span class="number">12</span>, label %<span class="number">13</span>, label %<span class="number">31</span></span><br><span class="line"></span><br><span class="line"><span class="number">13</span>:                                               ; preds = %<span class="number">9</span></span><br><span class="line">  %<span class="number">14</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">15</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">14</span>) #<span class="number">5</span></span><br><span class="line">  store ptr %<span class="number">15</span>, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">16</span> = load ptr, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">17</span> = load ptr, ptr %<span class="number">16</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">18</span> = getelementptr inbounds ptr, ptr %<span class="number">17</span>, i64 <span class="number">2</span></span><br><span class="line">  %<span class="number">19</span> = load ptr, ptr %<span class="number">18</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">20</span> = call noundef ptr %<span class="number">19</span>(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">16</span>) #<span class="number">5</span></span><br><span class="line">  %<span class="number">21</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) @_ZSt4cerr, ptr noundef %<span class="number">20</span>)</span><br><span class="line">          to label %<span class="number">22</span> unwind label %<span class="number">26</span></span><br><span class="line"></span><br><span class="line"><span class="number">22</span>:                                               ; preds = %<span class="number">13</span></span><br><span class="line">  %<span class="number">23</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_c(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">21</span>, i8 noundef signext <span class="number">10</span>)</span><br><span class="line">          to label %<span class="number">24</span> unwind label %<span class="number">26</span></span><br><span class="line"></span><br><span class="line"><span class="number">24</span>:                                               ; preds = %<span class="number">22</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">  br label %<span class="number">25</span></span><br><span class="line"></span><br><span class="line"><span class="number">25</span>:                                               ; preds = %<span class="number">24</span>, %<span class="number">4</span></span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line"></span><br><span class="line"><span class="number">26</span>:                                               ; preds = %<span class="number">22</span>, %<span class="number">13</span></span><br><span class="line">  %<span class="number">27</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">28</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">27</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">28</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">29</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">27</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">29</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  invoke <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">          to label %<span class="number">30</span> unwind label %<span class="number">36</span></span><br><span class="line"></span><br><span class="line"><span class="number">30</span>:                                               ; preds = %<span class="number">26</span></span><br><span class="line">  br label %<span class="number">31</span></span><br><span class="line"></span><br><span class="line"><span class="number">31</span>:                                               ; preds = %<span class="number">30</span>, %<span class="number">9</span></span><br><span class="line">  %<span class="number">32</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">33</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">34</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">32</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">35</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">34</span>, i32 %<span class="number">33</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">35</span></span><br><span class="line"></span><br><span class="line"><span class="number">36</span>:                                               ; preds = %<span class="number">26</span></span><br><span class="line">  %<span class="number">37</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          <span class="keyword">catch</span> ptr null</span><br><span class="line">  %<span class="number">38</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">37</span>, <span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__clang_call_terminate(ptr %<span class="number">38</span>) #<span class="number">7</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind readnone</span><br><span class="line">declare i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr) #<span class="number">3</span></span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_begin_catch(ptr)</span><br><span class="line"></span><br><span class="line">declare noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_c(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>), i8 noundef signext) #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>), ptr noundef) #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline noreturn nounwind</span><br><span class="line">define linkonce_odr hidden <span class="keyword">void</span> @__clang_call_terminate(ptr %<span class="number">0</span>) #<span class="number">4</span> comdat &#123;</span><br><span class="line">  %<span class="number">2</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">0</span>) #<span class="number">5</span></span><br><span class="line">  call <span class="keyword">void</span> @_ZSt9terminatev() #<span class="number">7</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZSt9terminatev()</span><br></pre></td></tr></table></figure>
+
+<p>引入catch后，调用f2的f1中也增加了对应的landingpad相关的过程。此时landingpad的作用是用于catch特定类型的异常，而在f2中构造runtime_error的异常并没有被处理，因此需要clean临时生成的信息。</p>
+<p>另外这里的IR变得更加复杂了，先看一下流程图再来看逐步的介绍。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">flowchart LR</span><br><span class="line">	invoke --没有异常--&gt; return</span><br><span class="line">	invoke --产生异常--&gt; landingpad捕获</span><br><span class="line">	landingpad捕获 --typeid匹配--&gt; 执行catch</span><br><span class="line">	landingpad捕获 --typeid不匹配--&gt; clean_resume</span><br><span class="line">	执行catch --执行没有错误--&gt; return</span><br><span class="line">	执行catch --执行有错误 --&gt; 出错cleanup</span><br><span class="line">	出错cleanup --end_catch没错--&gt; clean_resume</span><br><span class="line">	出错cleanup --end_catch出错--&gt; terminate</span><br></pre></td></tr></table></figure>
+
+<p>在获取完异常值和类型信息后跳到了label %9，将从landingpad中获取到的异常类型信息和要catch的类型进行比较，如果失败则跳到%31进行和f2中相同的resume的操作，将控制权交给调用者。</p>
+<p>如果成功则进入label %13进行catch，首先调用__cxa_begin_catch，之后进入对应的body中打印错误信息，直到catch的代码执行结束后调用__cxa_end_catch，最终返回。在这个过程中如果出现错误则又会跳到一个landingpad进行clean up，由于前面进行过begin_catch，因此这里的landingpad也要负责end_catch。</p>
+<p>这里的end_catch有些不同，使用invoke调用，成功了会和没有catch成功后一样进行resume，失败了则会直接terminate。</p>
+<p>当这个例子完全理清楚后，后面的例子基本上都是这个例子的变种，所以不再详细赘述IR内容的细节了。</p>
+<h1 id="multi-try-catch"><a href="#multi-try-catch" class="headerlink" title="multi try catch"></a>multi try catch</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdexcept&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;iostream&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> std::<span class="built_in">runtime_error</span>(<span class="string">&quot;&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">try</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">f2</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in"><span class="keyword">catch</span></span>(<span class="keyword">const</span> std::runtime_error&amp;)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cerr &lt;&lt; <span class="string">&quot;runtime_error&quot;</span> &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in"><span class="keyword">catch</span></span>(<span class="keyword">const</span> std::invalid_argument&amp;)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cerr &lt;&lt; <span class="string">&quot;invalid_argument&quot;</span> &lt;&lt; std::endl;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in"><span class="keyword">catch</span></span>(<span class="keyword">const</span> std::exception&amp; e)</span><br><span class="line">    &#123;</span><br><span class="line">        std::cerr &lt;&lt; e.<span class="built_in">what</span>() &lt;&lt; <span class="string">&#x27;\n&#x27;</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个例子和上一个的核心区别是landingpad的时候catch了多种异常，另外在判断typeid的时候多了一些判断，就像if加上多个elseif一样，因此不再多解释了，如果有兴趣的话可以自行研究。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br></pre></td><td class="code"><pre><span class="line">$__clang_call_terminate = comdat any</span><br><span class="line"></span><br><span class="line">@.str = <span class="keyword">private</span> unnamed_addr constant [<span class="number">1</span> x i8] zeroinitializer, align <span class="number">1</span></span><br><span class="line">@_ZTISt13runtime_error = external constant ptr</span><br><span class="line">@_ZTISt16invalid_argument = external constant ptr</span><br><span class="line">@_ZTISt9exception = external constant ptr</span><br><span class="line">@_ZSt4cerr = external global %<span class="string">&quot;class.std::basic_ostream&quot;</span>, align <span class="number">8</span></span><br><span class="line">@.str<span class="number">.1</span> = <span class="keyword">private</span> unnamed_addr constant [<span class="number">17</span> x i8] c<span class="string">&quot;invalid_argument\00&quot;</span>, align <span class="number">1</span></span><br><span class="line">@.str<span class="number">.2</span> = <span class="keyword">private</span> unnamed_addr constant [<span class="number">14</span> x i8] c<span class="string">&quot;runtime_error\00&quot;</span>, align <span class="number">1</span></span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z2f2v() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = call ptr @__cxa_allocate_exception(i64 <span class="number">16</span>) #<span class="number">5</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>) %<span class="number">3</span>, ptr noundef @.str)</span><br><span class="line">          to label %<span class="number">4</span> unwind label %<span class="number">5</span></span><br><span class="line"></span><br><span class="line"><span class="number">4</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_throw(ptr %<span class="number">3</span>, ptr @_ZTISt13runtime_error, ptr @_ZNSt13runtime_errorD1Ev) #<span class="number">6</span></span><br><span class="line">  unreachable</span><br><span class="line"></span><br><span class="line"><span class="number">5</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">6</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">7</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">7</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">8</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">8</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_free_exception(ptr %<span class="number">3</span>) #<span class="number">5</span></span><br><span class="line">  br label %<span class="number">9</span></span><br><span class="line"></span><br><span class="line"><span class="number">9</span>:                                                ; preds = %<span class="number">5</span></span><br><span class="line">  %<span class="number">10</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">11</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">12</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">10</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">13</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">12</span>, i32 %<span class="number">11</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">13</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_allocate_exception(i64)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>), ptr noundef) unnamed_addr #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare i32 @__gxx_personality_v0(...)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_free_exception(ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind</span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorD1Ev(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>)) unnamed_addr #<span class="number">2</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_throw(ptr, ptr, ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z1fv() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">4</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">5</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_Z2f2v()</span><br><span class="line">          to label %<span class="number">6</span> unwind label %<span class="number">7</span></span><br><span class="line"></span><br><span class="line"><span class="number">6</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  br label %<span class="number">22</span></span><br><span class="line"></span><br><span class="line"><span class="number">7</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">8</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          <span class="keyword">catch</span> ptr @_ZTISt13runtime_error</span><br><span class="line">          <span class="keyword">catch</span> ptr @_ZTISt16invalid_argument</span><br><span class="line">          <span class="keyword">catch</span> ptr @_ZTISt9exception</span><br><span class="line">  %<span class="number">9</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">8</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">9</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">10</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">8</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">10</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  br label %<span class="number">11</span></span><br><span class="line"></span><br><span class="line"><span class="number">11</span>:                                               ; preds = %<span class="number">7</span></span><br><span class="line">  %<span class="number">12</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">13</span> = call i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr @_ZTISt13runtime_error) #<span class="number">5</span></span><br><span class="line">  %<span class="number">14</span> = icmp eq i32 %<span class="number">12</span>, %<span class="number">13</span></span><br><span class="line">  br i1 %<span class="number">14</span>, label %<span class="number">15</span>, label %<span class="number">23</span></span><br><span class="line"></span><br><span class="line"><span class="number">15</span>:                                               ; preds = %<span class="number">11</span></span><br><span class="line">  %<span class="number">16</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">17</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">16</span>) #<span class="number">5</span></span><br><span class="line">  store ptr %<span class="number">17</span>, ptr %<span class="number">5</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">18</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) @_ZSt4cerr, ptr noundef @.str<span class="number">.2</span>)</span><br><span class="line">          to label %<span class="number">19</span> unwind label %<span class="number">58</span></span><br><span class="line"></span><br><span class="line"><span class="number">19</span>:                                               ; preds = %<span class="number">15</span></span><br><span class="line">  %<span class="number">20</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZNSolsEPFRSoS_E(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">18</span>, ptr noundef @_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_)</span><br><span class="line">          to label %<span class="number">21</span> unwind label %<span class="number">58</span></span><br><span class="line"></span><br><span class="line"><span class="number">21</span>:                                               ; preds = %<span class="number">19</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">  br label %<span class="number">22</span></span><br><span class="line"></span><br><span class="line"><span class="number">22</span>:                                               ; preds = %<span class="number">21</span>, %<span class="number">32</span>, %<span class="number">47</span>, %<span class="number">6</span></span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line"></span><br><span class="line"><span class="number">23</span>:                                               ; preds = %<span class="number">11</span></span><br><span class="line">  %<span class="number">24</span> = call i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr @_ZTISt16invalid_argument) #<span class="number">5</span></span><br><span class="line">  %<span class="number">25</span> = icmp eq i32 %<span class="number">12</span>, %<span class="number">24</span></span><br><span class="line">  br i1 %<span class="number">25</span>, label %<span class="number">26</span>, label %<span class="number">33</span></span><br><span class="line"></span><br><span class="line"><span class="number">26</span>:                                               ; preds = %<span class="number">23</span></span><br><span class="line">  %<span class="number">27</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">28</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">27</span>) #<span class="number">5</span></span><br><span class="line">  store ptr %<span class="number">28</span>, ptr %<span class="number">4</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">29</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) @_ZSt4cerr, ptr noundef @.str<span class="number">.1</span>)</span><br><span class="line">          to label %<span class="number">30</span> unwind label %<span class="number">53</span></span><br><span class="line"></span><br><span class="line"><span class="number">30</span>:                                               ; preds = %<span class="number">26</span></span><br><span class="line">  %<span class="number">31</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZNSolsEPFRSoS_E(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">29</span>, ptr noundef @_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_)</span><br><span class="line">          to label %<span class="number">32</span> unwind label %<span class="number">53</span></span><br><span class="line"></span><br><span class="line"><span class="number">32</span>:                                               ; preds = %<span class="number">30</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">  br label %<span class="number">22</span></span><br><span class="line"></span><br><span class="line"><span class="number">33</span>:                                               ; preds = %<span class="number">23</span></span><br><span class="line">  %<span class="number">34</span> = call i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr @_ZTISt9exception) #<span class="number">5</span></span><br><span class="line">  %<span class="number">35</span> = icmp eq i32 %<span class="number">12</span>, %<span class="number">34</span></span><br><span class="line">  br i1 %<span class="number">35</span>, label %<span class="number">36</span>, label %<span class="number">63</span></span><br><span class="line"></span><br><span class="line"><span class="number">36</span>:                                               ; preds = %<span class="number">33</span></span><br><span class="line">  %<span class="number">37</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">38</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">37</span>) #<span class="number">5</span></span><br><span class="line">  store ptr %<span class="number">38</span>, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">39</span> = load ptr, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">40</span> = load ptr, ptr %<span class="number">39</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">41</span> = getelementptr inbounds ptr, ptr %<span class="number">40</span>, i64 <span class="number">2</span></span><br><span class="line">  %<span class="number">42</span> = load ptr, ptr %<span class="number">41</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">43</span> = call noundef ptr %<span class="number">42</span>(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">39</span>) #<span class="number">5</span></span><br><span class="line">  %<span class="number">44</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) @_ZSt4cerr, ptr noundef %<span class="number">43</span>)</span><br><span class="line">          to label %<span class="number">45</span> unwind label %<span class="number">48</span></span><br><span class="line"></span><br><span class="line"><span class="number">45</span>:                                               ; preds = %<span class="number">36</span></span><br><span class="line">  %<span class="number">46</span> = invoke noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_c(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">44</span>, i8 noundef signext <span class="number">10</span>)</span><br><span class="line">          to label %<span class="number">47</span> unwind label %<span class="number">48</span></span><br><span class="line"></span><br><span class="line"><span class="number">47</span>:                                               ; preds = %<span class="number">45</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">  br label %<span class="number">22</span></span><br><span class="line"></span><br><span class="line"><span class="number">48</span>:                                               ; preds = %<span class="number">45</span>, %<span class="number">36</span></span><br><span class="line">  %<span class="number">49</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">50</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">49</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">50</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">51</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">49</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">51</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  invoke <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">          to label %<span class="number">52</span> unwind label %<span class="number">68</span></span><br><span class="line"></span><br><span class="line"><span class="number">52</span>:                                               ; preds = %<span class="number">48</span></span><br><span class="line">  br label %<span class="number">63</span></span><br><span class="line"></span><br><span class="line"><span class="number">53</span>:                                               ; preds = %<span class="number">30</span>, %<span class="number">26</span></span><br><span class="line">  %<span class="number">54</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">55</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">54</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">55</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">56</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">54</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">56</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  invoke <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">          to label %<span class="number">57</span> unwind label %<span class="number">68</span></span><br><span class="line"></span><br><span class="line"><span class="number">57</span>:                                               ; preds = %<span class="number">53</span></span><br><span class="line">  br label %<span class="number">63</span></span><br><span class="line"></span><br><span class="line"><span class="number">58</span>:                                               ; preds = %<span class="number">19</span>, %<span class="number">15</span></span><br><span class="line">  %<span class="number">59</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">60</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">59</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">60</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">61</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">59</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">61</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  invoke <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">          to label %<span class="number">62</span> unwind label %<span class="number">68</span></span><br><span class="line"></span><br><span class="line"><span class="number">62</span>:                                               ; preds = %<span class="number">58</span></span><br><span class="line">  br label %<span class="number">63</span></span><br><span class="line"></span><br><span class="line"><span class="number">63</span>:                                               ; preds = %<span class="number">62</span>, %<span class="number">57</span>, %<span class="number">52</span>, %<span class="number">33</span></span><br><span class="line">  %<span class="number">64</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">65</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">66</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">64</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">67</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">66</span>, i32 %<span class="number">65</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">67</span></span><br><span class="line"></span><br><span class="line"><span class="number">68</span>:                                               ; preds = %<span class="number">58</span>, %<span class="number">53</span>, %<span class="number">48</span></span><br><span class="line">  %<span class="number">69</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          <span class="keyword">catch</span> ptr null</span><br><span class="line">  %<span class="number">70</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">69</span>, <span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__clang_call_terminate(ptr %<span class="number">70</span>) #<span class="number">7</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind readnone</span><br><span class="line">declare i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr) #<span class="number">3</span></span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_begin_catch(ptr)</span><br><span class="line"></span><br><span class="line">declare noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_c(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>), i8 noundef signext) #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>), ptr noundef) #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline noreturn nounwind</span><br><span class="line">define linkonce_odr hidden <span class="keyword">void</span> @__clang_call_terminate(ptr %<span class="number">0</span>) #<span class="number">4</span> comdat &#123;</span><br><span class="line">  %<span class="number">2</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">0</span>) #<span class="number">5</span></span><br><span class="line">  call <span class="keyword">void</span> @_ZSt9terminatev() #<span class="number">7</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZSt9terminatev()</span><br><span class="line"></span><br><span class="line">declare noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZNSolsEPFRSoS_E(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>), ptr noundef) #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) ptr @_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>)) #<span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="rethrow"><a href="#rethrow" class="headerlink" title="rethrow"></a>rethrow</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdexcept&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> std::<span class="built_in">runtime_error</span>(<span class="string">&quot;&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">try</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="built_in">f2</span>();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in"><span class="keyword">catch</span></span>(<span class="keyword">const</span> std::exception&amp; e)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">throw</span> e;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">outer</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">f</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个例子的IR也比较长，因此我们也先来解释一下和之前的差别。</p>
+<p>主要差距在catch的body中，这里先分配了一个exception，然后invoke的方式调用throw的函数。throw函数是一定会触发异常的，因此成功的话会跳转到unreachable，对应的unwind label的内容则是进行clean操作，并且进行resume。这个步骤类似于前面throw exception with try catch中提到的在catch体中找不到对应类型的catch一致，直接进行clean resume。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br></pre></td><td class="code"><pre><span class="line">$_ZNSt9exceptionC2ERKS_ = comdat any</span><br><span class="line"></span><br><span class="line">$__clang_call_terminate = comdat any</span><br><span class="line"></span><br><span class="line">@.str = <span class="keyword">private</span> unnamed_addr constant [<span class="number">1</span> x i8] zeroinitializer, align <span class="number">1</span></span><br><span class="line">@_ZTISt13runtime_error = external constant ptr</span><br><span class="line">@_ZTISt9exception = external constant ptr</span><br><span class="line">@_ZTVSt9exception = external unnamed_addr constant &#123; [<span class="number">5</span> x ptr] &#125;, align <span class="number">8</span></span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z2f2v() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = call ptr @__cxa_allocate_exception(i64 <span class="number">16</span>) #<span class="number">6</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>) %<span class="number">3</span>, ptr noundef @.str)</span><br><span class="line">          to label %<span class="number">4</span> unwind label %<span class="number">5</span></span><br><span class="line"></span><br><span class="line"><span class="number">4</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_throw(ptr %<span class="number">3</span>, ptr @_ZTISt13runtime_error, ptr @_ZNSt13runtime_errorD1Ev) #<span class="number">7</span></span><br><span class="line">  unreachable</span><br><span class="line"></span><br><span class="line"><span class="number">5</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">6</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">7</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">7</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">8</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">8</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_free_exception(ptr %<span class="number">3</span>) #<span class="number">6</span></span><br><span class="line">  br label %<span class="number">9</span></span><br><span class="line"></span><br><span class="line"><span class="number">9</span>:                                                ; preds = %<span class="number">5</span></span><br><span class="line">  %<span class="number">10</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">11</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">12</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">10</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">13</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">12</span>, i32 %<span class="number">11</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">13</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_allocate_exception(i64)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorC1EPKc(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>), ptr noundef) unnamed_addr #<span class="number">1</span></span><br><span class="line"></span><br><span class="line">declare i32 @__gxx_personality_v0(...)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_free_exception(ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind</span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt13runtime_errorD1Ev(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">16</span>)) unnamed_addr #<span class="number">2</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_throw(ptr, ptr, ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z1fv() #<span class="number">0</span> personality ptr @__gxx_personality_v0 &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">2</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  %<span class="number">3</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  invoke <span class="keyword">void</span> @_Z2f2v()</span><br><span class="line">          to label %<span class="number">4</span> unwind label %<span class="number">5</span></span><br><span class="line"></span><br><span class="line"><span class="number">4</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  br label %<span class="number">23</span></span><br><span class="line"></span><br><span class="line"><span class="number">5</span>:                                                ; preds = %<span class="number">0</span></span><br><span class="line">  %<span class="number">6</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          <span class="keyword">catch</span> ptr @_ZTISt9exception</span><br><span class="line">  %<span class="number">7</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">7</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">8</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">6</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">8</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  br label %<span class="number">9</span></span><br><span class="line"></span><br><span class="line"><span class="number">9</span>:                                                ; preds = %<span class="number">5</span></span><br><span class="line">  %<span class="number">10</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">11</span> = call i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr @_ZTISt9exception) #<span class="number">6</span></span><br><span class="line">  %<span class="number">12</span> = icmp eq i32 %<span class="number">10</span>, %<span class="number">11</span></span><br><span class="line">  br i1 %<span class="number">12</span>, label %<span class="number">13</span>, label %<span class="number">24</span></span><br><span class="line"></span><br><span class="line"><span class="number">13</span>:                                               ; preds = %<span class="number">9</span></span><br><span class="line">  %<span class="number">14</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">15</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">14</span>) #<span class="number">6</span></span><br><span class="line">  store ptr %<span class="number">15</span>, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">16</span> = call ptr @__cxa_allocate_exception(i64 <span class="number">8</span>) #<span class="number">6</span></span><br><span class="line">  %<span class="number">17</span> = load ptr, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  call <span class="keyword">void</span> @_ZNSt9exceptionC2ERKS_(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">16</span>, ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">17</span>) #<span class="number">6</span></span><br><span class="line">  invoke <span class="keyword">void</span> @__cxa_throw(ptr %<span class="number">16</span>, ptr @_ZTISt9exception, ptr @_ZNSt9exceptionD1Ev) #<span class="number">7</span></span><br><span class="line">          to label %<span class="number">32</span> unwind label %<span class="number">18</span></span><br><span class="line"></span><br><span class="line"><span class="number">18</span>:                                               ; preds = %<span class="number">13</span></span><br><span class="line">  %<span class="number">19</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          cleanup</span><br><span class="line">  %<span class="number">20</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">19</span>, <span class="number">0</span></span><br><span class="line">  store ptr %<span class="number">20</span>, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">21</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">19</span>, <span class="number">1</span></span><br><span class="line">  store i32 %<span class="number">21</span>, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  invoke <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line">          to label %<span class="number">22</span> unwind label %<span class="number">29</span></span><br><span class="line"></span><br><span class="line"><span class="number">22</span>:                                               ; preds = %<span class="number">18</span></span><br><span class="line">  br label %<span class="number">24</span></span><br><span class="line"></span><br><span class="line"><span class="number">23</span>:                                               ; preds = %<span class="number">4</span></span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line"></span><br><span class="line"><span class="number">24</span>:                                               ; preds = %<span class="number">22</span>, %<span class="number">9</span></span><br><span class="line">  %<span class="number">25</span> = load ptr, ptr %<span class="number">1</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">26</span> = load i32, ptr %<span class="number">2</span>, align <span class="number">4</span></span><br><span class="line">  %<span class="number">27</span> = insertvalue &#123; ptr, i32 &#125; undef, ptr %<span class="number">25</span>, <span class="number">0</span></span><br><span class="line">  %<span class="number">28</span> = insertvalue &#123; ptr, i32 &#125; %<span class="number">27</span>, i32 %<span class="number">26</span>, <span class="number">1</span></span><br><span class="line">  resume &#123; ptr, i32 &#125; %<span class="number">28</span></span><br><span class="line"></span><br><span class="line"><span class="number">29</span>:                                               ; preds = %<span class="number">18</span></span><br><span class="line">  %<span class="number">30</span> = landingpad &#123; ptr, i32 &#125;</span><br><span class="line">          <span class="keyword">catch</span> ptr null</span><br><span class="line">  %<span class="number">31</span> = extractvalue &#123; ptr, i32 &#125; %<span class="number">30</span>, <span class="number">0</span></span><br><span class="line">  call <span class="keyword">void</span> @__clang_call_terminate(ptr %<span class="number">31</span>) #<span class="number">8</span></span><br><span class="line">  unreachable</span><br><span class="line"></span><br><span class="line"><span class="number">32</span>:                                               ; preds = %<span class="number">13</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind readnone</span><br><span class="line">declare i32 @llvm.eh.<span class="keyword">typeid</span>.<span class="keyword">for</span>(ptr) #<span class="number">3</span></span><br><span class="line"></span><br><span class="line">declare ptr @__cxa_begin_catch(ptr)</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline nounwind optnone sspstrong uwtable</span><br><span class="line">define linkonce_odr dso_local <span class="keyword">void</span> @_ZNSt9exceptionC2ERKS_(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">0</span>, ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>) %<span class="number">1</span>) unnamed_addr #<span class="number">4</span> comdat align <span class="number">2</span> &#123;</span><br><span class="line">  %<span class="number">3</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  %<span class="number">4</span> = alloca ptr, align <span class="number">8</span></span><br><span class="line">  store ptr %<span class="number">0</span>, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  store ptr %<span class="number">1</span>, ptr %<span class="number">4</span>, align <span class="number">8</span></span><br><span class="line">  %<span class="number">5</span> = load ptr, ptr %<span class="number">3</span>, align <span class="number">8</span></span><br><span class="line">  store ptr getelementptr <span class="built_in">inbounds</span> (&#123; [<span class="number">5</span> x ptr] &#125;, ptr @_ZTVSt9exception, i32 <span class="number">0</span>, inrange i32 <span class="number">0</span>, i32 <span class="number">2</span>), ptr %<span class="number">5</span>, align <span class="number">8</span></span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; Function Attrs: nounwind</span><br><span class="line">declare <span class="keyword">void</span> @_ZNSt9exceptionD1Ev(ptr noundef nonnull align <span class="number">8</span> <span class="built_in">dereferenceable</span>(<span class="number">8</span>)) unnamed_addr #<span class="number">2</span></span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_end_catch()</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline noreturn nounwind</span><br><span class="line">define linkonce_odr hidden <span class="keyword">void</span> @__clang_call_terminate(ptr %<span class="number">0</span>) #<span class="number">5</span> comdat &#123;</span><br><span class="line">  %<span class="number">2</span> = call ptr @__cxa_begin_catch(ptr %<span class="number">0</span>) #<span class="number">6</span></span><br><span class="line">  call <span class="keyword">void</span> @_ZSt9terminatev() #<span class="number">8</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @_ZSt9terminatev()</span><br><span class="line"></span><br><span class="line">; Function Attrs: mustprogress noinline optnone sspstrong uwtable</span><br><span class="line">define dso_local <span class="keyword">void</span> @_Z5outerv() #<span class="number">0</span> &#123;</span><br><span class="line">  call <span class="keyword">void</span> @_Z1fv()</span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM异常实现一 LLVM IR</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2024-10-02 11:28:03</li>
+        <li>
+            本文链接：https://homura.live/2024/10/02/Exception/exception-1/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2024/10/02/Exception/exception-2/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现二 libcxxabi</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2024/10/02/Exception/exception-0/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现零 异常的多层结构与实现方式</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2024&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8"><span class="nav-number">1.</span> <span class="nav-text">函数调用</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#only-throw-string"><span class="nav-number">2.</span> <span class="nav-text">only throw string</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#throw-a-except-without-try"><span class="nav-number">3.</span> <span class="nav-text">throw a except without try</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#throw-exception-with-try-catch"><span class="nav-number">4.</span> <span class="nav-text">throw exception with try catch</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#multi-try-catch"><span class="nav-number">5.</span> <span class="nav-text">multi try catch</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#rethrow"><span class="nav-number">6.</span> <span class="nav-text">rethrow</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM异常实现四 personality |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="前面libunwind的过程中多次和personality进行交互，这部分是由语言提供和语言相关的内容。libunwind的两个阶段对应到这一个函数之中，personality部分根据libunwind扫描到的平台相关的信息，在ehframe中扫描到当前栈帧对应的异常处理信息。 personality的第一阶段主要任务找到对应栈的异常信息，将这些信息写入一个异常对象中。第二阶段则是将异常相关的信息">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM异常实现四 personality">
+<meta property="og:url" content="https://fusionbolt.github.io/2024/10/02/Exception/exception-4/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="前面libunwind的过程中多次和personality进行交互，这部分是由语言提供和语言相关的内容。libunwind的两个阶段对应到这一个函数之中，personality部分根据libunwind扫描到的平台相关的信息，在ehframe中扫描到当前栈帧对应的异常处理信息。 personality的第一阶段主要任务找到对应栈的异常信息，将这些信息写入一个异常对象中。第二阶段则是将异常相关的信息">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/exception-4/Untitled.png">
+<meta property="article:published_time" content="2024-10-02T03:28:11.000Z">
+<meta property="article:modified_time" content="2024-10-02T03:33:10.117Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Exception">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/exception-4/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM异常实现四 personality</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2024-10-02 11:28:11
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Exception/">Exception</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>2.3k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>11 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>前面libunwind的过程中多次和personality进行交互，这部分是由语言提供和语言相关的内容。libunwind的两个阶段对应到这一个函数之中，personality部分根据libunwind扫描到的平台相关的信息，在ehframe中扫描到当前栈帧对应的异常处理信息。</p>
+<p>personality的第一阶段主要任务找到对应栈的异常信息，将这些信息写入一个异常对象中。第二阶段则是将异常相关的信息实际写入到context相关的寄存器中，待返回后供libunwind跳转到异常处理的位置.</p>
+<h1 id="不同平台下的personality"><a href="#不同平台下的personality" class="headerlink" title="不同平台下的personality"></a>不同平台下的personality</h1><p>不同平台下有些许差距，为了减少代码提及在这里使用宏定义进行了区分</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !defined(_LIBCXXABI_ARM_EHABI)</span></span><br><span class="line">		<span class="meta">#<span class="meta-keyword">if</span> defined(__SEH__) &amp;&amp; !defined(__USING_SJLJ_EXCEPTIONS__)</span></span><br><span class="line">		<span class="keyword">static</span> _Unwind_Reason_Code __gxx_personality_imp</span><br><span class="line">		<span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">		_LIBCXXABI_FUNC_VIS _Unwind_Reason_Code</span><br><span class="line">				<span class="meta">#<span class="meta-keyword">ifdef</span> __USING_SJLJ_EXCEPTIONS__</span></span><br><span class="line">				__gxx_personality_sj0</span><br><span class="line">				<span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">				__gxx_personality_v0</span><br><span class="line">				<span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">		<span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">		</span><br><span class="line">		<span class="meta">#<span class="meta-keyword">if</span> defined(__SEH__) &amp;&amp; !defined(__USING_SJLJ_EXCEPTIONS__)</span></span><br><span class="line">		<span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> _LIBCXXABI_FUNC_VIS EXCEPTION_DISPOSITION</span><br><span class="line">		__gxx_personality_seh0(PEXCEPTION_RECORD ms_exc, <span class="keyword">void</span> *this_frame,</span><br><span class="line">		                       PCONTEXT ms_orig_context, PDISPATCHER_CONTEXT ms_disp)</span><br><span class="line">		&#123;</span><br><span class="line">		  <span class="keyword">return</span> _GCC_specific_handler(ms_exc, this_frame, ms_orig_context, ms_disp,</span><br><span class="line">		                               __gxx_personality_imp);</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> _Unwind_Reason_Code __gnu_unwind_frame(_Unwind_Exception*,</span><br><span class="line">                                                  _Unwind_Context*);</span><br><span class="line"><span class="function"><span class="keyword">static</span> _Unwind_Reason_Code <span class="title">continue_unwind</span><span class="params">(_Unwind_Exception* unwind_exception,...</span></span></span><br><span class="line"><span class="params"><span class="function"><span class="comment">// ARM register names</span></span></span></span><br><span class="line"><span class="params"><span class="function">#<span class="keyword">if</span> !defined(_LIBUNWIND_VERSION)</span></span></span><br><span class="line"><span class="params"><span class="function"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint32_t</span> REG_UCB = <span class="number">12</span>;  <span class="comment">// Register to save _Unwind_Control_Block</span></span></span></span><br><span class="line"><span class="params"><span class="function">#endif</span></span></span><br><span class="line"><span class="params"><span class="function"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint32_t</span> REG_SP = <span class="number">13</span>;</span></span></span><br><span class="line"><span class="params"><span class="function"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> _LIBCXXABI_FUNC_VIS _Unwind_Reason_Code</span></span></span><br><span class="line"><span class="params"><span class="function">**__gxx_personality_v0**(_Unwind_State state,</span></span></span><br><span class="line"><span class="params"><span class="function">                     _Unwind_Exception* unwind_exception,</span></span></span><br><span class="line"><span class="params"><span class="function">                     _Unwind_Context* context)</span></span></span><br><span class="line"><span class="params"><span class="function">&#123;...&#125;</span></span></span><br><span class="line"><span class="params"><span class="function">#endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>personality主要是用于在libunwind中提到的两个phase。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">__gxx_personality_sj0(<span class="keyword">int</span> version, _Unwind_Action actions, <span class="keyword">uint64_t</span> exceptionClass,</span><br><span class="line">                     _Unwind_Exception* unwind_exception, _Unwind_Context* context)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (version != <span class="number">1</span> || unwind_exception == <span class="number">0</span> || context == <span class="number">0</span>)</span><br><span class="line">        <span class="keyword">return</span> _URC_FATAL_PHASE1_ERROR;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">bool</span> native_exception = (exceptionClass     &amp; get_vendor_and_language) ==</span><br><span class="line">                            (kOurExceptionClass &amp; get_vendor_and_language);</span><br><span class="line">    scan_results results;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// Process a catch handler for a native exception first.</span></span><br><span class="line">    <span class="keyword">if</span> (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME) &amp;&amp;</span><br><span class="line">        native_exception) &#123;</span><br><span class="line">	     ... <span class="comment">// 在phase2中使用   </span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// In other cases we need to scan LSDA.</span></span><br><span class="line">    <span class="built_in">scan_eh_tab</span>(results, actions, native_exception, unwind_exception, context);</span><br><span class="line">    <span class="keyword">if</span> (results.reason == _URC_CONTINUE_UNWIND ||</span><br><span class="line">        results.reason == _URC_FATAL_PHASE1_ERROR)</span><br><span class="line">        <span class="keyword">return</span> results.reason;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (actions &amp; _UA_SEARCH_PHASE) &#123;</span><br><span class="line">	    ... <span class="comment">// phase1中使用</span></span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">		</span><br><span class="line">		... <span class="comment">// phase2</span></span><br><span class="line">    <span class="keyword">return</span> _URC_INSTALL_CONTEXT;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="phase1"><a href="#phase1" class="headerlink" title="phase1"></a>phase1</h1><p>search phase，主要用于找到对应栈的异常处理信息，因此在此之前需要先扫描eh_frame来获取lsda。</p>
+<p>如果找不到对应处理信息那么会返回continue unwind，在libunwind中继续step到下一个栈，直到找到对应的栈帧或者scan出错为止。</p>
+<p>如果找到异常处理信息，那么会保存在__cxa_exception中，供phase2读取使用。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">scan_eh_tab</span>(results, actions, native_exception, unwind_exception, context);</span><br><span class="line"><span class="keyword">if</span> (results.reason == _URC_CONTINUE_UNWIND ||</span><br><span class="line">    results.reason == _URC_FATAL_PHASE1_ERROR)</span><br><span class="line">    <span class="keyword">return</span> results.reason;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (actions &amp; _UA_SEARCH_PHASE)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// Phase 1 search:  All we&#x27;re looking for in phase 1 is a handler that</span></span><br><span class="line">    <span class="comment">//   halts unwinding</span></span><br><span class="line">    <span class="built_in">assert</span>(results.reason == _URC_HANDLER_FOUND);</span><br><span class="line">    <span class="keyword">if</span> (native_exception) &#123;</span><br><span class="line">        <span class="comment">// For a native exception, cache the LSDA result.</span></span><br><span class="line">        __cxa_exception* exc = (__cxa_exception*)(unwind_exception + <span class="number">1</span>) - <span class="number">1</span>;</span><br><span class="line">        exc-&gt;handlerSwitchValue = <span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(results.ttypeIndex);</span><br><span class="line">        exc-&gt;actionRecord = results.actionRecord;</span><br><span class="line">        exc-&gt;languageSpecificData = results.languageSpecificData;</span><br><span class="line">        exc-&gt;catchTemp = <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">void</span>*&gt;(results.landingPad);</span><br><span class="line">        exc-&gt;adjustedPtr = results.adjustedPtr;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> _URC_HANDLER_FOUND;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="phase2"><a href="#phase2" class="headerlink" title="phase2"></a>phase2</h1><p>clean up phase，此时会有两类情况。</p>
+<p>一类是在phase1中已经找好对应的异常处理信息，可以直接读取信息并且设置context的寄存器，此时读取的就是phase1中保存的结果，通过set_registers设置对应的值，之后会返回libunwind并且跳转到libunwind。</p>
+<p>另一类则是没有可用处理信息的情况，会再次scan_eh_tab，使用搜索到的结果更新context。两次进行scan的原因是第一阶段允许</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Process a catch handler for a native exception first.</span></span><br><span class="line"><span class="keyword">if</span> (actions == (_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME) &amp;&amp;</span><br><span class="line">    native_exception) &#123;</span><br><span class="line">    <span class="comment">// Reload the results from the phase 1 cache.</span></span><br><span class="line">    __cxa_exception* exception_header =</span><br><span class="line">        (__cxa_exception*)(unwind_exception + <span class="number">1</span>) - <span class="number">1</span>;</span><br><span class="line">    results.ttypeIndex = exception_header-&gt;handlerSwitchValue;</span><br><span class="line">    results.actionRecord = exception_header-&gt;actionRecord;</span><br><span class="line">    results.languageSpecificData = exception_header-&gt;languageSpecificData;</span><br><span class="line">    results.landingPad =</span><br><span class="line">        <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">uintptr_t</span>&gt;(exception_header-&gt;catchTemp);</span><br><span class="line">    results.adjustedPtr = exception_header-&gt;adjustedPtr;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Jump to the handler.</span></span><br><span class="line">    <span class="built_in">set_registers</span>(unwind_exception, context, results);</span><br><span class="line">    <span class="comment">// Cache base for calculating the address of ttype in</span></span><br><span class="line">    <span class="comment">// __cxa_call_unexpected.</span></span><br><span class="line">    <span class="keyword">return</span> _URC_INSTALL_CONTEXT;</span><br><span class="line">&#125;</span><br><span class="line">...</span><br><span class="line"><span class="built_in">scan_eh_tab</span>(results, actions, native_exception, unwind_exception, context);</span><br><span class="line">...</span><br><span class="line"><span class="comment">// if phase1</span></span><br><span class="line">...</span><br><span class="line"><span class="built_in">assert</span>(actions &amp; _UA_CLEANUP_PHASE);</span><br><span class="line"><span class="built_in">assert</span>(results.reason == _URC_HANDLER_FOUND);</span><br><span class="line"><span class="built_in">set_registers</span>(unwind_exception, context, results);</span><br><span class="line"><span class="comment">// Cache base for calculating the address of ttype in __cxa_call_unexpected.</span></span><br><span class="line"><span class="keyword">if</span> (results.ttypeIndex &lt; <span class="number">0</span>) &#123;</span><br><span class="line">  __cxa_exception* exception_header =</span><br><span class="line">        (__cxa_exception*)(unwind_exception + <span class="number">1</span>) - <span class="number">1</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_AIX)</span></span><br><span class="line">  exception_header-&gt;catchTemp = (<span class="keyword">void</span> *)_Unwind_GetDataRelBase(context);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">  exception_header-&gt;catchTemp = <span class="number">0</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> _URC_INSTALL_CONTEXT;</span><br></pre></td></tr></table></figure>
+
+<h1 id="lsda的结构"><a href="#lsda的结构" class="headerlink" title="lsda的结构"></a>lsda的结构</h1><p>整个流程中少不了的是scan_eh_tab这个过程，而这个函数主要的用途就是去解析lsda的结构读取想要的信息。</p>
+<p>图中Exception Table所对应的数据是lsda的结构，这个结构根据平台不同也有所变化，具体详情参考libcxxabi/src/cxa_personality.cpp中的注释</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/exception-4/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<p>主要的信息都在callSiteTable中，之前的部分主要是一些元信息</p>
+<h1 id="scan-eh-tab"><a href="#scan-eh-tab" class="headerlink" title="scan_eh_tab"></a>scan_eh_tab</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">scan_eh_tab</span><span class="params">(scan_results &amp;results, _Unwind_Action actions,</span></span></span><br><span class="line"><span class="params"><span class="function">                        <span class="keyword">bool</span> native_exception,</span></span></span><br><span class="line"><span class="params"><span class="function">                        _Unwind_Exception *unwind_exception,</span></span></span><br><span class="line"><span class="params"><span class="function">                        _Unwind_Context *context)</span></span>;</span><br></pre></td></tr></table></figure>
+
+<p>三种scan的类型</p>
+<ol>
+<li>Scan for handler with native or foreign exception.</li>
+<li>Scan for handler with foreign exception.</li>
+<li>Scan for cleanups.</li>
+</ol>
+<p>scan的结果</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">scan_results</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="keyword">int64_t</span>        ttypeIndex;   <span class="comment">// &gt; 0 catch handler, &lt; 0 exception spec handler, == 0 a cleanup</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint8_t</span>* actionRecord;         <span class="comment">// Currently unused.  Retained to ease future maintenance.</span></span><br><span class="line">    <span class="keyword">const</span> <span class="keyword">uint8_t</span>* languageSpecificData;  <span class="comment">// Needed only for __cxa_call_unexpected</span></span><br><span class="line">    <span class="keyword">uintptr_t</span>      landingPad;   <span class="comment">// null -&gt; nothing found, else something found</span></span><br><span class="line">    <span class="keyword">void</span>*          adjustedPtr;  <span class="comment">// Used in cxa_exception.cpp</span></span><br><span class="line">    _Unwind_Reason_Code reason;  <span class="comment">// One of _URC_FATAL_PHASE1_ERROR,</span></span><br><span class="line">                                 <span class="comment">//        _URC_FATAL_PHASE2_ERROR,</span></span><br><span class="line">                                 <span class="comment">//        _URC_CONTINUE_UNWIND,</span></span><br><span class="line">                                 <span class="comment">//        _URC_HANDLER_FOUND</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>整个scan都过程代码太长，主要的流程就是找到需要查询的数据（LSDA），之后解码数据，一个个检查是否为对应栈帧的数据。</p>
+<p>使用文字流程代替</p>
+<ol>
+<li>检查对应的actions</li>
+<li>获取LSDA（LanguageSpecificData）</li>
+<li>设置base，获取ip，func start frame</li>
+<li>LSDA的数据解码，获取callSiteTable以及actionTable</li>
+<li>遍历所有的callSite<ol>
+<li>根据当前callSite的位置解码start，length，landingpad，actionEntry</li>
+<li>根据不同架构计算出实际的landingpad</li>
+<li>actionEntry为0，那么返回reason<ol>
+<li>如果是search phase那么是continue unwind</li>
+<li>否则是handler found</li>
+</ol>
+</li>
+<li>根据action表以及actionEntry得到实际的action</li>
+<li>循环处理<ol>
+<li>根据action得到actionRecord和ttypeindex</li>
+<li>ttypeindex &gt; 0<ol>
+<li>找到一个catch，get_shim_type_info获取type检查catch</li>
+<li>如果catch为0，那么这里catch everything<ol>
+<li>包含foreign exception。这里必须是一个search phase。clean up phase with foreign exception，或者force unwinding</li>
+<li>记录下ttypeIndex, actionRecord, adjustedPtr（get_thrown_object_ptr）, reason并且返回</li>
+</ol>
+</li>
+<li>如果catch不为0且是native exception<ol>
+<li>那么此时是一个catch(T)，将不会catch一个foreign exception</li>
+<li>获取exception header</li>
+<li>获取adjustedPtr和excpType</li>
+<li>全为空则terminate</li>
+<li>如果catchType can_catch，那么handler_found，记录信息并且返回</li>
+</ol>
+</li>
+<li>否则scan下一个action</li>
+</ol>
+</li>
+<li>ttypeindex &lt; 0<ol>
+<li>_UA_FORCE_UNWIND，意味着找到一个exception specification，直接跳过</li>
+<li>如果不是force并且native_exception<ol>
+<li>获取exception header</li>
+<li>获取adjustedPtr和excpType</li>
+<li>全为空则terminate</li>
+<li>如果exception_spec_can_catch，那么handler_found，记录信息并且返回</li>
+</ol>
+</li>
+<li>否则foreign exception caught by exception spec，记录信息并且返回</li>
+</ol>
+</li>
+<li>ttypeindex == 0， 表明cleanup为true</li>
+<li>action中读取actionOffset</li>
+<li>actionOffset为0，代表是action list的结尾<ol>
+<li>hasCleaup 并且是处于cleanup phase的话表示找到handler_found</li>
+<li>否则是continue_unwind</li>
+</ol>
+</li>
+<li>前进到下一个action</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>找不到任何eh table entry来指定如何处理exception的情况下terminate</li>
+</ol>
+<h2 id="Unwind-GetLanguageSpecificData"><a href="#Unwind-GetLanguageSpecificData" class="headerlink" title="_Unwind_GetLanguageSpecificData"></a>_Unwind_GetLanguageSpecificData</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Called by personality handler during phase 2 to get LSDA for current frame.</span></span><br><span class="line">_LIBUNWIND_EXPORT <span class="keyword">uintptr_t</span></span><br><span class="line">_Unwind_GetLanguageSpecificData(struct _Unwind_Context *context) &#123;</span><br><span class="line">  <span class="keyword">unw_cursor_t</span> *cursor = (<span class="keyword">unw_cursor_t</span> *)context;</span><br><span class="line">  <span class="keyword">unw_proc_info_t</span> frameInfo;</span><br><span class="line">  <span class="keyword">uintptr_t</span> result = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">if</span> (__unw_get_proc_info(cursor, &amp;frameInfo) == UNW_ESUCCESS)</span><br><span class="line">    result = (<span class="keyword">uintptr_t</span>)frameInfo.lsda;</span><br><span class="line">  _LIBUNWIND_TRACE_API(</span><br><span class="line">      <span class="string">&quot;_Unwind_GetLanguageSpecificData(context=%p) =&gt; 0x%llx&quot;</span>,</span><br><span class="line">      <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(context), (<span class="keyword">long</span> <span class="keyword">long</span>)result);</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>unw_proc_info_t中包含了lsda的地址，直接读取并且返回</p>
+<h2 id="set-registers"><a href="#set-registers" class="headerlink" title="set_registers"></a>set_registers</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span></span></span><br><span class="line"><span class="function"><span class="title">set_registers</span><span class="params">(_Unwind_Exception* unwind_exception, _Unwind_Context* context,</span></span></span><br><span class="line"><span class="params"><span class="function">              <span class="keyword">const</span> scan_results&amp; results)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(__USING_SJLJ_EXCEPTIONS__) || defined(__USING_WASM_EXCEPTIONS__)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __builtin_eh_return_data_regno(regno) regno</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(__ibmxl__)</span></span><br><span class="line"><span class="comment">// IBM xlclang++ compiler does not support __builtin_eh_return_data_regno.</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __builtin_eh_return_data_regno(regno) regno + 3</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  _Unwind_SetGR(context, __builtin_eh_return_data_regno(<span class="number">0</span>),</span><br><span class="line">                <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">uintptr_t</span>&gt;(unwind_exception));</span><br><span class="line">  _Unwind_SetGR(context, __builtin_eh_return_data_regno(<span class="number">1</span>),</span><br><span class="line">                <span class="keyword">static_cast</span>&lt;<span class="keyword">uintptr_t</span>&gt;(results.ttypeIndex));</span><br><span class="line">  _Unwind_SetIP(context, results.landingPad);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里将exception对象地址和typeindex放到了context中，可以联系上一篇文章中的phase2_resume部分的汇编查看，那里用到的值都是在这里设置的。</p>
+<p>后面的具体实现大概看一下就好</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">_LIBUNWIND_EXPORT_UNWIND_LEVEL1</span><br><span class="line"><span class="keyword">void</span> _Unwind_SetGR(struct _Unwind_Context *context, <span class="keyword">int</span> index,</span><br><span class="line">                   <span class="keyword">uintptr_t</span> value) &#123;</span><br><span class="line">  _Unwind_VRS_Set(context, _UVRSC_CORE, (<span class="keyword">uint32_t</span>)index, _UVRSD_UINT32, &amp;value);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">_LIBUNWIND_EXPORT_UNWIND_LEVEL1</span><br><span class="line"><span class="keyword">void</span> _Unwind_SetIP(struct _Unwind_Context *context, <span class="keyword">uintptr_t</span> value) &#123;</span><br><span class="line">  <span class="keyword">uintptr_t</span> thumb_bit = _Unwind_GetGR(context, <span class="number">15</span>) &amp; ((<span class="keyword">uintptr_t</span>)<span class="number">0x1</span>);</span><br><span class="line">  _Unwind_SetGR(context, <span class="number">15</span>, value | thumb_bit);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">_LIBUNWIND_EXPORT <span class="keyword">void</span> _Unwind_SetGR(struct _Unwind_Context *context, <span class="keyword">int</span> index,</span><br><span class="line">                                     <span class="keyword">uintptr_t</span> value) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;_Unwind_SetGR(context=%p, reg=%d, value=0x%0&quot;</span> PRIxPTR</span><br><span class="line">                       <span class="string">&quot;)&quot;</span>,</span><br><span class="line">                       (<span class="keyword">void</span> *)context, index, value);</span><br><span class="line">  <span class="keyword">unw_cursor_t</span> *cursor = (<span class="keyword">unw_cursor_t</span> *)context;</span><br><span class="line">  __unw_set_reg(cursor, index, value);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Set value of specified register at cursor position in stack frame.</span></span><br><span class="line">_LIBUNWIND_HIDDEN <span class="keyword">int</span> __unw_set_reg(<span class="keyword">unw_cursor_t</span> *cursor, <span class="keyword">unw_regnum_t</span> regNum,</span><br><span class="line">                                    <span class="keyword">unw_word_t</span> value) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;__unw_set_reg(cursor=%p, regNum=%d, value=0x%&quot;</span> PRIxPTR</span><br><span class="line">                       <span class="string">&quot;)&quot;</span>,</span><br><span class="line">                       <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(cursor), regNum, value);</span><br><span class="line">  <span class="keyword">typedef</span> LocalAddressSpace::<span class="keyword">pint_t</span> <span class="keyword">pint_t</span>;</span><br><span class="line">  AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;</span><br><span class="line">  <span class="keyword">if</span> (co-&gt;<span class="built_in">validReg</span>(regNum)) &#123;</span><br><span class="line">    co-&gt;<span class="built_in">setReg</span>(regNum, (<span class="keyword">pint_t</span>)value);</span><br><span class="line">    <span class="comment">// special case altering IP to re-find info (being called by personality</span></span><br><span class="line">    <span class="comment">// function)</span></span><br><span class="line">    <span class="keyword">if</span> (regNum == UNW_REG_IP) &#123;</span><br><span class="line">      <span class="keyword">unw_proc_info_t</span> info;</span><br><span class="line">      <span class="comment">// First, get the FDE for the old location and then update it.</span></span><br><span class="line">      co-&gt;<span class="built_in">getInfo</span>(&amp;info);</span><br><span class="line">      co-&gt;<span class="built_in">setInfoBasedOnIPRegister</span>(<span class="literal">false</span>);</span><br><span class="line">      <span class="comment">// If the original call expects stack adjustment, perform this now.</span></span><br><span class="line">      <span class="comment">// Normal frame unwinding would have included the offset already in the</span></span><br><span class="line">      <span class="comment">// CFA computation.</span></span><br><span class="line">      <span class="comment">// Note: for PA-RISC and other platforms where the stack grows up,</span></span><br><span class="line">      <span class="comment">// this should actually be - info.gp. LLVM doesn&#x27;t currently support</span></span><br><span class="line">      <span class="comment">// any such platforms and Clang doesn&#x27;t export a macro for them.</span></span><br><span class="line">      <span class="keyword">if</span> (info.gp)</span><br><span class="line">        co-&gt;<span class="built_in">setReg</span>(UNW_REG_SP, co-&gt;<span class="built_in">getReg</span>(UNW_REG_SP) + info.gp);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> UNW_ESUCCESS;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> UNW_EBADREG;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt;</span><br><span class="line"><span class="keyword">void</span> UnwindCursor&lt;A, R&gt;::<span class="built_in">setReg</span>(<span class="keyword">int</span> regNum, <span class="keyword">unw_word_t</span> value) &#123;</span><br><span class="line">  _registers.<span class="built_in">setRegister</span>(regNum, (<span class="keyword">typename</span> A::<span class="keyword">pint_t</span>)value);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">void</span> <span class="title">Registers_x86::setRegister</span><span class="params">(<span class="keyword">int</span> regNum, <span class="keyword">uint32_t</span> value)</span> </span>&#123;</span><br><span class="line">  <span class="built_in"><span class="keyword">switch</span></span> (regNum) &#123;</span><br><span class="line">  <span class="keyword">case</span> UNW_REG_IP:</span><br><span class="line">    _registers.__eip = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_REG_SP:</span><br><span class="line">    _registers.__esp = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_X86_EAX:</span><br><span class="line">    _registers.__eax = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_X86_ECX:</span><br><span class="line">    _registers.__ecx = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_X86_EDX:</span><br><span class="line">    _registers.__edx = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_X86_EBX:</span><br><span class="line">    _registers.__ebx = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !defined(__APPLE__)</span></span><br><span class="line">  <span class="keyword">case</span> UNW_X86_ESP:</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">  <span class="keyword">case</span> UNW_X86_EBP:</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    _registers.__ebp = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !defined(__APPLE__)</span></span><br><span class="line">  <span class="keyword">case</span> UNW_X86_EBP:</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">  <span class="keyword">case</span> UNW_X86_ESP:</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    _registers.__esp = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_X86_ESI:</span><br><span class="line">    _registers.__esi = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">case</span> UNW_X86_EDI:</span><br><span class="line">    _registers.__edi = value;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  _LIBUNWIND_ABORT(<span class="string">&quot;unsupported x86 register&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="phase-2仍然要从头开始进行search的原因"><a href="#phase-2仍然要从头开始进行search的原因" class="headerlink" title="phase 2仍然要从头开始进行search的原因"></a>phase 2仍然要从头开始进行search的原因</h1><p>libunwind中两次搜索的起始位置都是相同的，结合personality和libunwind的代码我们可以来分析一下原因。</p>
+<p>在正常搜寻到我们所需要的数据的情况下，exception中已经提前保存了第一次搜寻的结果，这里就会直接取出，不会真正的再次搜索。当第二次search到的sp和第一次保存的sp不同时第二次才会真正从头开始搜寻。</p>
+<p>根据代码中的条件分析，search phase时在scan_eh_tab内，如果找到对应条目的actionEntry为0，则返回失败，但是clean phase actionEntry的时候可以为0。</p>
+<p>actionEntry为0的时候表示为non-catching handler，也就是仅做clean up，意味着当没有用户的异常处理代码，只需要正常清理的时候，并不需要有action entry来清理。</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM异常实现四 personality</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2024-10-02 11:28:11</li>
+        <li>
+            本文链接：https://homura.live/2024/10/02/Exception/exception-4/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2024/10/02/Exception/exception-5/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现五 总结回顾</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2024/10/02/Exception/exception-3/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现三 libunwind</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2024&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%8D%E5%90%8C%E5%B9%B3%E5%8F%B0%E4%B8%8B%E7%9A%84personality"><span class="nav-number">1.</span> <span class="nav-text">不同平台下的personality</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#phase1"><span class="nav-number">2.</span> <span class="nav-text">phase1</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#phase2"><span class="nav-number">3.</span> <span class="nav-text">phase2</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#lsda%E7%9A%84%E7%BB%93%E6%9E%84"><span class="nav-number">4.</span> <span class="nav-text">lsda的结构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#scan-eh-tab"><span class="nav-number">5.</span> <span class="nav-text">scan_eh_tab</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Unwind-GetLanguageSpecificData"><span class="nav-number">5.1.</span> <span class="nav-text">_Unwind_GetLanguageSpecificData</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#set-registers"><span class="nav-number">5.2.</span> <span class="nav-text">set_registers</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#phase-2%E4%BB%8D%E7%84%B6%E8%A6%81%E4%BB%8E%E5%A4%B4%E5%BC%80%E5%A7%8B%E8%BF%9B%E8%A1%8Csearch%E7%9A%84%E5%8E%9F%E5%9B%A0"><span class="nav-number">6.</span> <span class="nav-text">phase 2仍然要从头开始进行search的原因</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

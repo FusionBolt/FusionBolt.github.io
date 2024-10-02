@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM异常实现三 libunwind |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="上期提到的__cxa_xxx相关函数的实现离不开libunwind的相关接口，libunwind专门用于平台无关的堆栈展开和错误处理，内部做了很多平台相关的兼容工作，这期我们主要来介绍一下libunwind相关接口的具体实现。 _Unwind_RaiseException之前在throw的时候提到其中调用了_Unwind_RaiseException，这里则是libunwind的一个入口。 123">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM异常实现三 libunwind">
+<meta property="og:url" content="https://fusionbolt.github.io/2024/10/02/Exception/exception-3/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="上期提到的__cxa_xxx相关函数的实现离不开libunwind的相关接口，libunwind专门用于平台无关的堆栈展开和错误处理，内部做了很多平台相关的兼容工作，这期我们主要来介绍一下libunwind相关接口的具体实现。 _Unwind_RaiseException之前在throw的时候提到其中调用了_Unwind_RaiseException，这里则是libunwind的一个入口。 123">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2024-10-02T03:28:08.000Z">
+<meta property="article:modified_time" content="2024-10-02T03:31:13.267Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Exception">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM异常实现三 libunwind</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2024-10-02 11:28:08
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Exception/">Exception</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>4.2k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>22 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>上期提到的__cxa_xxx相关函数的实现离不开libunwind的相关接口，libunwind专门用于平台无关的堆栈展开和错误处理，内部做了很多平台相关的兼容工作，这期我们主要来介绍一下libunwind相关接口的具体实现。</p>
+<h1 id="Unwind-RaiseException"><a href="#Unwind-RaiseException" class="headerlink" title="_Unwind_RaiseException"></a>_Unwind_RaiseException</h1><p>之前在throw的时候提到其中调用了_Unwind_RaiseException，这里则是libunwind的一个入口。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span></span><br><span class="line">__cxa_throw(<span class="keyword">void</span> *thrown_object, std::type_info *tinfo, <span class="built_in"><span class="keyword">void</span></span> (*dest)(<span class="keyword">void</span> *)) &#123;</span><br><span class="line">    ...</span><br><span class="line">    _Unwind_RaiseException(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line">		...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Raise Exception的过程分为两步</p>
+<ol>
+<li>搜索exception所在的栈</li>
+<li>clean up，本质是跳转到landingpad进行处理</li>
+</ol>
+<p>UnwindLevel1.c</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Called by __cxa_throw.  Only returns if there is a fatal error.</span></span><br><span class="line">_LIBUNWIND_EXPORT _Unwind_Reason_Code</span><br><span class="line">_Unwind_RaiseException(_Unwind_Exception *exception_object) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;_Unwind_RaiseException(ex_obj=%p)&quot;</span>,</span><br><span class="line">                       (<span class="keyword">void</span> *)exception_object);</span><br><span class="line">  <span class="keyword">unw_context_t</span> uc;</span><br><span class="line">  <span class="keyword">unw_cursor_t</span> cursor;</span><br><span class="line">  __unw_getcontext(&amp;uc);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Mark that this is a non-forced unwind, so _Unwind_Resume()</span></span><br><span class="line">  <span class="comment">// can do the right thing.</span></span><br><span class="line">  exception_object-&gt;private_1 = <span class="number">0</span>;</span><br><span class="line">  exception_object-&gt;private_2 = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// phase 1: the search phase</span></span><br><span class="line">  _Unwind_Reason_Code phase1 = <span class="built_in">unwind_phase1</span>(&amp;uc, &amp;cursor, exception_object);</span><br><span class="line">  <span class="keyword">if</span> (phase1 != _URC_NO_REASON)</span><br><span class="line">    <span class="keyword">return</span> phase1;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// phase 2: the clean up phase</span></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">unwind_phase2</span>(&amp;uc, &amp;cursor, exception_object);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="出现的数据结构"><a href="#出现的数据结构" class="headerlink" title="出现的数据结构"></a>出现的数据结构</h1><p>libunwind.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">unw_context_t</span> &#123;</span></span><br><span class="line">  <span class="keyword">uint64_t</span> data[_LIBUNWIND_CONTEXT_SIZE];</span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">unw_context_t</span> <span class="title">unw_context_t</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">unw_cursor_t</span> &#123;</span></span><br><span class="line">  <span class="keyword">uint64_t</span> data[_LIBUNWIND_CURSOR_SIZE];</span><br><span class="line">&#125; LIBUNWIND_CURSOR_ALIGNMENT_ATTR;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">unw_cursor_t</span> <span class="title">unw_cursor_t</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_WIN32) &amp;&amp; defined(__SEH__)</span></span><br><span class="line">  <span class="meta">#<span class="meta-keyword">define</span> LIBUNWIND_CURSOR_ALIGNMENT_ATTR __attribute__((__aligned__(16)))</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">  <span class="meta">#<span class="meta-keyword">define</span> LIBUNWIND_CURSOR_ALIGNMENT_ATTR</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>context是用于程序运行中的上下文，包括各种寄存器的值。而cursor只是用于存放cursor对象的一个空间，后面会在这个空间上构造对应的cursor对象。_LIBUNWIND_CONTEXT_SIZE和_LIBUNWIND_CURSOR_SIZE则是定义在include/__libunwind_config.h中，不同平台不一致</p>
+<p>比如i386的定义</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta"># <span class="meta-keyword">if</span> defined(__i386__)</span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> _LIBUNWIND_TARGET_I386</span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> _LIBUNWIND_CONTEXT_SIZE 8</span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> _LIBUNWIND_CURSOR_SIZE 15</span></span><br><span class="line"><span class="meta">#  <span class="meta-keyword">define</span> _LIBUNWIND_HIGHEST_DWARF_REGISTER _LIBUNWIND_HIGHEST_DWARF_REGISTER_X86</span></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">Unwind_Exception</span> &#123;</span></span><br><span class="line">  _Unwind_Exception_Class exception_class;</span><br><span class="line">  <span class="built_in"><span class="keyword">void</span></span> (*exception_cleanup)(_Unwind_Reason_Code reason,</span><br><span class="line">                            _Unwind_Exception *exc);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(__SEH__) &amp;&amp; !defined(__USING_SJLJ_EXCEPTIONS__)</span></span><br><span class="line">  <span class="keyword">uintptr_t</span> private_[<span class="number">6</span>];</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">  <span class="keyword">uintptr_t</span> private_1; <span class="comment">// non-zero means forced unwind</span></span><br><span class="line">  <span class="keyword">uintptr_t</span> private_2; <span class="comment">// holds sp that phase1 found for phase2 to use</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __SIZEOF_POINTER__ == 4</span></span><br><span class="line">  <span class="comment">// The implementation of _Unwind_Exception uses an attribute mode on the</span></span><br><span class="line">  <span class="comment">// above fields which has the side effect of causing this whole struct to</span></span><br><span class="line">  <span class="comment">// round up to 32 bytes in size (48 with SEH). To be more explicit, we add</span></span><br><span class="line">  <span class="comment">// pad fields added for binary compatibility.</span></span><br><span class="line">  <span class="keyword">uint32_t</span> reserved[<span class="number">3</span>];</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  <span class="comment">// The Itanium ABI requires that _Unwind_Exception objects are &quot;double-word</span></span><br><span class="line">  <span class="comment">// aligned&quot;.  GCC has interpreted this to mean &quot;use the maximum useful</span></span><br><span class="line">  <span class="comment">// alignment for the target&quot;; so do we.</span></span><br><span class="line">&#125; __attribute__((__aligned__));</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="keyword">uint64_t</span> _Unwind_Exception_Class;</span><br></pre></td></tr></table></figure>
+
+<p>_Unwind_Exception主要是保存了exception_class，exception_clean_up的函数指针，private值。</p>
+<h1 id="unw-getcontext"><a href="#unw-getcontext" class="headerlink" title="__unw_getcontext"></a>__unw_getcontext</h1><p>实现在UnwindRegistersSave.S</p>
+<p>根据不同的目标架构有着不同实现，但做的事情本质上是相同的，将当前程序执行的上下文（各种寄存器）临时保存起来。</p>
+<p>i386的实现参考</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">#</span><br><span class="line"><span class="meta"># extern int __unw_getcontext(unw_context_t* thread_state)</span></span><br><span class="line">#</span><br><span class="line"># On entry:</span><br><span class="line">#   +                       +</span><br><span class="line">#   +-----------------------+</span><br><span class="line">#   + thread_state pointer  +</span><br><span class="line">#   +-----------------------+</span><br><span class="line">#   + <span class="keyword">return</span> address        +</span><br><span class="line">#   +-----------------------+   &lt;-- SP</span><br><span class="line">#   +                       +</span><br><span class="line">#</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">DEFINE_LIBUNWIND_FUNCTION</span>(__unw_getcontext)</span><br><span class="line"></span><br><span class="line">  _LIBUNWIND_CET_ENDBR</span><br><span class="line">  push  %eax</span><br><span class="line">  movl  <span class="number">8</span>(%esp), %eax</span><br><span class="line">  movl  %ebx,  <span class="number">4</span>(%eax)</span><br><span class="line">  movl  %ecx,  <span class="number">8</span>(%eax)</span><br><span class="line">  movl  %edx, <span class="number">12</span>(%eax)</span><br><span class="line">  movl  %edi, <span class="number">16</span>(%eax)</span><br><span class="line">  movl  %esi, <span class="number">20</span>(%eax)</span><br><span class="line">  movl  %ebp, <span class="number">24</span>(%eax)</span><br><span class="line">  movl  %esp, %edx</span><br><span class="line">  addl  $<span class="number">8</span>, %edx</span><br><span class="line">  movl  %edx, <span class="number">28</span>(%eax)  <span class="meta"># store what sp was at call site as esp</span></span><br><span class="line">  <span class="meta"># skip ss</span></span><br><span class="line">  <span class="meta"># skip eflags</span></span><br><span class="line">  movl  <span class="number">4</span>(%esp), %edx</span><br><span class="line">  movl  %edx, <span class="number">40</span>(%eax)  <span class="meta"># store return address as eip</span></span><br><span class="line">  <span class="meta"># skip cs</span></span><br><span class="line">  <span class="meta"># skip ds</span></span><br><span class="line">  <span class="meta"># skip es</span></span><br><span class="line">  <span class="meta"># skip fs</span></span><br><span class="line">  <span class="meta"># skip gs</span></span><br><span class="line">  <span class="built_in">movl</span>  (%esp), %edx</span><br><span class="line">  movl  %edx, (%eax)  <span class="meta"># store original eax</span></span><br><span class="line">  popl  %eax</span><br><span class="line">  xorl  %eax, %eax    <span class="meta"># return UNW_ESUCCESS</span></span><br><span class="line">  ret</span><br></pre></td></tr></table></figure>
+
+<h1 id="unwind-phase1"><a href="#unwind-phase1" class="headerlink" title="unwind_phase1"></a>unwind_phase1</h1><p>这个函数主要做了如下几件事情</p>
+<ol>
+<li>初始化cursor</li>
+<li>开始循环操作，根据cursor中的当前pc找到对应的eh_frame，从中获取return address（下次step的时候就会基于返回地址的调用者的栈）并更新cursor中的pc。</li>
+<li>获取proc_info</li>
+<li>frame的handler不为空时，读取frame中personality，根据结果判断是否为所找的栈帧<ol>
+<li>如果是则将exception_object→private_2记录到sp中</li>
+<li>否则继续查找</li>
+</ol>
+</li>
+<li>如果全部找完了那么就是_URC_NO_REASON，<strong>而不是返回错误</strong>。</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> _Unwind_Reason_Code</span></span><br><span class="line"><span class="function"><span class="title">unwind_phase1</span><span class="params">(<span class="keyword">unw_context_t</span> *uc, <span class="keyword">unw_cursor_t</span> *cursor, _Unwind_Exception *exception_object)</span> </span>&#123;</span><br><span class="line">  __unw_init_local(cursor, uc);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Walk each frame looking for a place to stop.</span></span><br><span class="line">  <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line">    <span class="comment">// Ask libunwind to get next frame (skip over first which is</span></span><br><span class="line">    <span class="comment">// _Unwind_RaiseException).</span></span><br><span class="line">    <span class="keyword">int</span> stepResult = __unw_step(cursor);</span><br><span class="line">    <span class="keyword">if</span> (stepResult == <span class="number">0</span>) &#123;</span><br><span class="line">          (<span class="keyword">void</span> *)exception_object);</span><br><span class="line">      <span class="keyword">return</span> _URC_END_OF_STACK;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (stepResult &lt; <span class="number">0</span>) &#123;</span><br><span class="line">          (<span class="keyword">void</span> *)exception_object);</span><br><span class="line">      <span class="keyword">return</span> _URC_FATAL_PHASE1_ERROR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// See if frame has code to run (has personality routine).</span></span><br><span class="line">    <span class="keyword">unw_proc_info_t</span> frameInfo;</span><br><span class="line">    <span class="keyword">unw_word_t</span> sp;</span><br><span class="line">    <span class="keyword">if</span> (__unw_get_proc_info(cursor, &amp;frameInfo) != UNW_ESUCCESS) &#123;</span><br><span class="line">          (<span class="keyword">void</span> *)exception_object);</span><br><span class="line">      <span class="keyword">return</span> _URC_FATAL_PHASE1_ERROR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// If there is a personality routine, ask it if it will want to stop at</span></span><br><span class="line">    <span class="comment">// this frame.</span></span><br><span class="line">    <span class="keyword">if</span> (frameInfo.handler != <span class="number">0</span>) &#123;</span><br><span class="line">      _Unwind_Personality_Fn p =</span><br><span class="line">          (_Unwind_Personality_Fn)(<span class="keyword">uintptr_t</span>)(frameInfo.handler);</span><br><span class="line">      _Unwind_Reason_Code personalityResult =</span><br><span class="line">          (*p)(<span class="number">1</span>, _UA_SEARCH_PHASE, exception_object-&gt;exception_class,</span><br><span class="line">               exception_object, (struct _Unwind_Context *)(cursor));</span><br><span class="line">      <span class="built_in"><span class="keyword">switch</span></span> (personalityResult) &#123;</span><br><span class="line">      <span class="keyword">case</span> _URC_HANDLER_FOUND:</span><br><span class="line">        <span class="comment">// found a catch clause or locals that need destructing in this frame</span></span><br><span class="line">        <span class="comment">// stop search and remember stack pointer at the frame</span></span><br><span class="line">        __unw_get_reg(cursor, UNW_REG_SP, &amp;sp);</span><br><span class="line">        exception_object-&gt;private_2 = (<span class="keyword">uintptr_t</span>)sp;</span><br><span class="line">        <span class="keyword">return</span> _URC_NO_REASON;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">case</span> _URC_CONTINUE_UNWIND:</span><br><span class="line">        <span class="comment">// continue unwinding</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">default</span>:</span><br><span class="line">        <span class="comment">// something went wrong</span></span><br><span class="line">        <span class="keyword">return</span> _URC_FATAL_PHASE1_ERROR;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> _URC_NO_REASON;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>第一阶段的personality，这个handler是从frameInfo中获取的，表明每个frame都可以有自己单独的personality，每个frame关联了一个函数，而在前面查看llvm ir的时候也是针对函数添加attribute标识personality函数。</p>
+<p>以下是这个过程中出现的一些函数的实现</p>
+<h2 id="unw-init-local"><a href="#unw-init-local" class="headerlink" title="__unw_init_local"></a>__unw_init_local</h2><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Create a cursor of a thread in this process given &#x27;context&#x27; recorded by</span></span><br><span class="line"><span class="comment">/// __unw_getcontext().</span></span><br><span class="line">_LIBUNWIND_HIDDEN <span class="keyword">int</span> __unw_init_local(<span class="keyword">unw_cursor_t</span> *cursor,</span><br><span class="line">                                       <span class="keyword">unw_context_t</span> *context) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;__unw_init_local(cursor=%p, context=%p)&quot;</span>,</span><br><span class="line">                       <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(cursor),</span><br><span class="line">                       <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(context));</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(__i386__)</span></span><br><span class="line"><span class="meta"># <span class="meta-keyword">define</span> REGISTER_KIND Registers_x86</span></span><br><span class="line">...</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  <span class="comment">// Use &quot;placement new&quot; to allocate UnwindCursor in the cursor buffer.</span></span><br><span class="line">  <span class="keyword">new</span> (<span class="keyword">reinterpret_cast</span>&lt;UnwindCursor&lt;LocalAddressSpace, REGISTER_KIND&gt; *&gt;(cursor))</span><br><span class="line">      UnwindCursor&lt;LocalAddressSpace, REGISTER_KIND&gt;(</span><br><span class="line">          context, LocalAddressSpace::sThisAddressSpace);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">undef</span> REGISTER_KIND</span></span><br><span class="line">  AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;</span><br><span class="line">  co-&gt;<span class="built_in">setInfoBasedOnIPRegister</span>();</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> UNW_ESUCCESS;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在cursor的地址上通过placement new构造对象，所以cursor实际上是一个UnwindCursor</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// libunwind does not and should not depend on C++ library which means that we</span></span><br><span class="line"><span class="comment">// need our own definition of inline placement new.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> *<span class="keyword">operator</span> <span class="title">new</span><span class="params">(<span class="keyword">size_t</span>, UnwindCursor&lt;A, R&gt; *p)</span> </span>&#123; <span class="keyword">return</span> p; &#125;</span><br></pre></td></tr></table></figure>
+
+<p>类型为UnwindCursor&lt;LocalAddressSpace, Registers_x86&gt;</p>
+<h3 id="UnwindCursor"><a href="#UnwindCursor" class="headerlink" title="UnwindCursor"></a>UnwindCursor</h3><p>这个类主要用于指向unwind过程中的各个栈帧，通过这个类提取出相关的信息。</p>
+<p>libunwind/src/UnwindCursor.hpp</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// UnwindCursor contains all state (including all register values) during</span></span><br><span class="line"><span class="comment">/// an unwind.  This is normally stack allocated inside a unw_cursor_t.</span></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">UnwindCursor</span> :</span> <span class="keyword">public</span> AbstractUnwindCursor&#123;</span><br><span class="line">  <span class="keyword">typedef</span> <span class="keyword">typename</span> A::<span class="keyword">pint_t</span> <span class="keyword">pint_t</span>;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">                      <span class="built_in">UnwindCursor</span>(<span class="keyword">unw_context_t</span> *context, A &amp;as);</span><br><span class="line">                      <span class="built_in">UnwindCursor</span>(A &amp;as, <span class="keyword">void</span> *threadArg);</span><br><span class="line">  ...</span><br><span class="line">  A               &amp;_addressSpace;</span><br><span class="line">  R                _registers;</span><br><span class="line">  <span class="keyword">unw_proc_info_t</span>  _info;</span><br><span class="line">  <span class="keyword">bool</span>             _unwindInfoMissing; <span class="comment">// 是否有调试信息</span></span><br><span class="line">  <span class="keyword">bool</span>             _isSignalFrame;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt;</span><br><span class="line">UnwindCursor&lt;A, R&gt;::<span class="built_in">UnwindCursor</span>(<span class="keyword">unw_context_t</span> *context, A &amp;as)</span><br><span class="line">    : _addressSpace(as), _registers(context), _unwindInfoMissing(<span class="literal">false</span>),</span><br><span class="line">      _isSignalFrame(<span class="literal">false</span>) &#123;</span><br><span class="line">  <span class="built_in"><span class="keyword">static_assert</span></span>((check_fit&lt;UnwindCursor&lt;A, R&gt;, <span class="keyword">unw_cursor_t</span>&gt;::does_fit),</span><br><span class="line">                <span class="string">&quot;UnwindCursor&lt;&gt; does not fit in unw_cursor_t&quot;</span>);</span><br><span class="line">  <span class="built_in"><span class="keyword">static_assert</span></span>((<span class="built_in"><span class="keyword">alignof</span></span>(UnwindCursor&lt;A, R&gt;) &lt;= <span class="built_in"><span class="keyword">alignof</span></span>(<span class="keyword">unw_cursor_t</span>)),</span><br><span class="line">                <span class="string">&quot;UnwindCursor&lt;&gt; requires more alignment than unw_cursor_t&quot;</span>);</span><br><span class="line">  <span class="built_in">memset</span>(&amp;_info, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(_info));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>先前传入的context作为这里的registers，在registers的构造函数中会拷贝context地址中的值到对应保存registers值的成员变量中。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">unw_proc_info_t</span> &#123;</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  start_ip;         <span class="comment">/* start address of function */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  end_ip;           <span class="comment">/* address after end of function */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  lsda;             <span class="comment">/* address of language specific data area, */</span></span><br><span class="line">                                <span class="comment">/*  or zero if not used */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  handler;          <span class="comment">/* personality routine, or zero if not used */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  gp;               <span class="comment">/* not used */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  flags;            <span class="comment">/* not used */</span></span><br><span class="line">  <span class="keyword">uint32_t</span>    format;           <span class="comment">/* compact unwind encoding, or zero if none */</span></span><br><span class="line">  <span class="keyword">uint32_t</span>    unwind_info_size; <span class="comment">/* size of DWARF unwind info, or zero if none */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  unwind_info;      <span class="comment">/* address of DWARF unwind info, or zero */</span></span><br><span class="line">  <span class="keyword">unw_word_t</span>  extra;            <span class="comment">/* mach_header of mach-o image containing func */</span></span><br><span class="line">&#125;;</span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">unw_proc_info_t</span> <span class="title">unw_proc_info_t</span>;</span></span><br></pre></td></tr></table></figure>
+
+<p>proc_info主要保存了针对某个proc的一个栈帧的一些异常处理信息。</p>
+<h3 id="UnwindCursor-setInfoBasedOnIPRegister"><a href="#UnwindCursor-setInfoBasedOnIPRegister" class="headerlink" title="UnwindCursor::setInfoBasedOnIPRegister"></a>UnwindCursor::setInfoBasedOnIPRegister</h3><p>最后设置setInfoBasedOnIPRegister。这里各种平台相关的宏定义太多，我们先暂且忽略掉大部分的，先来看drawf unwind的情况。</p>
+<ol>
+<li>获取了产生异常的pc地址</li>
+<li>针对最后一条命令是throw的情况修正对应的pc</li>
+<li>寻找unwind sections</li>
+<li>找到后则从对应的section中解析信息填写到_info中，之后返回（getInfoFromDwarfSection）</li>
+<li>如果没找到那么标记没有相关信息，最后返回</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt;</span><br><span class="line"><span class="keyword">void</span> UnwindCursor&lt;A, R&gt;::<span class="built_in">setInfoBasedOnIPRegister</span>(<span class="keyword">bool</span> isReturnAddress) &#123;</span><br><span class="line">  <span class="keyword">pint_t</span> pc = <span class="keyword">static_cast</span>&lt;<span class="keyword">pint_t</span>&gt;(<span class="keyword">this</span>-&gt;<span class="built_in">getReg</span>(UNW_REG_IP));</span><br><span class="line">  <span class="comment">// Exit early if at the top of the stack.</span></span><br><span class="line">  <span class="keyword">if</span> (pc == <span class="number">0</span>) &#123;</span><br><span class="line">    _unwindInfoMissing = <span class="literal">true</span>;</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// If the last line of a function is a &quot;throw&quot; the compiler sometimes</span></span><br><span class="line">  <span class="comment">// emits no instructions after the call to __cxa_throw.  This means</span></span><br><span class="line">  <span class="comment">// the return address is actually the start of the next function.</span></span><br><span class="line">  <span class="comment">// To disambiguate this, back up the pc when we know it is a return</span></span><br><span class="line">  <span class="comment">// address.</span></span><br><span class="line">  <span class="keyword">if</span> (isReturnAddress)</span><br><span class="line">	  --pc;</span><br><span class="line">	  </span><br><span class="line">  <span class="comment">// Ask address space object to find unwind sections for this pc.</span></span><br><span class="line">  UnwindInfoSections sects;</span><br><span class="line">  <span class="keyword">if</span> (_addressSpace.<span class="built_in">findUnwindSections</span>(pc, sects)) &#123;</span><br><span class="line">		 ....</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND)</span></span><br><span class="line">    <span class="comment">// If there is dwarf unwind info, look there next.</span></span><br><span class="line">    <span class="keyword">if</span> (sects.dwarf_section != <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">if</span> (<span class="keyword">this</span>-&gt;<span class="built_in">getInfoFromDwarfSection</span>(pc, sects)) &#123;</span><br><span class="line">        <span class="comment">// found info in dwarf, done</span></span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">		...</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// no unwind info, flag that we can&#x27;t reliably unwind</span></span><br><span class="line">  _unwindInfoMissing = <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Used by findUnwindSections() to return info about needed sections.</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">UnwindInfoSections</span> &#123;</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND) ||                                \</span></span><br><span class="line"><span class="meta">    defined(_LIBUNWIND_SUPPORT_COMPACT_UNWIND) ||                              \</span></span><br><span class="line"><span class="meta">    defined(_LIBUNWIND_USE_DL_ITERATE_PHDR)</span></span><br><span class="line">  <span class="comment">// No dso_base for SEH.</span></span><br><span class="line">  <span class="keyword">uintptr_t</span>       dso_base;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_USE_DL_ITERATE_PHDR)</span></span><br><span class="line">  <span class="keyword">size_t</span>          text_segment_length;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND)</span></span><br><span class="line">  <span class="keyword">uintptr_t</span>       dwarf_section;</span><br><span class="line">  <span class="keyword">size_t</span>          dwarf_section_length;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_SUPPORT_DWARF_INDEX)</span></span><br><span class="line">  <span class="keyword">uintptr_t</span>       dwarf_index_section;</span><br><span class="line">  <span class="keyword">size_t</span>          dwarf_index_section_length;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_SUPPORT_COMPACT_UNWIND)</span></span><br><span class="line">  <span class="keyword">uintptr_t</span>       compact_unwind_section;</span><br><span class="line">  <span class="keyword">size_t</span>          compact_unwind_section_length;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_ARM_EHABI)</span></span><br><span class="line">  <span class="keyword">uintptr_t</span>       arm_section;</span><br><span class="line">  <span class="keyword">size_t</span>          arm_section_length;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="findUnwindSections"><a href="#findUnwindSections" class="headerlink" title="findUnwindSections"></a>findUnwindSections</h3><p>这里各种平台的处理都是完全不同的，实现的本质都是寻找对应的段，比如ehframe，这里选择DWARF unwind以及baremetal的情况作为参考，直接使用链接器中定义的__eh_frame_start和__eh_frame_end来获得对应的eh_frame section的长度，根据是否为空判断对应的信息是否存在，并且更新对应的UnwindInfoSections</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">inline</span> <span class="keyword">bool</span> <span class="title">LocalAddressSpace::findUnwindSections</span><span class="params">(<span class="keyword">pint_t</span> targetAddr,</span></span></span><br><span class="line"><span class="params"><span class="function">                                                  UnwindInfoSections &amp;info)</span> </span>&#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND) &amp;&amp; defined(_LIBUNWIND_IS_BAREMETAL)</span></span><br><span class="line">  info.dso_base = <span class="number">0</span>;</span><br><span class="line">  <span class="comment">// Bare metal is statically linked, so no need to ask the dynamic loader</span></span><br><span class="line">  info.dwarf_section_length = (<span class="keyword">size_t</span>)(&amp;__eh_frame_end - &amp;__eh_frame_start);</span><br><span class="line">  info.dwarf_section =        (<span class="keyword">uintptr_t</span>)(&amp;__eh_frame_start);</span><br><span class="line">  _LIBUNWIND_TRACE_UNWINDING(<span class="string">&quot;findUnwindSections: section %p length %p&quot;</span>,</span><br><span class="line">                             (<span class="keyword">void</span> *)info.dwarf_section, (<span class="keyword">void</span> *)info.dwarf_section_length);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_SUPPORT_DWARF_INDEX)</span></span><br><span class="line">  info.dwarf_index_section =        (<span class="keyword">uintptr_t</span>)(&amp;__eh_frame_hdr_start);</span><br><span class="line">  info.dwarf_index_section_length = (<span class="keyword">size_t</span>)(&amp;__eh_frame_hdr_end - &amp;__eh_frame_hdr_start);</span><br><span class="line">  _LIBUNWIND_TRACE_UNWINDING(<span class="string">&quot;findUnwindSections: index section %p length %p&quot;</span>,</span><br><span class="line">                             (<span class="keyword">void</span> *)info.dwarf_index_section, (<span class="keyword">void</span> *)info.dwarf_index_section_length);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span>       </span></span><br><span class="line">  <span class="keyword">if</span> (info.dwarf_section_length)</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;   </span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> ...                                       </span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="unw-step"><a href="#unw-step" class="headerlink" title="__unw_step"></a>__unw_step</h2><p>调用cursor的step。</p>
+<p>这里主要是解析eh_frame中的信息，之后更新寄存器信息，包括对应的返回值地址，用于下一次step的时候根据这个返回值找到调用者的栈帧。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Move cursor to next frame.</span></span><br><span class="line">_LIBUNWIND_HIDDEN <span class="keyword">int</span> __unw_step(<span class="keyword">unw_cursor_t</span> *cursor) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;__unw_step(cursor=%p)&quot;</span>, <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(cursor));</span><br><span class="line">  AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;</span><br><span class="line">  <span class="keyword">return</span> co-&gt;<span class="built_in">step</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt; <span class="keyword">int</span> UnwindCursor&lt;A, R&gt;::<span class="built_in">step</span>(<span class="keyword">bool</span> stage2) &#123;</span><br><span class="line">  (<span class="keyword">void</span>)stage2;</span><br><span class="line">  <span class="comment">// Bottom of stack is defined is when unwind info cannot be found.</span></span><br><span class="line">  <span class="keyword">if</span> (_unwindInfoMissing)</span><br><span class="line">    <span class="keyword">return</span> UNW_STEP_END;</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND)</span></span><br><span class="line">    **result = <span class="keyword">this</span>-&gt;<span class="built_in">stepWithDwarfFDE</span>(stage2);**</span><br><span class="line">...</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// update info based on new PC</span></span><br><span class="line">  <span class="keyword">if</span> (result == UNW_STEP_SUCCESS) &#123;</span><br><span class="line">    <span class="keyword">this</span>-&gt;<span class="built_in">setInfoBasedOnIPRegister</span>(<span class="literal">true</span>);</span><br><span class="line">    <span class="keyword">if</span> (_unwindInfoMissing)</span><br><span class="line">      <span class="keyword">return</span> UNW_STEP_END;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">stepWithDwarfFDE</span><span class="params">(<span class="keyword">bool</span> stage2)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">return</span> DwarfInstructions&lt;A, R&gt;::<span class="built_in">stepWithDwarf</span>(</span><br><span class="line">      _addressSpace, (<span class="keyword">pint_t</span>)<span class="keyword">this</span>-&gt;<span class="built_in">getReg</span>(UNW_REG_IP),</span><br><span class="line">      (<span class="keyword">pint_t</span>)_info.unwind_info, _registers, _isSignalFrame, stage2);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt;</span><br><span class="line"><span class="keyword">int</span> DwarfInstructions&lt;A, R&gt;::<span class="built_in">stepWithDwarf</span>(A &amp;addressSpace, <span class="keyword">pint_t</span> pc,</span><br><span class="line">                                           <span class="keyword">pint_t</span> fdeStart, R &amp;registers,</span><br><span class="line">                                           <span class="keyword">bool</span> &amp;isSignalFrame) &#123;</span><br><span class="line">  FDE_Info fdeInfo;</span><br><span class="line">  CIE_Info cieInfo;</span><br><span class="line">  <span class="keyword">if</span> (CFI_Parser&lt;A&gt;::<span class="built_in">decodeFDE</span>(addressSpace, fdeStart, &amp;fdeInfo,</span><br><span class="line">                               &amp;cieInfo) == <span class="literal">NULL</span>) &#123;</span><br><span class="line">    PrologInfo prolog;</span><br><span class="line">    <span class="keyword">if</span> (CFI_Parser&lt;A&gt;::<span class="built_in">parseFDEInstructions</span>(addressSpace, fdeInfo, cieInfo, pc,</span><br><span class="line">                                            R::<span class="built_in">getArch</span>(), &amp;prolog)) &#123;</span><br><span class="line">      <span class="comment">// get pointer to cfa (architecture specific)</span></span><br><span class="line">      <span class="keyword">pint_t</span> cfa = <span class="built_in">getCFA</span>(addressSpace, prolog, registers);</span><br><span class="line"></span><br><span class="line">       <span class="comment">// restore registers that DWARF says were saved</span></span><br><span class="line">      R newRegisters = registers;</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Typically, the CFA is the stack pointer at the call site in</span></span><br><span class="line">      <span class="comment">// the previous frame. However, there are scenarios in which this is not</span></span><br><span class="line">      <span class="comment">// true. For example, if we switched to a new stack. In that case, the</span></span><br><span class="line">      <span class="comment">// value of the previous SP might be indicated by a CFI directive.</span></span><br><span class="line">      <span class="comment">//</span></span><br><span class="line">      <span class="comment">// We set the SP here to the CFA, allowing for it to be overridden</span></span><br><span class="line">      <span class="comment">// by a CFI directive later on.</span></span><br><span class="line">      newRegisters.<span class="built_in">setSP</span>(cfa);</span><br><span class="line"></span><br><span class="line">      <span class="keyword">pint_t</span> returnAddress = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">const</span> <span class="keyword">int</span> lastReg = R::<span class="built_in">lastDwarfRegNum</span>();</span><br><span class="line">      <span class="built_in">assert</span>(<span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;(CFI_Parser&lt;A&gt;::kMaxRegisterNumber) &gt;= lastReg &amp;&amp;</span><br><span class="line">             <span class="string">&quot;register range too large&quot;</span>);</span><br><span class="line">      <span class="built_in">assert</span>(lastReg &gt;= (<span class="keyword">int</span>)cieInfo.returnAddressRegister &amp;&amp;</span><br><span class="line">             <span class="string">&quot;register range does not contain return address register&quot;</span>);</span><br><span class="line">      <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt;= lastReg; ++i) &#123;</span><br><span class="line">        <span class="keyword">if</span> (prolog.savedRegisters[i].location !=</span><br><span class="line">            CFI_Parser&lt;A&gt;::kRegisterUnused) &#123;</span><br><span class="line">          <span class="keyword">if</span> (registers.<span class="built_in">validFloatRegister</span>(i))</span><br><span class="line">            newRegisters.<span class="built_in">setFloatRegister</span>(</span><br><span class="line">                i, <span class="built_in">getSavedFloatRegister</span>(addressSpace, registers, cfa,</span><br><span class="line">                                         prolog.savedRegisters[i]));</span><br><span class="line">          <span class="keyword">else</span> <span class="keyword">if</span> (registers.<span class="built_in">validVectorRegister</span>(i))</span><br><span class="line">            newRegisters.<span class="built_in">setVectorRegister</span>(</span><br><span class="line">                i, <span class="built_in">getSavedVectorRegister</span>(addressSpace, registers, cfa,</span><br><span class="line">                                          prolog.savedRegisters[i]));</span><br><span class="line">          <span class="keyword">else</span> <span class="keyword">if</span> (i == (<span class="keyword">int</span>)cieInfo.returnAddressRegister)</span><br><span class="line">            returnAddress = <span class="built_in">getSavedRegister</span>(addressSpace, registers, cfa,</span><br><span class="line">                                             prolog.savedRegisters[i]);</span><br><span class="line">          <span class="keyword">else</span> <span class="keyword">if</span> (registers.<span class="built_in">validRegister</span>(i))</span><br><span class="line">            newRegisters.<span class="built_in">setRegister</span>(</span><br><span class="line">                i, <span class="built_in">getSavedRegister</span>(addressSpace, registers, cfa,</span><br><span class="line">                                    prolog.savedRegisters[i]));</span><br><span class="line">          <span class="keyword">else</span></span><br><span class="line">            <span class="keyword">return</span> UNW_EBADREG;</span><br><span class="line">        &#125; <span class="keyword">else</span> <span class="keyword">if</span> (i == (<span class="keyword">int</span>)cieInfo.returnAddressRegister) &#123;</span><br><span class="line">            <span class="comment">// Leaf function keeps the return address in register and there is no</span></span><br><span class="line">            <span class="comment">// explicit intructions how to restore it.</span></span><br><span class="line">            returnAddress = registers.<span class="built_in">getRegister</span>(cieInfo.returnAddressRegister);</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      isSignalFrame = cieInfo.isSignalFrame;</span><br><span class="line"></span><br><span class="line">			...</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Return address is address after call site instruction, so setting IP to</span></span><br><span class="line">      <span class="comment">// that does simualates a return.</span></span><br><span class="line">      newRegisters.<span class="built_in">setIP</span>(returnAddress);</span><br><span class="line"></span><br><span class="line">      <span class="comment">// Simulate the step by replacing the register set with the new ones.</span></span><br><span class="line">      registers = newRegisters;</span><br><span class="line"></span><br><span class="line">      <span class="keyword">return</span> UNW_STEP_SUCCESS;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> UNW_EBADFRAME;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="unw-get-proc-info"><a href="#unw-get-proc-info" class="headerlink" title="__unw_get_proc_info"></a>__unw_get_proc_info</h2><p>将前面step过程时cursor更新的proc_info信息写入到info指针中</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Get unwind info at cursor position in stack frame.</span></span><br><span class="line">_LIBUNWIND_HIDDEN <span class="keyword">int</span> __unw_get_proc_info(<span class="keyword">unw_cursor_t</span> *cursor,</span><br><span class="line">                                          <span class="keyword">unw_proc_info_t</span> *info) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;__unw_get_proc_info(cursor=%p, &amp;info=%p)&quot;</span>,</span><br><span class="line">                       <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(cursor), <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(info));</span><br><span class="line">  AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;</span><br><span class="line">  co-&gt;<span class="built_in">getInfo</span>(info);</span><br><span class="line">  <span class="keyword">if</span> (info-&gt;end_ip == <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> UNW_ENOINFO;</span><br><span class="line">  <span class="keyword">return</span> UNW_ESUCCESS;</span><br><span class="line">&#125;</span><br><span class="line">_LIBUNWIND_WEAK_ALIAS(__unw_get_proc_info, unw_get_proc_info)</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt;</span><br><span class="line"><span class="keyword">void</span> UnwindCursor&lt;A, R&gt;::<span class="built_in">getInfo</span>(<span class="keyword">unw_proc_info_t</span> *info) &#123;</span><br><span class="line">  <span class="keyword">if</span> (_unwindInfoMissing)</span><br><span class="line">    <span class="built_in">memset</span>(info, <span class="number">0</span>, <span class="built_in"><span class="keyword">sizeof</span></span>(*info));</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    *info = _info;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="context与cursor的联系"><a href="#context与cursor的联系" class="headerlink" title="context与cursor的联系"></a>context与cursor的联系</h1><p>context和cusor两个变量的各种传递关系搞得我比较混乱，加上各种调用也比较复杂，因此我在这里整理一下这两个变量的关系。</p>
+<p>context是一个buffer，用于保存上下文的寄存器</p>
+<p>cursor是一个buffer，用于对象的实际构造</p>
+<p>两个变量主要在_Unwind_RaiseException的过程中起到作用。</p>
+<ol>
+<li>首先在_Unwind_RaiseException的开始读取了context到context的buffer中</li>
+<li>__unw_init_local:在每个phase的开始初始化local，即根据context的值。<ol>
+<li>将context所保存的寄存器拷贝到cursor中</li>
+<li>内部调用setInfoBasedOnIPRegister<ol>
+<li>getInfoFromDwarfSection<ol>
+<li>getInfoFromFdeCie 更新info</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>在定位对应栈帧的时候会调用cursor.step()<ol>
+<li>内部调用stepWithDwarfFDE<ol>
+<li>更新registers。registers = newRegisters;</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>__unw_get_proc_info: 读取cursor中的proc info，以及sp</li>
+</ol>
+<p>register每次都会拷贝context中的值。也就是说第一次更新的第二次不会生效，第二次开始搜索的位置和第一次相同。</p>
+<h1 id="unwind-phase2"><a href="#unwind-phase2" class="headerlink" title="unwind_phase2"></a>unwind_phase2</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> _Unwind_Reason_Code</span></span><br><span class="line"><span class="function"><span class="title">unwind_phase2</span><span class="params">(<span class="keyword">unw_context_t</span> *uc, <span class="keyword">unw_cursor_t</span> *cursor, _Unwind_Exception *exception_object)</span> </span>&#123;</span><br><span class="line">  __unw_init_local(cursor, uc);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// uc is initialized by __unw_getcontext in the parent frame. The first stack</span></span><br><span class="line">  <span class="comment">// frame walked is unwind_phase2.</span></span><br><span class="line">  <span class="keyword">unsigned</span> framesWalked = <span class="number">1</span>;</span><br><span class="line">  <span class="comment">// Walk each frame until we reach where search phase said to stop.</span></span><br><span class="line">  <span class="keyword">while</span> (<span class="literal">true</span>) &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Ask libunwind to get next frame (skip over first which is</span></span><br><span class="line">    <span class="comment">// _Unwind_RaiseException).</span></span><br><span class="line">    <span class="keyword">int</span> stepResult = __unw_step(cursor);</span><br><span class="line">    <span class="keyword">if</span> (stepResult == <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> _URC_END_OF_STACK;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (stepResult &lt; <span class="number">0</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> _URC_FATAL_PHASE2_ERROR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Get info about this frame.</span></span><br><span class="line">    <span class="keyword">unw_word_t</span> sp;</span><br><span class="line">    <span class="keyword">unw_proc_info_t</span> frameInfo;</span><br><span class="line">    __unw_get_reg(cursor, UNW_REG_SP, &amp;sp);</span><br><span class="line">    <span class="keyword">if</span> (__unw_get_proc_info(cursor, &amp;frameInfo) != UNW_ESUCCESS) &#123;</span><br><span class="line">      <span class="keyword">return</span> _URC_FATAL_PHASE2_ERROR;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ++framesWalked;</span><br><span class="line">    <span class="comment">// If there is a personality routine, tell it we are unwinding.</span></span><br><span class="line">    <span class="keyword">if</span> (frameInfo.handler != <span class="number">0</span>) &#123;</span><br><span class="line">      _Unwind_Personality_Fn p =</span><br><span class="line">          (_Unwind_Personality_Fn)(<span class="keyword">uintptr_t</span>)(frameInfo.handler);</span><br><span class="line">      _Unwind_Action action = _UA_CLEANUP_PHASE;</span><br><span class="line">      <span class="keyword">if</span> (sp == exception_object-&gt;private_2) &#123;</span><br><span class="line">        <span class="comment">// Tell personality this was the frame it marked in phase 1.</span></span><br><span class="line">        action = (_Unwind_Action)(_UA_CLEANUP_PHASE | _UA_HANDLER_FRAME);</span><br><span class="line">      &#125;</span><br><span class="line">       _Unwind_Reason_Code personalityResult =</span><br><span class="line">          (*p)(<span class="number">1</span>, action, exception_object-&gt;exception_class, exception_object,</span><br><span class="line">               (struct _Unwind_Context *)(cursor));</span><br><span class="line">      <span class="built_in"><span class="keyword">switch</span></span> (personalityResult) &#123;</span><br><span class="line">      <span class="keyword">case</span> _URC_CONTINUE_UNWIND:</span><br><span class="line">        <span class="comment">// Continue unwinding</span></span><br><span class="line">        <span class="keyword">if</span> (sp == exception_object-&gt;private_2) &#123;</span><br><span class="line">          <span class="comment">// Phase 1 said we would stop at this frame, but we did not...</span></span><br><span class="line">          _LIBUNWIND_ABORT(<span class="string">&quot;during phase1 personality function said it would &quot;</span></span><br><span class="line">                           <span class="string">&quot;stop here, but now in phase2 it did not stop here&quot;</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">      <span class="keyword">case</span> _URC_INSTALL_CONTEXT:</span><br><span class="line">        <span class="comment">// Personality routine says to transfer control to landing pad.</span></span><br><span class="line">        <span class="comment">// We may get control back if landing pad calls _Unwind_Resume().</span></span><br><span class="line">        __unw_phase2_resume(cursor, framesWalked);</span><br><span class="line">        <span class="comment">// __unw_phase2_resume() only returns if there was an error.</span></span><br><span class="line">        <span class="keyword">return</span> _URC_FATAL_PHASE2_ERROR;</span><br><span class="line">      <span class="keyword">default</span>:</span><br><span class="line">        <span class="comment">// Personality routine returned an unknown result code.</span></span><br><span class="line">        <span class="keyword">return</span> _URC_FATAL_PHASE2_ERROR;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Clean up phase did not resume at the frame that the search phase</span></span><br><span class="line">  <span class="comment">// said it would...</span></span><br><span class="line">  <span class="keyword">return</span> _URC_FATAL_PHASE2_ERROR;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>找到next_frame</li>
+<li>获取proc_info</li>
+<li>frame的handler不为空的时候<ol>
+<li>根据private_2的情况设置不同的action，之后再执行personality操作</li>
+<li>查看结果<ol>
+<li>_URC_INSTALL_CONTEXT会执行resume，transfer control to landing pad</li>
+<li>_URC_CONTINUE_UNWIND在前一步search的时候设置了，表明应该在这个frame中停下，但实际没停，所以会炸</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>否则继续查找，如果全部找完了那么就是_URC_FATAL_PHASE2_ERROR</li>
+</ol>
+<p>本质上是找到第一个handler不为空的frame</p>
+<p>注意两次执行handler时的action，第一次是_UA_SEARCH_PHASE，第二次是cleanup或者cleanup | handle</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">  _UA_SEARCH_PHASE = <span class="number">1</span>,</span><br><span class="line">  _UA_CLEANUP_PHASE = <span class="number">2</span>,</span><br><span class="line">  _UA_HANDLER_FRAME = <span class="number">4</span>,</span><br><span class="line">  _UA_FORCE_UNWIND = <span class="number">8</span>,</span><br><span class="line">  _UA_END_OF_STACK = <span class="number">16</span> <span class="comment">// gcc extension to C++ ABI</span></span><br><span class="line">&#125; _Unwind_Action;</span><br></pre></td></tr></table></figure>
+
+<h1 id="phase2-resume"><a href="#phase2-resume" class="headerlink" title="phase2_resume"></a>phase2_resume</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// When CET is enabled, each &quot;call&quot; instruction will push return address to</span></span><br><span class="line"><span class="comment">// CET shadow stack, each &quot;ret&quot; instruction will pop current CET shadow stack</span></span><br><span class="line"><span class="comment">// top and compare it with target address which program will return.</span></span><br><span class="line"><span class="comment">// In exception handing, **some stack frames will be skipped before jumping to</span></span><br><span class="line"><span class="comment">// landing pad and we must adjust CET shadow stack accordingly.**</span></span><br><span class="line"><span class="comment">// _LIBUNWIND_POP_CET_SSP is used to adjust CET shadow stack pointer and we</span></span><br><span class="line"><span class="comment">// directly jump to __libunwind_Registerts_x86/x86_64_jumpto instead of using</span></span><br><span class="line"><span class="comment">// a regular function call to avoid pushing to CET shadow stack again.</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> !defined(_LIBUNWIND_USE_CET)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __unw_phase2_resume(cursor, fn) __unw_resume((cursor))</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(_LIBUNWIND_TARGET_I386)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __unw_phase2_resume(cursor, fn)                                        \</span></span><br><span class="line"><span class="meta">  do &#123;                                                                         \</span></span><br><span class="line"><span class="meta">    _LIBUNWIND_POP_CET_SSP((fn));                                              \</span></span><br><span class="line"><span class="meta">    void *cetRegContext = __libunwind_cet_get_registers((cursor));             \</span></span><br><span class="line"><span class="meta">    void *cetJumpAddress = __libunwind_cet_get_jump_target();                  \</span></span><br><span class="line"><span class="meta">    __asm__ volatile(<span class="meta-string">&quot;push %%edi\n\t&quot;</span>                                          \</span></span><br><span class="line"><span class="meta">                     <span class="meta-string">&quot;sub $4, %%esp\n\t&quot;</span>                                       \</span></span><br><span class="line"><span class="meta">                     <span class="meta-string">&quot;jmp *%%edx\n\t&quot;</span> :: <span class="meta-string">&quot;D&quot;</span>(cetRegContext),                   \</span></span><br><span class="line"><span class="meta">                     <span class="meta-string">&quot;d&quot;</span>(cetJumpAddress));                                     \</span></span><br><span class="line"><span class="meta">  &#125; while (0)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(_LIBUNWIND_TARGET_X86_64)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> __unw_phase2_resusme(cursor, fn)                                        \</span></span><br><span class="line"><span class="meta">  do &#123;                                                                         \</span></span><br><span class="line"><span class="meta">    _LIBUNWIND_POP_CET_SSP((fn));                                            \</span></span><br><span class="line"><span class="meta">    void *cetRegContext = __libunwind_cet_get_registers((cursor));             \</span></span><br><span class="line"><span class="meta">    void *cetJumpAddress = __libunwind_cet_get_jump_target();                  \</span></span><br><span class="line"><span class="meta">    __asm__ volatile(<span class="meta-string">&quot;jmpq *%%rdx\n\t&quot;</span> :: <span class="meta-string">&quot;D&quot;</span>(cetRegContext),                  \</span></span><br><span class="line"><span class="meta">                     <span class="meta-string">&quot;d&quot;</span>(cetJumpAddress));                                     \</span></span><br><span class="line"><span class="meta">  &#125; while (0)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>这里主要是跳转到对应的汇编处理代码。使用CET时会额外插入CET命令，并且调用__unw_resume。</p>
+<p>CET：Control-flow Enforcement Technology。控制流保护</p>
+<p><a class="link"   target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Control-flow_integrity" >Control-flow integrity<i class="fas fa-external-link-alt"></i></a></p>
+<blockquote>
+<p><strong>some stack frames will be skipped before jumping to landing pad and we must adjust CET shadow stack accordingly.</strong></p>
+</blockquote>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/// Resume execution at cursor position (aka longjump).</span></span><br><span class="line">_LIBUNWIND_HIDDEN <span class="keyword">int</span> __unw_resume(<span class="keyword">unw_cursor_t</span> *cursor) &#123;</span><br><span class="line">  _LIBUNWIND_TRACE_API(<span class="string">&quot;__unw_resume(cursor=%p)&quot;</span>, <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span> *&gt;(cursor));</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __has_feature(address_sanitizer) || defined(__SANITIZE_ADDRESS__)</span></span><br><span class="line">  <span class="comment">// Inform the ASan runtime that now might be a good time to clean stuff up.</span></span><br><span class="line">  __asan_handle_no_return();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;</span><br><span class="line">  co-&gt;<span class="built_in">jumpto</span>();</span><br><span class="line">  <span class="keyword">return</span> UNW_EUNSPEC;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> A, <span class="keyword">typename</span> R&gt; <span class="keyword">void</span> UnwindCursor&lt;A, R&gt;::<span class="built_in">jumpto</span>() &#123;</span><br><span class="line">  _registers.<span class="built_in">jumpto</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">jumpto</span><span class="params">()</span> </span>&#123; __libunwind_Registers_x86_jumpto(<span class="keyword">this</span>); &#125;</span><br></pre></td></tr></table></figure>
+
+<p>剩下的情况，根据i386和x86_64进行不同的处理</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_USE_CET)</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> <span class="keyword">void</span> *__libunwind_cet_get_registers(<span class="keyword">unw_cursor_t</span> *cursor) &#123;</span><br><span class="line">  AbstractUnwindCursor *co = (AbstractUnwindCursor *)cursor;</span><br><span class="line">  <span class="keyword">return</span> co-&gt;<span class="built_in">get_registers</span>();</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_TARGET_I386)</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> _<span class="title">LIBUNWIND_HIDDEN</span> <span class="title">Registers_x86</span>;</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> <span class="keyword">void</span> __libunwind_Registers_x86_jumpto(Registers_x86 *);</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBUNWIND_USE_CET)</span></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> <span class="keyword">void</span> *__libunwind_cet_get_jump_target() &#123;</span><br><span class="line">  <span class="keyword">return</span> <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">void</span> *&gt;(&amp;__libunwind_Registers_x86_jumpto);</span><br><span class="line">&#125;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br></pre></td></tr></table></figure>
+
+<p>最后都会跳转到这个__libunwind_Registers_x86_jumpto，下面的内容是原始的汇编代码以及我加的一些注释。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">DEFINE_LIBUNWIND_FUNCTION</span>(__libunwind_Registers_x86_jumpto)</span><br><span class="line">#</span><br><span class="line"><span class="meta"># extern <span class="meta-string">&quot;C&quot;</span> void __libunwind_Registers_x86_jumpto(Registers_x86 *);</span></span><br><span class="line">#</span><br><span class="line"># On entry:</span><br><span class="line">#  +                       +</span><br><span class="line">#  +-----------------------+</span><br><span class="line">#  + thread_state pointer  +</span><br><span class="line">#  +-----------------------+</span><br><span class="line">#  + <span class="keyword">return</span> address        +</span><br><span class="line">#  +-----------------------+   &lt;-- SP</span><br><span class="line">#  +                       +</span><br><span class="line"></span><br><span class="line">  _LIBUNWIND_CET_ENDBR</span><br><span class="line">  movl   <span class="number">4</span>(%esp), %eax <span class="meta"># esp的地址+4（即this指针的值）加载到eax</span></span><br><span class="line">  <span class="meta"># set up eax and ret on new stack location</span></span><br><span class="line">  movl  <span class="number">28</span>(%eax), %edx <span class="meta"># edx holds new stack pointer</span></span><br><span class="line">		  # <span class="number">28</span>(%eax) 是<span class="keyword">this</span>的esp，这个sp是在寻找栈帧解析dwarf的时候记录的</span><br><span class="line">  subl  $<span class="number">8</span>,%edx <span class="meta"># edx -= 8</span></span><br><span class="line">  </span><br><span class="line">  --- <span class="keyword">this</span>.esp  --&gt;  ---</span><br><span class="line">								    	    <span class="number">8</span></span><br><span class="line">							       --- edx = <span class="keyword">this</span>.esp - <span class="number">8</span></span><br><span class="line">  </span><br><span class="line">  movl  %edx, <span class="number">28</span>(%eax) # 保存edx到<span class="keyword">this</span>的eip中</span><br><span class="line">  # 相当于<span class="keyword">this</span>的esp -= <span class="number">8</span></span><br><span class="line">  movl  <span class="number">0</span>(%eax), %ebx <span class="meta"># this的eax地址的值加载到ebx</span></span><br><span class="line">  # 原来的eax保存的是指向unwind_exception的指针，这个是在personality中设置的 </span><br><span class="line">  movl  %ebx, <span class="number">0</span>(%edx) <span class="meta"># ebx的值写到edx所在地址，也就是</span></span><br><span class="line">  movl  <span class="number">40</span>(%eax), %ebx <span class="meta"># eip写到ebx</span></span><br><span class="line">  movl  %ebx, <span class="number">4</span>(%edx) # <span class="number">4</span>(edx) = eip</span><br><span class="line">  </span><br><span class="line">	--- ebx + <span class="number">8</span> <span class="comment">// this.esp</span></span><br><span class="line">	<span class="keyword">this</span>.eax</span><br><span class="line">	--- ebx + <span class="number">4</span></span><br><span class="line">	新的 eip</span><br><span class="line">	--- ebx</span><br><span class="line">  新开辟了一块空间，保存了eip和registers</span><br><span class="line">  </span><br><span class="line">  <span class="meta"># we now have ret and eax pushed onto where new stack will be</span></span><br><span class="line">  <span class="meta"># restore all registers</span></span><br><span class="line">  movl   <span class="number">4</span>(%eax), %ebx</span><br><span class="line">  movl   <span class="number">8</span>(%eax), %ecx</span><br><span class="line">  movl  <span class="number">12</span>(%eax), %edx</span><br><span class="line">  movl  <span class="number">16</span>(%eax), %edi</span><br><span class="line">  movl  <span class="number">20</span>(%eax), %esi</span><br><span class="line">  movl  <span class="number">24</span>(%eax), %ebp</span><br><span class="line">  movl  <span class="number">28</span>(%eax), %esp</span><br><span class="line">  <span class="meta"># skip ss</span></span><br><span class="line">  <span class="meta"># skip eflags</span></span><br><span class="line">  pop    %eax  <span class="meta"># eax was already pushed on new stack</span></span><br><span class="line">  pop    %ecx  <span class="meta"># pop esp上的值到eax和ecx，ecx保存了eip，即landingpad的值</span></span><br><span class="line">  jmp    *%ecx</span><br><span class="line">  <span class="meta"># skip cs</span></span><br><span class="line">  <span class="meta"># skip ds</span></span><br><span class="line">  <span class="meta"># skip es</span></span><br><span class="line">  <span class="meta"># skip fs</span></span><br><span class="line">  <span class="meta"># skip gs</span></span><br></pre></td></tr></table></figure>
+
+<p>这里ecx是landingpad的地址，是在phase2的时候personality中设置的对应的值。</p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM异常实现三 libunwind</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2024-10-02 11:28:08</li>
+        <li>
+            本文链接：https://homura.live/2024/10/02/Exception/exception-3/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2024/10/02/Exception/exception-4/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现四 personality</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2024/10/02/Exception/exception-2/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现二 libcxxabi</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2024&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Unwind-RaiseException"><span class="nav-number">1.</span> <span class="nav-text">_Unwind_RaiseException</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%87%BA%E7%8E%B0%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">出现的数据结构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#unw-getcontext"><span class="nav-number">3.</span> <span class="nav-text">__unw_getcontext</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#unwind-phase1"><span class="nav-number">4.</span> <span class="nav-text">unwind_phase1</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#unw-init-local"><span class="nav-number">4.1.</span> <span class="nav-text">__unw_init_local</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#UnwindCursor"><span class="nav-number">4.1.1.</span> <span class="nav-text">UnwindCursor</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#UnwindCursor-setInfoBasedOnIPRegister"><span class="nav-number">4.1.2.</span> <span class="nav-text">UnwindCursor::setInfoBasedOnIPRegister</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#findUnwindSections"><span class="nav-number">4.1.3.</span> <span class="nav-text">findUnwindSections</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#unw-step"><span class="nav-number">4.2.</span> <span class="nav-text">__unw_step</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#unw-get-proc-info"><span class="nav-number">4.3.</span> <span class="nav-text">__unw_get_proc_info</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#context%E4%B8%8Ecursor%E7%9A%84%E8%81%94%E7%B3%BB"><span class="nav-number">5.</span> <span class="nav-text">context与cursor的联系</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#unwind-phase2"><span class="nav-number">6.</span> <span class="nav-text">unwind_phase2</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#phase2-resume"><span class="nav-number">7.</span> <span class="nav-text">phase2_resume</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

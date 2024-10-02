@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM异常实现二 libcxxabi |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="在之前的博客提到带有异常相关的C++代码编译成llvm ir后，会插入libcxxabi的__cxa_xxx函数，这期则是来了解这些函数的实现。 接口libcxxabi中的部分包含了exception，array的分配与释放，virtual相关，demangler等，目前我们在这里只关心异常相关的部分。 首先来看异常的接口，基本上都是之前内容中出现的函数声明，其中包含了分配释放等常见的异常操作。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM异常实现二 libcxxabi">
+<meta property="og:url" content="https://fusionbolt.github.io/2024/10/02/Exception/exception-2/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="在之前的博客提到带有异常相关的C++代码编译成llvm ir后，会插入libcxxabi的__cxa_xxx函数，这期则是来了解这些函数的实现。 接口libcxxabi中的部分包含了exception，array的分配与释放，virtual相关，demangler等，目前我们在这里只关心异常相关的部分。 首先来看异常的接口，基本上都是之前内容中出现的函数声明，其中包含了分配释放等常见的异常操作。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/exception-2/Untitled.png">
+<meta property="article:published_time" content="2024-10-02T03:28:05.000Z">
+<meta property="article:modified_time" content="2024-10-02T03:36:37.046Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Exception">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/exception-2/Untitled.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM异常实现二 libcxxabi</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2024-10-02 11:28:05
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Exception/">Exception</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>3k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>16 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>在之前的博客提到带有异常相关的C++代码编译成llvm ir后，会插入libcxxabi的__cxa_xxx函数，这期则是来了解这些函数的实现。</p>
+<h1 id="接口"><a href="#接口" class="headerlink" title="接口"></a>接口</h1><p>libcxxabi中的部分包含了exception，array的分配与释放，virtual相关，demangler等，目前我们在这里只关心异常相关的部分。</p>
+<p>首先来看异常的接口，基本上都是之前内容中出现的函数声明，其中包含了分配释放等常见的异常操作。</p>
+<p>libcxxabi/include/cxxabi.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 2.4.2 Allocating the Exception Object</span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">void</span> *</span><br><span class="line">__cxa_allocate_exception(<span class="keyword">size_t</span> thrown_size) <span class="keyword">throw</span>();</span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">void</span></span><br><span class="line">__cxa_free_exception(<span class="keyword">void</span> *thrown_exception) <span class="keyword">throw</span>();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2.4.3 Throwing the Exception Object</span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN <span class="keyword">void</span></span><br><span class="line">__cxa_throw(<span class="keyword">void</span> *thrown_exception, std::type_info *tinfo,</span><br><span class="line">            <span class="built_in"><span class="keyword">void</span></span> (*dest)(<span class="keyword">void</span> *));</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2.5.3 Exception Handlers</span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">void</span> *</span><br><span class="line">__cxa_get_exception_ptr(<span class="keyword">void</span> *exceptionObject) <span class="keyword">throw</span>();</span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">void</span> *</span><br><span class="line">__cxa_begin_catch(<span class="keyword">void</span> *exceptionObject) <span class="keyword">throw</span>();</span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">void</span> __cxa_end_catch();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBCXXABI_ARM_EHABI)</span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">bool</span></span><br><span class="line">__cxa_begin_cleanup(<span class="keyword">void</span> *exceptionObject) <span class="keyword">throw</span>();</span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS <span class="keyword">void</span> __cxa_end_cleanup();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS std::type_info *__cxa_current_exception_type();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2.5.4 Rethrowing Exceptions</span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN <span class="keyword">void</span> __cxa_rethrow();</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2.6 Auxiliary Runtime APIs</span></span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN <span class="keyword">void</span> __cxa_bad_cast(<span class="keyword">void</span>);</span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN <span class="keyword">void</span> __cxa_bad_typeid(<span class="keyword">void</span>);</span><br><span class="line"><span class="keyword">extern</span> _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN <span class="keyword">void</span></span><br><span class="line">__cxa_throw_bad_array_new_length(<span class="keyword">void</span>);</span><br></pre></td></tr></table></figure>
+
+<h1 id="cxa-allocate-exception"><a href="#cxa-allocate-exception" class="headerlink" title="__cxa_allocate_exception"></a>__cxa_allocate_exception</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  Allocate a __cxa_exception object, and zero-fill it.</span></span><br><span class="line"><span class="comment">//  Reserve &quot;thrown_size&quot; bytes on the end for the user&#x27;s exception</span></span><br><span class="line"><span class="comment">//  object. Zero-fill the object. If memory can&#x27;t be allocated, call</span></span><br><span class="line"><span class="comment">//  std::terminate. Return a pointer to the memory to be used for the</span></span><br><span class="line"><span class="comment">//  user&#x27;s exception object.</span></span><br><span class="line"><span class="keyword">void</span> *__cxa_allocate_exception(<span class="keyword">size_t</span> thrown_size) <span class="keyword">throw</span>() &#123;</span><br><span class="line">    <span class="keyword">size_t</span> actual_size = <span class="built_in">cxa_exception_size_from_exception_thrown_size</span>(thrown_size);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Allocate extra space before the __cxa_exception header to ensure the</span></span><br><span class="line">    <span class="comment">// start of the thrown object is sufficiently aligned.</span></span><br><span class="line">    <span class="keyword">size_t</span> header_offset = <span class="built_in">get_cxa_exception_offset</span>();</span><br><span class="line">    <span class="keyword">char</span> *raw_buffer =</span><br><span class="line">        (<span class="keyword">char</span> *)__aligned_malloc_with_fallback(header_offset + actual_size);</span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">NULL</span> == raw_buffer)</span><br><span class="line">        std::<span class="built_in">terminate</span>();</span><br><span class="line"></span><br><span class="line">    __cxa_exception *exception_header =</span><br><span class="line">        <span class="keyword">static_cast</span>&lt;__cxa_exception *&gt;((<span class="keyword">void</span> *)(raw_buffer + header_offset));</span><br><span class="line">    ::<span class="built_in">memset</span>(exception_header, <span class="number">0</span>, actual_size);</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">thrown_object_from_cxa_exception</span>(exception_header);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个函数主要分配了一块空间用于作为异常处理的对象，这块空间由两部分组成：throw对象的size以及__cxa_exception对象。最后返回的是throw对象开始位置的指针。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">| __cxa_exception |     size    |</span><br><span class="line">								  ^</span><br><span class="line">								  |</span><br><span class="line">								 指针</span><br></pre></td></tr></table></figure>
+
+<p>接下来我们看一下更细致的代码实现。</p>
+<h2 id="actual-size"><a href="#actual-size" class="headerlink" title="actual size"></a>actual size</h2><p>首先是计算实际分配的size，其中包含了前面的__cxa_exception以及throw对象的size。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Round s up to next multiple of a.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span></span></span><br><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">aligned_allocation_size</span><span class="params">(<span class="keyword">size_t</span> s, <span class="keyword">size_t</span> a)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> (s + a - <span class="number">1</span>) &amp; ~(a - <span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span></span></span><br><span class="line"><span class="function"><span class="keyword">size_t</span> <span class="title">cxa_exception_size_from_exception_thrown_size</span><span class="params">(<span class="keyword">size_t</span> size)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">aligned_allocation_size</span>(size + <span class="built_in"><span class="keyword">sizeof</span></span> (__cxa_exception),</span><br><span class="line">                                   <span class="built_in"><span class="keyword">alignof</span></span>(__cxa_exception));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="exception-offset"><a href="#exception-offset" class="headerlink" title="exception offset"></a>exception offset</h2><p>另外需要计算header的起始地址，要确保对象的空间能满足align的计算，如果对象的align小于目标机器的align那么会在最前面填充。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Return the offset of the __cxa_exception header from the start of the</span></span><br><span class="line"><span class="comment">// allocated buffer. If __cxa_exception&#x27;s alignment is smaller than the maximum</span></span><br><span class="line"><span class="comment">// useful alignment for the target machine, padding has to be inserted before</span></span><br><span class="line"><span class="comment">// the header to ensure the thrown object that follows the header is</span></span><br><span class="line"><span class="comment">// sufficiently aligned. This happens if _Unwind_exception isn&#x27;t double-word</span></span><br><span class="line"><span class="comment">// aligned (on Darwin, for example).</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">size_t</span> <span class="title">get_cxa_exception_offset</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">S</span> &#123;</span></span><br><span class="line">  &#125; __attribute__((aligned));</span><br><span class="line"></span><br><span class="line">  <span class="comment">// Compute the maximum alignment for the target machine.</span></span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">size_t</span> alignment = <span class="built_in"><span class="keyword">alignof</span></span>(S);</span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">size_t</span> excp_size = <span class="built_in"><span class="keyword">sizeof</span></span>(__cxa_exception);</span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">size_t</span> aligned_size =</span><br><span class="line">      (excp_size + alignment - <span class="number">1</span>) / alignment * alignment;</span><br><span class="line">  <span class="keyword">constexpr</span> <span class="keyword">size_t</span> offset = aligned_size - excp_size;</span><br><span class="line">  <span class="built_in"><span class="keyword">static_assert</span></span>((offset == <span class="number">0</span> || <span class="built_in"><span class="keyword">alignof</span></span>(_Unwind_Exception) &lt; alignment),</span><br><span class="line">                <span class="string">&quot;offset is non-zero only if _Unwind_Exception isn&#x27;t aligned&quot;</span>);</span><br><span class="line">  <span class="keyword">return</span> offset;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先使用一个空结构体，按照struct的最小size进行align。如果__exa_exception的align小于目标机器的最大可用align，那么填充，返回offset，这个offset也就是实际上header开始的位置。</p>
+<h2 id="malloc"><a href="#malloc" class="headerlink" title="malloc"></a>malloc</h2><p>malloc的size是包含了header_offset以及实际分配的整个size。</p>
+<p>malloc的过程</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span>* __aligned_malloc_with_fallback(<span class="keyword">size_t</span> size) &#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_WIN32)</span></span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">void</span>* dest = std::__libcpp_aligned_alloc(<span class="built_in"><span class="keyword">alignof</span></span>(__aligned_type), size))</span><br><span class="line">    <span class="keyword">return</span> dest;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION)</span></span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">void</span>* dest = ::<span class="built_in">malloc</span>(size))</span><br><span class="line">    <span class="keyword">return</span> dest;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">  <span class="keyword">if</span> (size == <span class="number">0</span>)</span><br><span class="line">    size = <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">if</span> (<span class="keyword">void</span>* dest = std::__libcpp_aligned_alloc(__alignof(__aligned_type), size))</span><br><span class="line">    <span class="keyword">return</span> dest;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">fallback_malloc</span>(size);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里使用了标准库的align_alloc</p>
+<p>关于fallback则是标准库分配失败的情况下的备选方法</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span>* <span class="title">fallback_malloc</span><span class="params">(<span class="keyword">size_t</span> len)</span> </span>&#123;</span><br><span class="line">  heap_node *p, *prev;</span><br><span class="line">  <span class="keyword">const</span> <span class="keyword">size_t</span> nelems = <span class="built_in">alloc_size</span>(len);</span><br><span class="line">  <span class="function">mutexor <span class="title">mtx</span><span class="params">(&amp;heap_mutex)</span></span>;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (<span class="literal">NULL</span> == freelist)</span><br><span class="line">    <span class="built_in">init_heap</span>();</span><br><span class="line"></span><br><span class="line">  <span class="comment">//  Walk the free list, looking for a &quot;big enough&quot; chunk</span></span><br><span class="line">  <span class="keyword">for</span> (p = freelist, prev = <span class="number">0</span>; p &amp;&amp; p != list_end;</span><br><span class="line">       prev = p, p = <span class="built_in">node_from_offset</span>(p-&gt;next_node)) &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (p-&gt;len &gt; nelems) &#123; <span class="comment">//  chunk is larger, shorten, and return the tail</span></span><br><span class="line">      heap_node* q;</span><br><span class="line"></span><br><span class="line">      p-&gt;len = <span class="keyword">static_cast</span>&lt;heap_size&gt;(p-&gt;len - nelems);</span><br><span class="line">      q = p + p-&gt;len;</span><br><span class="line">      q-&gt;next_node = <span class="number">0</span>;</span><br><span class="line">      q-&gt;len = <span class="keyword">static_cast</span>&lt;heap_size&gt;(nelems);</span><br><span class="line">      <span class="keyword">return</span> (<span class="keyword">void</span>*)(q + <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (p-&gt;len == nelems) &#123; <span class="comment">// exact size match</span></span><br><span class="line">      <span class="keyword">if</span> (prev == <span class="number">0</span>)</span><br><span class="line">        freelist = <span class="built_in">node_from_offset</span>(p-&gt;next_node);</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        prev-&gt;next_node = p-&gt;next_node;</span><br><span class="line">      p-&gt;next_node = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">return</span> (<span class="keyword">void</span>*)(p + <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="literal">NULL</span>; <span class="comment">// couldn&#x27;t find a spot big enough</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="返回异常对象指针"><a href="#返回异常对象指针" class="headerlink" title="返回异常对象指针"></a>返回异常对象指针</h2><p>malloc后创建了一个__cxa_exception的指针，跳过header_offset指向了actual_size，并且将actual_size的部分置0</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">				exception_header</span><br><span class="line">								|</span><br><span class="line">| header_offset | actual_size |</span><br></pre></td></tr></table></figure>
+
+<p>将actual size拆开的话实际的内存视图如下</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">				exception_header</span><br><span class="line">								|</span><br><span class="line">| header_offset | __cxa_exception | thrown_size |</span><br></pre></td></tr></table></figure>
+
+<p>之后将exception_header这个指针递增，以便指向thrown_size，并且转换为void*返回</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Note:  This is never called when exception_header is masquerading as a</span></span><br><span class="line"><span class="comment">//        __cxa_dependent_exception.</span></span><br><span class="line"><span class="function"><span class="keyword">static</span></span></span><br><span class="line"><span class="function"><span class="keyword">inline</span></span></span><br><span class="line"><span class="function"><span class="keyword">void</span>*</span></span><br><span class="line"><span class="function"><span class="title">thrown_object_from_cxa_exception</span><span class="params">(__cxa_exception* exception_header)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;<span class="keyword">void</span>*&gt;(exception_header + <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>下图中throw_object是最后实际返回的地址。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">					                   throw_object</span><br><span class="line">					                  			|</span><br><span class="line">| header_offset | __cxa_exception | thrown_size |</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">------------------   &lt;-- raw_buffer</span><br><span class="line">	header offset</span><br><span class="line">------------------</span><br><span class="line"></span><br><span class="line">  __cxa_exception</span><br><span class="line">  </span><br><span class="line">------------------   &lt;-- throw_object</span><br><span class="line"></span><br><span class="line">   thrown_size</span><br><span class="line"></span><br><span class="line">------------------</span><br></pre></td></tr></table></figure>
+
+<h1 id="cxa-free"><a href="#cxa-free" class="headerlink" title="__cxa_free"></a>__cxa_free</h1><figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  Free a __cxa_exception object allocated with __cxa_allocate_exception.</span></span><br><span class="line"><span class="keyword">void</span> __cxa_free_exception(<span class="keyword">void</span> *thrown_object) <span class="keyword">throw</span>() &#123;</span><br><span class="line">    <span class="comment">// Compute the size of the padding before the header.</span></span><br><span class="line">    <span class="keyword">size_t</span> header_offset = <span class="built_in">get_cxa_exception_offset</span>();</span><br><span class="line">    <span class="keyword">char</span> *raw_buffer =</span><br><span class="line">        ((<span class="keyword">char</span> *)<span class="built_in">cxa_exception_from_thrown_object</span>(thrown_object)) - header_offset;</span><br><span class="line">    __aligned_free_with_fallback((<span class="keyword">void</span> *)raw_buffer);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>按照上面的内存排布，从object反向找到对应的raw_buffer然后再释放。需要将thrown_object的指针回退一个cxa_exception的位置，再回退header_offset，最终就能找到前面allocate的起始位置。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span></span></span><br><span class="line"><span class="function"><span class="keyword">inline</span></span></span><br><span class="line"><span class="function">__cxa_exception*</span></span><br><span class="line"><span class="function"><span class="title">cxa_exception_from_thrown_object</span><span class="params">(<span class="keyword">void</span>* thrown_object)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;__cxa_exception*&gt;(thrown_object) - <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __aligned_free_with_fallback(<span class="keyword">void</span>* ptr) &#123;</span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">is_fallback_ptr</span>(ptr))</span><br><span class="line">    <span class="built_in">fallback_free</span>(ptr);</span><br><span class="line">  <span class="keyword">else</span> &#123;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION)</span></span><br><span class="line">    ::<span class="built_in">free</span>(ptr);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    std::__libcpp_aligned_free(ptr);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="cxa-throw"><a href="#cxa-throw" class="headerlink" title="__cxa_throw"></a>__cxa_throw</h1><p>这里开始跳转到libunwind</p>
+<p>libcxxabi/src/cxa_exception.cpp</p>
+<p>初始化通过excepting object获取到的exception header</p>
+<ol>
+<li><p>通过exception object获取header</p>
+</li>
+<li><p>__cxa_exception设置基本信息</p>
+<ol>
+<li>保存当前的unexpected_handler和terminate_handler</li>
+<li>保存tinfo和dest argument</li>
+</ol>
+</li>
+<li><p>在unwind header设置exception_class，64bit</p>
+</li>
+<li><p>递增uncaught_exception flag</p>
+</li>
+<li><p>调用_Unwind_RaiseException，参数是指向thrown exception的指针。</p>
+<p>这个函数开始执行unwinding</p>
+</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 2.4.3 Throwing the Exception Object</span></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">After constructing the exception object with the throw argument value,</span></span><br><span class="line"><span class="comment">the generated code calls the __cxa_throw runtime library routine. This</span></span><br><span class="line"><span class="comment">routine never returns.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">The __cxa_throw routine will do the following:</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">* Obtain the __cxa_exception header from the thrown exception object address,</span></span><br><span class="line"><span class="comment">which can be computed as follows:</span></span><br><span class="line"><span class="comment"> __cxa_exception *header = ((__cxa_exception *) thrown_exception - 1);</span></span><br><span class="line"><span class="comment">* Save the current unexpected_handler and terminate_handler in the __cxa_exception header.</span></span><br><span class="line"><span class="comment">* Save the tinfo and dest arguments in the __cxa_exception header.</span></span><br><span class="line"><span class="comment">* Set the exception_class field in the unwind header. This is a 64-bit value</span></span><br><span class="line"><span class="comment">representing the ASCII string &quot;XXXXC++\0&quot;, where &quot;XXXX&quot; is a</span></span><br><span class="line"><span class="comment">vendor-dependent string. That is, for implementations conforming to this</span></span><br><span class="line"><span class="comment">ABI, the low-order 4 bytes of this 64-bit value will be &quot;C++\0&quot;.</span></span><br><span class="line"><span class="comment">* Increment the uncaught_exception flag.</span></span><br><span class="line"><span class="comment">* Call _Unwind_RaiseException in the system unwind library, Its argument is the</span></span><br><span class="line"><span class="comment">pointer to the thrown exception, which __cxa_throw itself received as an argument.</span></span><br><span class="line"><span class="comment">__Unwind_RaiseException begins the process of stack unwinding, described</span></span><br><span class="line"><span class="comment">in Section 2.5. In special cases, such as an inability to find a</span></span><br><span class="line"><span class="comment">handler, _Unwind_RaiseException may return. In that case, __cxa_throw</span></span><br><span class="line"><span class="comment">will call terminate, assuming that there was no handler for the</span></span><br><span class="line"><span class="comment">exception.</span></span><br><span class="line"><span class="comment">*/</span></span><br><span class="line"><span class="keyword">void</span></span><br><span class="line">__cxa_throw(<span class="keyword">void</span> *thrown_object, std::type_info *tinfo, <span class="built_in"><span class="keyword">void</span></span> (*dest)(<span class="keyword">void</span> *)) &#123;</span><br><span class="line">    __cxa_eh_globals *globals = __cxa_get_globals();</span><br><span class="line">    __cxa_exception* exception_header = <span class="built_in">cxa_exception_from_thrown_object</span>(thrown_object);</span><br><span class="line"></span><br><span class="line">    exception_header-&gt;unexpectedHandler = std::<span class="built_in">get_unexpected</span>();</span><br><span class="line">    exception_header-&gt;terminateHandler  = std::<span class="built_in">get_terminate</span>();</span><br><span class="line">    exception_header-&gt;exceptionType = tinfo;</span><br><span class="line">    exception_header-&gt;exceptionDestructor = dest;</span><br><span class="line">    <span class="built_in">setOurExceptionClass</span>(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line">    exception_header-&gt;referenceCount = <span class="number">1</span>;  <span class="comment">// This is a newly allocated exception, no need for thread safety.</span></span><br><span class="line">    globals-&gt;uncaughtExceptions += <span class="number">1</span>;   <span class="comment">// Not atomically, since globals are thread-local</span></span><br><span class="line"></span><br><span class="line">    exception_header-&gt;unwindHeader.exception_cleanup = exception_cleanup_func;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __has_feature(address_sanitizer)</span></span><br><span class="line">    <span class="comment">// Inform the ASan runtime that now might be a good time to clean stuff up.</span></span><br><span class="line">    __asan_handle_no_return();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __USING_SJLJ_EXCEPTIONS__</span></span><br><span class="line">    _Unwind_SjLj_RaiseException(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    _Unwind_RaiseException(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="comment">//  This only happens when there is no handler, or some unexpected unwinding</span></span><br><span class="line">    <span class="comment">//     error happens.</span></span><br><span class="line">    <span class="built_in">failed_throw</span>(exception_header);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>首先是获取eh_globals和获取exception header的过程。获取header的时候由于header排布在thrown_object之前因此直接回退一个对象的位置即可，和allocate的时候返回的过程是相反的。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//  Utility routines</span></span><br><span class="line"><span class="function"><span class="keyword">static</span></span></span><br><span class="line"><span class="function"><span class="keyword">inline</span></span></span><br><span class="line"><span class="function">__cxa_exception*</span></span><br><span class="line"><span class="function"><span class="title">cxa_exception_from_thrown_object</span><span class="params">(<span class="keyword">void</span>* thrown_object)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;__cxa_exception*&gt;(thrown_object) - <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="cxa-eh-globals"><a href="#cxa-eh-globals" class="headerlink" title="__cxa_eh_globals"></a>__cxa_eh_globals</h1><p>cxa_exception.h</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">LIBCXXABI_HIDDEN</span> __<span class="title">cxa_eh_globals</span> &#123;</span></span><br><span class="line">    __cxa_exception *   caughtExceptions;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">int</span>        uncaughtExceptions;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBCXXABI_ARM_EHABI)</span></span><br><span class="line">    __cxa_exception* propagatingExceptions;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> _LIBCXXABI_FUNC_VIS __cxa_eh_globals * __cxa_get_globals      ();</span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> _LIBCXXABI_FUNC_VIS __cxa_eh_globals * __cxa_get_globals_fast ();</span><br></pre></td></tr></table></figure>
+
+<p>由于__cxa_exception里面保存了next，因此这里相当于保存了一个链表头</p>
+<p>exa_exception_storage.cpp</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBCXXABI_HAS_NO_THREADS)</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> __cxxabiv1 &#123;</span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line">    <span class="keyword">static</span> __cxa_eh_globals eh_globals;</span><br><span class="line">    __cxa_eh_globals *__cxa_get_globals() &#123; <span class="keyword">return</span> &amp;eh_globals; &#125;</span><br><span class="line">    __cxa_eh_globals *__cxa_get_globals_fast() &#123; <span class="keyword">return</span> &amp;eh_globals; &#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br><span class="line">&#125; <span class="comment">// namespace __cxxabiv1</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">elif</span> defined(HAS_THREAD_LOCAL)</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> __cxxabiv1 &#123;</span><br><span class="line"><span class="keyword">namespace</span> &#123;</span><br><span class="line">    __cxa_eh_globals *__globals() &#123;</span><br><span class="line">        <span class="keyword">static</span> <span class="keyword">thread_local</span> __cxa_eh_globals eh_globals;</span><br><span class="line">        <span class="keyword">return</span> &amp;eh_globals;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; <span class="comment">// namespace</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">extern</span> <span class="string">&quot;C&quot;</span> &#123;</span><br><span class="line">    __cxa_eh_globals *__cxa_get_globals() &#123; <span class="keyword">return</span> __globals(); &#125;</span><br><span class="line">    __cxa_eh_globals *__cxa_get_globals_fast() &#123; <span class="keyword">return</span> __globals(); &#125;</span><br><span class="line">&#125; <span class="comment">// extern &quot;C&quot;</span></span><br><span class="line">&#125; <span class="comment">// namespace __cxxabiv1</span></span><br></pre></td></tr></table></figure>
+
+<p>这里有一个thread_local的判断，不过本质是都是在这个cpp文件存了一个static的eh_global (exception handing global)</p>
+<h1 id="多个异常的管理"><a href="#多个异常的管理" class="headerlink" title="多个异常的管理"></a>多个异常的管理</h1><p>__cxa_eh_globals里面保存了栈顶的exception，以及未处理的exception数量。</p>
+<p>每次有新的exception时，当前exception的header中的nextException会指向当前的caughtException，然后更新__cxa_eh_globals里面的exception header为这个新的exception的header。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">eh_globals</span><br><span class="line">header = <span class="literal">nullptr</span></span><br></pre></td></tr></table></figure>
+
+<p>产生了新的exception1</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">eh_globals</span><br><span class="line">header = <span class="literal">nullptr</span></span><br><span class="line">exception header1</span><br><span class="line">next = <span class="literal">nullptr</span></span><br></pre></td></tr></table></figure>
+
+<p>更新后</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">eh_globals</span><br><span class="line">header = exception header1</span><br><span class="line">exception header1</span><br><span class="line">next = <span class="literal">nullptr</span>（原始的eh_globals的<span class="literal">nullptr</span>）</span><br></pre></td></tr></table></figure>
+
+<p>产生了新的exception2</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">eh_globals</span><br><span class="line">header = exception header1</span><br><span class="line">exception header1</span><br><span class="line">next = <span class="literal">nullptr</span>（原始的eh_globals的<span class="literal">nullptr</span>）</span><br><span class="line">exception header2</span><br><span class="line">next = <span class="literal">nullptr</span></span><br></pre></td></tr></table></figure>
+
+<p>更新后</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">eh_globals</span><br><span class="line">header = exception header2</span><br><span class="line">exception header1</span><br><span class="line">next = <span class="literal">nullptr</span>（原始的eh_globals的<span class="literal">nullptr</span>）</span><br><span class="line">exception header2</span><br><span class="line">next = exception header1（设置global之前global中的header）</span><br></pre></td></tr></table></figure>
+
+<p>异常处理过程优先处理最新的exception，处理完后会处理之前一个旧的exception，按照处理顺序来说也就是下一个。由于并不需要从旧向新的方向进行exception的查询，因此这里只需要支持单向即可。这里是添加，对应的删除也是类似。</p>
+<p>简单总结下，begin_catch的时候减少计数并且把cxa_exception放到栈上，而在end_catch的时候将对象从globals中取出，而在catch以及throw的过程中通过增减uncaughtExceptions来管理当前未处理异常对象的数量。</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/exception-2/Untitled.png"
+                      alt="Untitled"
+                ></p>
+<h1 id="cxa-catch"><a href="#cxa-catch" class="headerlink" title="__cxa_catch"></a>__cxa_catch</h1><p>主要做的事情是globals以及exception_header的更新</p>
+<h2 id="cxa-begin-catch"><a href="#cxa-begin-catch" class="headerlink" title="__cxa_begin_catch"></a>__cxa_begin_catch</h2><p>这里才真正开始把exception放到__cxa_eh_globals里。</p>
+<p>有两类exception</p>
+<ol>
+<li><p>native：primary或者dependent。处理的时候并不关心具体是哪种。主要做了如下几件事情</p>
+<ol>
+<li>增加handler count</li>
+<li>push到栈上</li>
+<li>减少uncaught_exception count</li>
+<li>返回adjusted pointer to the exception object</li>
+</ol>
+</li>
+<li><p>foreign：不包含__cxa_exception_header的异常。</p>
+<ol>
+<li><p>不能增加handler count</p>
+</li>
+<li><p>只有stack为空才能push到stack，因为没办法连接到当前栈上</p>
+<p>栈不为空则terminate</p>
+</li>
+<li><p>不增加uncaught_exception</p>
+</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span>*</span><br><span class="line">__cxa_begin_catch(<span class="keyword">void</span>* unwind_arg) <span class="keyword">throw</span>()</span><br><span class="line">&#123;</span><br><span class="line">    _Unwind_Exception* unwind_exception = <span class="keyword">static_cast</span>&lt;_Unwind_Exception*&gt;(unwind_arg);</span><br><span class="line">    <span class="keyword">bool</span> native_exception = __isOurExceptionClass(unwind_exception);</span><br><span class="line">    __cxa_eh_globals* globals = __cxa_get_globals();</span><br><span class="line">    <span class="comment">// exception_header is a hackish offset from a foreign exception, but it</span></span><br><span class="line">    <span class="comment">//   works as long as we&#x27;re careful not to try to access any __cxa_exception</span></span><br><span class="line">    <span class="comment">//   parts.</span></span><br><span class="line">    __cxa_exception* exception_header =</span><br><span class="line">            <span class="built_in">cxa_exception_from_exception_unwind_exception</span></span><br><span class="line">            (</span><br><span class="line">                <span class="keyword">static_cast</span>&lt;_Unwind_Exception*&gt;(unwind_exception)</span><br><span class="line">            );</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(__MVS__)</span></span><br><span class="line">    <span class="comment">// Remove the exception object from the linked list of exceptions that the z/OS unwinder</span></span><br><span class="line">    <span class="comment">// maintains before adding it to the libc++abi list of caught exceptions.</span></span><br><span class="line">    <span class="comment">// The libc++abi will manage the lifetime of the exception from this point forward.</span></span><br><span class="line">    _UnwindZOS_PopException();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (native_exception)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// Increment the handler count, removing the flag about being rethrown</span></span><br><span class="line">        exception_header-&gt;handlerCount = exception_header-&gt;handlerCount &lt; <span class="number">0</span> ?</span><br><span class="line">            -exception_header-&gt;handlerCount + <span class="number">1</span> : exception_header-&gt;handlerCount + <span class="number">1</span>;</span><br><span class="line">        <span class="comment">//  place the exception on the top of the stack if it&#x27;s not already</span></span><br><span class="line">        <span class="comment">//    there by a previous rethrow</span></span><br><span class="line">        <span class="keyword">if</span> (exception_header != globals-&gt;caughtExceptions)</span><br><span class="line">        &#123;</span><br><span class="line">            exception_header-&gt;nextException = globals-&gt;caughtExceptions;</span><br><span class="line">            globals-&gt;caughtExceptions = exception_header;</span><br><span class="line">        &#125;</span><br><span class="line">        globals-&gt;uncaughtExceptions -= <span class="number">1</span>;   <span class="comment">// Not atomically, since globals are thread-local</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(_LIBCXXABI_ARM_EHABI)</span></span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">reinterpret_cast</span>&lt;<span class="keyword">void</span>*&gt;(exception_header-&gt;unwindHeader.barrier_cache.bitpattern[<span class="number">0</span>]);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">        <span class="keyword">return</span> exception_header-&gt;adjustedPtr;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// Else this is a foreign exception</span></span><br><span class="line">    <span class="comment">// If the caughtExceptions stack is not empty, terminate</span></span><br><span class="line">    <span class="keyword">if</span> (globals-&gt;caughtExceptions != <span class="number">0</span>)</span><br><span class="line">        std::<span class="built_in">terminate</span>();</span><br><span class="line">    <span class="comment">// Push the foreign exception on to the stack</span></span><br><span class="line">    globals-&gt;caughtExceptions = exception_header;</span><br><span class="line">    <span class="keyword">return</span> unwind_exception + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">bool</span> __isOurExceptionClass(<span class="keyword">const</span> _Unwind_Exception* unwind_exception) &#123;</span><br><span class="line">    <span class="keyword">return</span> (__getExceptionClass(unwind_exception) &amp; get_vendor_and_language) ==</span><br><span class="line">           (kOurExceptionClass                    &amp; get_vendor_and_language);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">//  Is it one of ours?</span></span><br><span class="line"><span class="keyword">uint64_t</span> __getExceptionClass(<span class="keyword">const</span> _Unwind_Exception* unwind_exception) &#123;</span><br><span class="line">    <span class="comment">// On x86 and some ARM unwinders, unwind_exception-&gt;exception_class is</span></span><br><span class="line">    <span class="comment">// a uint64_t. On other ARM unwinders, it is a char[8].</span></span><br><span class="line">    <span class="comment">// See: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf</span></span><br><span class="line">    <span class="comment">// So we just copy it into a uint64_t to be sure.</span></span><br><span class="line">    <span class="keyword">uint64_t</span> exClass;</span><br><span class="line">    ::<span class="built_in">memcpy</span>(&amp;exClass, &amp;unwind_exception-&gt;exception_class, <span class="built_in"><span class="keyword">sizeof</span></span>(exClass));</span><br><span class="line">    <span class="keyword">return</span> exClass;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint64_t</span> kOurExceptionClass          = <span class="number">0x434C4E47432B2B00</span>; <span class="comment">// CLNGC++\0</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint64_t</span> kOurDependentExceptionClass = <span class="number">0x434C4E47432B2B01</span>; <span class="comment">// CLNGC++\1</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">const</span> <span class="keyword">uint64_t</span> get_vendor_and_language     = <span class="number">0xFFFFFFFFFFFFFF00</span>; <span class="comment">// mask for CLNGC++</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="get-ant-set-exception-class"><a href="#get-ant-set-exception-class" class="headerlink" title="get ant set exception class"></a>get ant set exception class</h2><h2 id="cxa-end-catch"><a href="#cxa-end-catch" class="headerlink" title="__cxa_end_catch"></a>__cxa_end_catch</h2><ol>
+<li>获取基本信息</li>
+<li>native exception<ol>
+<li>handlerCount小于0的情况<ol>
+<li>递增count为0，那么将当前处理的exception移除</li>
+</ol>
+</li>
+<li>大于0<ol>
+<li>递减count如果为0，那么将当前处理的exception移除</li>
+<li>isDependentException，那么释放</li>
+<li>减少refcount</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>foreign exception<ol>
+<li>删除对应的exception</li>
+</ol>
+</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span> __cxa_end_catch() &#123;</span><br><span class="line">  <span class="built_in"><span class="keyword">static_assert</span></span>(<span class="built_in"><span class="keyword">sizeof</span></span>(__cxa_exception) == <span class="built_in"><span class="keyword">sizeof</span></span>(__cxa_dependent_exception),</span><br><span class="line">                <span class="string">&quot;sizeof(__cxa_exception) must be equal to &quot;</span></span><br><span class="line">                <span class="string">&quot;sizeof(__cxa_dependent_exception)&quot;</span>);</span><br><span class="line">  <span class="built_in"><span class="keyword">static_assert</span></span>(__builtin_offsetof(__cxa_exception, referenceCount) ==</span><br><span class="line">                    __builtin_offsetof(__cxa_dependent_exception,</span><br><span class="line">                                       primaryException),</span><br><span class="line">                <span class="string">&quot;the layout of __cxa_exception must match the layout of &quot;</span></span><br><span class="line">                <span class="string">&quot;__cxa_dependent_exception&quot;</span>);</span><br><span class="line">  <span class="built_in"><span class="keyword">static_assert</span></span>(__builtin_offsetof(__cxa_exception, handlerCount) ==</span><br><span class="line">                    __builtin_offsetof(__cxa_dependent_exception, handlerCount),</span><br><span class="line">                <span class="string">&quot;the layout of __cxa_exception must match the layout of &quot;</span></span><br><span class="line">                <span class="string">&quot;__cxa_dependent_exception&quot;</span>);</span><br><span class="line">    __cxa_eh_globals* globals = __cxa_get_globals_fast(); <span class="comment">// __cxa_get_globals called in __cxa_begin_catch</span></span><br><span class="line">    __cxa_exception* exception_header = globals-&gt;caughtExceptions;</span><br><span class="line">    <span class="comment">// If we&#x27;ve rethrown a foreign exception, then globals-&gt;caughtExceptions</span></span><br><span class="line">    <span class="comment">//    will have been made an empty stack by __cxa_rethrow() and there is</span></span><br><span class="line">    <span class="comment">//    nothing more to be done.  Do nothing!</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="literal">NULL</span> != exception_header)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">bool</span> native_exception = __isOurExceptionClass(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line">        <span class="keyword">if</span> (native_exception)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// This is a native exception</span></span><br><span class="line">            <span class="keyword">if</span> (exception_header-&gt;handlerCount &lt; <span class="number">0</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//  The exception has been rethrown by __cxa_rethrow, so don&#x27;t delete it</span></span><br><span class="line">                <span class="keyword">if</span> (<span class="number">0</span> == <span class="built_in">incrementHandlerCount</span>(exception_header))</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="comment">//  Remove from the chain of uncaught exceptions</span></span><br><span class="line">                    globals-&gt;caughtExceptions = exception_header-&gt;nextException;</span><br><span class="line">                    <span class="comment">// but don&#x27;t destroy</span></span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// Keep handlerCount negative in case there are nested catch&#x27;s</span></span><br><span class="line">                <span class="comment">//   that need to be told that this exception is rethrown.  Don&#x27;t</span></span><br><span class="line">                <span class="comment">//   erase this rethrow flag until the exception is recaught.</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">// The native exception has not been rethrown</span></span><br><span class="line">                <span class="keyword">if</span> (<span class="number">0</span> == <span class="built_in">decrementHandlerCount</span>(exception_header))</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="comment">//  Remove from the chain of uncaught exceptions</span></span><br><span class="line">                    globals-&gt;caughtExceptions = exception_header-&gt;nextException;</span><br><span class="line">                    <span class="comment">// Destroy this exception, being careful to distinguish</span></span><br><span class="line">                    <span class="comment">//    between dependent and primary exceptions</span></span><br><span class="line">                    <span class="keyword">if</span> (<span class="built_in">isDependentException</span>(&amp;exception_header-&gt;unwindHeader))</span><br><span class="line">                    &#123;</span><br><span class="line">                        <span class="comment">// Reset exception_header to primaryException and deallocate the dependent exception</span></span><br><span class="line">                        __cxa_dependent_exception* dep_exception_header =</span><br><span class="line">                            <span class="keyword">reinterpret_cast</span>&lt;__cxa_dependent_exception*&gt;(exception_header);</span><br><span class="line">                        exception_header =</span><br><span class="line">                            <span class="built_in">cxa_exception_from_thrown_object</span>(dep_exception_header-&gt;primaryException);</span><br><span class="line">                        __cxa_free_dependent_exception(dep_exception_header);</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="comment">// Destroy the primary exception only if its referenceCount goes to 0</span></span><br><span class="line">                    <span class="comment">//    (this decrement must be atomic)</span></span><br><span class="line">                    __cxa_decrement_exception_refcount(<span class="built_in">thrown_object_from_cxa_exception</span>(exception_header));</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">// The foreign exception has not been rethrown.  Pop the stack</span></span><br><span class="line">            <span class="comment">//    and delete it.  If there are nested catch&#x27;s and they try</span></span><br><span class="line">            <span class="comment">//    to touch a foreign exception in any way, that is undefined</span></span><br><span class="line">            <span class="comment">//     behavior.  They likely can&#x27;t since the only way to catch</span></span><br><span class="line">            <span class="comment">//     a foreign exception is with catch (...)!</span></span><br><span class="line">            _Unwind_DeleteException(&amp;globals-&gt;caughtExceptions-&gt;unwindHeader);</span><br><span class="line">            globals-&gt;caughtExceptions = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM异常实现二 libcxxabi</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2024-10-02 11:28:05</li>
+        <li>
+            本文链接：https://homura.live/2024/10/02/Exception/exception-2/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2024/10/02/Exception/exception-3/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现三 libunwind</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2024/10/02/Exception/exception-1/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现一 LLVM IR</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2024&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%8E%A5%E5%8F%A3"><span class="nav-number">1.</span> <span class="nav-text">接口</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#cxa-allocate-exception"><span class="nav-number">2.</span> <span class="nav-text">__cxa_allocate_exception</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#actual-size"><span class="nav-number">2.1.</span> <span class="nav-text">actual size</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#exception-offset"><span class="nav-number">2.2.</span> <span class="nav-text">exception offset</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#malloc"><span class="nav-number">2.3.</span> <span class="nav-text">malloc</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%94%E5%9B%9E%E5%BC%82%E5%B8%B8%E5%AF%B9%E8%B1%A1%E6%8C%87%E9%92%88"><span class="nav-number">2.4.</span> <span class="nav-text">返回异常对象指针</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#cxa-free"><span class="nav-number">3.</span> <span class="nav-text">__cxa_free</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#cxa-throw"><span class="nav-number">4.</span> <span class="nav-text">__cxa_throw</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#cxa-eh-globals"><span class="nav-number">5.</span> <span class="nav-text">__cxa_eh_globals</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%9A%E4%B8%AA%E5%BC%82%E5%B8%B8%E7%9A%84%E7%AE%A1%E7%90%86"><span class="nav-number">6.</span> <span class="nav-text">多个异常的管理</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#cxa-catch"><span class="nav-number">7.</span> <span class="nav-text">__cxa_catch</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#cxa-begin-catch"><span class="nav-number">7.1.</span> <span class="nav-text">__cxa_begin_catch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#get-ant-set-exception-class"><span class="nav-number">7.2.</span> <span class="nav-text">get ant set exception class</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cxa-end-catch"><span class="nav-number">7.3.</span> <span class="nav-text">__cxa_end_catch</span></a></li></ol></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

@@ -285,6 +285,249 @@
                 
 
                 <h3 class="home-article-title">
+                    <a href="/2024/10/02/Exception/exception-5/">
+                        LLVM异常实现五 总结回顾
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        整个异常处理的过程中，涉及到各种层级之间相互调用，同时还有一些函数还会负责处理不同的功能（比如说personality会同时处理search以及clean），这都导致了整个过程相对复杂，因此在这里选择将异常抛出的整个过程再次用文字整理一遍，省略去庞大...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Oct 02 2024 11:28:15 GMT+0800">2024-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2024/10/02/Exception/exception-5/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2024/10/02/Exception/exception-4/">
+                        LLVM异常实现四 personality
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        前面libunwind的过程中多次和personality进行交互，这部分是由语言提供和语言相关的内容。libunwind的两个阶段对应到这一个函数之中，personality部分根据libunwind扫描到的平台相关的信息，在ehframe中扫描到...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Oct 02 2024 11:28:11 GMT+0800">2024-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2024/10/02/Exception/exception-4/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2024/10/02/Exception/exception-3/">
+                        LLVM异常实现三 libunwind
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        上期提到的__cxa_xxx相关函数的实现离不开libunwind的相关接口，libunwind专门用于平台无关的堆栈展开和错误处理，内部做了很多平台相关的兼容工作，这期我们主要来介绍一下libunwind相关接口的具体实现。
+_Unwind_Rai...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Oct 02 2024 11:28:08 GMT+0800">2024-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2024/10/02/Exception/exception-3/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2024/10/02/Exception/exception-2/">
+                        LLVM异常实现二 libcxxabi
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        在之前的博客提到带有异常相关的C++代码编译成llvm ir后，会插入libcxxabi的__cxa_xxx函数，这期则是来了解这些函数的实现。
+接口libcxxabi中的部分包含了exception，array的分配与释放，virtual相关，de...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Oct 02 2024 11:28:05 GMT+0800">2024-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2024/10/02/Exception/exception-2/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2024/10/02/Exception/exception-1/">
+                        LLVM异常实现一 LLVM IR
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        这一期我们通过编译C++到LLVM代码来查看这部分的实现。在此之前我们需要了解一些简单的基础知识，之后我们将从一个最小抛出异常的代码开始，逐渐复杂化这个例子，查看生成不同的LLVM IR来理解整个过程。
+函数调用首先一个编译一个函数调用的过程中，LL...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Oct 02 2024 11:28:03 GMT+0800">2024-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2024/10/02/Exception/exception-1/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2024/10/02/Exception/exception-0/">
+                        LLVM异常实现零 异常的多层结构与实现方式
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        本系列的博客的内容是LLVM异常实现的整个过程，从C++生成LLVM IR开始，到运行时实际调用的库函数，会从抛出异常的过程开始结合llvm相关的代码进行讲解。这一期主要内容是讲解异常相关的结构、底层实现方式等基础信息，之后从顶向下逐层分解其中的实现...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Oct 02 2024 11:27:36 GMT+0800">2024-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2024/10/02/Exception/exception-0/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
                     <a href="/2024/05/20/Life/attend-a-wedding/">
                         参加婚礼
                     </a>
@@ -438,257 +681,6 @@
     </div>
 
     <a href="/2024/02/16/Thinking/thoughts-inspired-by-a-book/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2023/12/31/Summary/summary-2023/">
-                        2023年终总结
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        不知不觉2023年也走到了尽头，按照惯例年底还是要写一篇年终总结。
-去年的目标去年的年终总结中列了一大堆“明年的愿景“，而实际做到的，大概只有一半左右。现在回看，目标这种东西应该经常拿出来看才对，我去年只是随意的列下了一些目标，并没有针对目标做一系列...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Dec 31 2023 18:25:06 GMT+0800">2023-12-31</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Thinking/">Thinking</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2023/12/31/Summary/summary-2023/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2023/11/22/Other/anxiety-of-blogging/">
-                        写博客的焦虑
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        写博客的焦虑博客的内容，很大程度会将一个人的许多方面展现出来。而我此时对于博客的焦虑，也是如此。
-事情的起因是这样的，碰巧看到了某个大佬的博客，从2005年就开始更新一直写到了现在，并且每个月都保持非常高的更新频率。这让我被焦虑感熟练地挟持，不敢想象...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Nov 22 2023 21:08:47 GMT+0800">2023-11-22</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Thinking/">Thinking</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2023/11/22/Other/anxiety-of-blogging/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2023/11/05/Life/travel-meditations/">
-                        旅行沉思
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        出发前在九月底，我开启了一场为期半个月的旅行，旅行的路线是从北京出发，途径广州、深圳、上海、杭州，最后再回到北京。作为第一次出门旅行来说算是略有挑战，选择了那么多城市，同时有许多事情会是第一次面对，需要花不少时间去做准备，包括但不局限于行李准备、行程...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Nov 05 2023 17:55:38 GMT+0800">2023-11-05</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Life/">Life</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2023/11/05/Life/travel-meditations/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2023/11/05/Life/first-travel/">
-                        初次旅行
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        本文作为流水帐般的游玩记录，多图杀猫。如果你对我旅行前后的想法有兴趣那请访问这篇文章
-https://homura.live/2023/11/05/Life/travel-meditations/
-广州一在国庆前一周的周六到了机场乘机，这是我第一次坐...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Nov 05 2023 17:53:12 GMT+0800">2023-11-05</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Life/">Life</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2023/11/05/Life/first-travel/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2023/08/23/Life/25/">
-                        25
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        25在我眼里是一个略微规整的数字，是5的平方，是75的三分之一，是一百的四分之一，乘二就能凑满一个十，同时又是一个奇数。不过对此时的我来说，比起数学上的意义，更重要的是年龄上的意义，大家都开玩笑说到了25就该奔三，现在我也到了这个时候了。
-关于年龄这...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Wed Aug 23 2023 00:00:00 GMT+0800">2023-08-23</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Thinking/">Thinking</a>&nbsp;
-                        </li>
-                    
-                    
-                        <li>
-                            &gt; 
-                            <a href="/categories/Life/">Life</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2023/08/23/Life/25/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2023/08/19/Reading/invisible-women/">
-                        看不见的女性
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        性别对立，是现在非常容易引起争议的话题。女性们普遍处于弱者的位置，当她们开始寻求自己应有的权利，而不是一直像现在这样，争论也就因为各种原因进一步变多了。那么女性的地位具体到底是怎么样的呢？我觉得这本书已经相当清晰的讲述了在世界上女性的现状，虽然因国家...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sat Aug 19 2023 19:47:17 GMT+0800">2023-08-19</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Reading/">Reading</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2023/08/19/Reading/invisible-women/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
 </div>
 
             </li>

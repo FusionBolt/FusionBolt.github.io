@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            LLVM异常实现零 异常的多层结构与实现方式 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="本系列的博客的内容是LLVM异常实现的整个过程，从C++生成LLVM IR开始，到运行时实际调用的库函数，会从抛出异常的过程开始结合llvm相关的代码进行讲解。这一期主要内容是讲解异常相关的结构、底层实现方式等基础信息，之后从顶向下逐层分解其中的实现（这部分形式有些类似于笔记），在最后一期会将整个结构串起来，同时有一个流程图供读者进行参考，中间几期细节比较多，很容易迷失在其中，可以参照最后一期的图">
+<meta property="og:type" content="article">
+<meta property="og:title" content="LLVM异常实现零 异常的多层结构与实现方式">
+<meta property="og:url" content="https://fusionbolt.github.io/2024/10/02/Exception/exception-0/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="本系列的博客的内容是LLVM异常实现的整个过程，从C++生成LLVM IR开始，到运行时实际调用的库函数，会从抛出异常的过程开始结合llvm相关的代码进行讲解。这一期主要内容是讲解异常相关的结构、底层实现方式等基础信息，之后从顶向下逐层分解其中的实现（这部分形式有些类似于笔记），在最后一期会将整个结构串起来，同时有一个流程图供读者进行参考，中间几期细节比较多，很容易迷失在其中，可以参照最后一期的图">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2024-10-02T03:27:36.000Z">
+<meta property="article:modified_time" content="2024-10-02T03:36:13.569Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="Exception">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">LLVM异常实现零 异常的多层结构与实现方式</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2024-10-02 11:27:36
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/Exception/">Exception</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.1k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>4 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>本系列的博客的内容是LLVM异常实现的整个过程，从C++生成LLVM IR开始，到运行时实际调用的库函数，会从抛出异常的过程开始结合llvm相关的代码进行讲解。这一期主要内容是讲解异常相关的结构、底层实现方式等基础信息，之后从顶向下逐层分解其中的实现（这部分形式有些类似于笔记），在最后一期会将整个结构串起来，同时有一个流程图供读者进行参考，中间几期细节比较多，很容易迷失在其中，可以参照最后一期的图来阅读中间的内容。</p>
+<h1 id="多层结构"><a href="#多层结构" class="headerlink" title="多层结构"></a>多层结构</h1><p>先说结论，异常主要由两部分组成</p>
+<ol>
+<li>语言相关的abi实现</li>
+<li>语言无关的部分（调用libunwind库）</li>
+</ol>
+<p>其中语言相关的abi实现需要传递信息给libunwind，比如说一些情况要怎么处理，传递符合要求的文件头等</p>
+<h1 id="语言相关的实现"><a href="#语言相关的实现" class="headerlink" title="语言相关的实现"></a>语言相关的实现</h1><p>当我们编写编程语言的时候，不同的语言有不同的异常语法。比如说常见的对于一个块做try，捕获产生的不同Exception。假设这些语言都接入llvm进行代码生成，尽管编程语言有着不同的语法，但在用语法树生成llvm代码时都会生成类似的内容。</p>
+<p>以下用C++举例，这是一段C++代码</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f1</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">int</span> a = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f2</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="string">&quot;error&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">f3</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">f1</span>();</span><br><span class="line">    <span class="built_in">f2</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>执行clang++ -S -emit-llvm main.cpp &amp;&amp; cat main.ll查看对应的llvm ir</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">@.str = <span class="keyword">private</span> unnamed_addr constant [<span class="number">6</span> x i8] c<span class="string">&quot;error\00&quot;</span>, align <span class="number">1</span></span><br><span class="line">@_ZTIPKc = external constant i8*</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline nounwind optnone ssp uwtable</span><br><span class="line">define <span class="keyword">void</span> @_Z2f1v() #<span class="number">0</span> &#123;</span><br><span class="line">  %<span class="number">1</span> = alloca i32, align <span class="number">4</span></span><br><span class="line">  store i32 <span class="number">1</span>, i32* %<span class="number">1</span>, align <span class="number">4</span></span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline optnone ssp uwtable</span><br><span class="line">define <span class="keyword">void</span> @_Z2f2v() #<span class="number">1</span> &#123;</span><br><span class="line">  %<span class="number">1</span> = call i8* @__cxa_allocate_exception(i64 <span class="number">8</span>) #<span class="number">2</span></span><br><span class="line">  %<span class="number">2</span> = bitcast i8* %<span class="number">1</span> to i8**</span><br><span class="line">  store i8* getelementptr <span class="built_in">inbounds</span> ([<span class="number">6</span> x i8], [<span class="number">6</span> x i8]* @.str, i64 <span class="number">0</span>, i64 <span class="number">0</span>), i8** %<span class="number">2</span>, align <span class="number">16</span></span><br><span class="line">  call <span class="keyword">void</span> @__cxa_throw(i8* %<span class="number">1</span>, i8* <span class="built_in">bitcast</span> (i8** @_ZTIPKc to i8*), i8* null) #<span class="number">3</span></span><br><span class="line">  unreachable</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">declare i8* @__cxa_allocate_exception(i64)</span><br><span class="line"></span><br><span class="line">declare <span class="keyword">void</span> @__cxa_throw(i8*, i8*, i8*)</span><br><span class="line"></span><br><span class="line">; Function Attrs: noinline optnone ssp uwtable</span><br><span class="line">define <span class="keyword">void</span> @_Z2f3v() #<span class="number">1</span> &#123;</span><br><span class="line">  call <span class="keyword">void</span> @_Z2f1v()</span><br><span class="line">  call <span class="keyword">void</span> @_Z2f2v()</span><br><span class="line">  ret <span class="keyword">void</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们来看编译出的三个函数，对于未throw的f1来说，相比f2多了一个nounwind这一个attr，并且多了两个函数调用。而调用了f1和f2的f3，因为调用了f2这个需要unwind的函数因此和f2同样没有nounwind的attr。</p>
+<p>关于这个attr含义也很简单，用于标明函数是否会抛出异常。以下是LLVM reference中的原始文档</p>
+<blockquote>
+<p>This function attribute indicates that the function never raises an exception. If the function does raise an exception, its runtime behavior is undefined. However, functions marked nounwind may still trap or generate asynchronous exceptions. Exception handling schemes that are recognized by LLVM to handle asynchronous exceptions, such as SEH, will still provide their implementation defined semantics.</p>
+</blockquote>
+<p>接着我们来看两个令人在意的函数调用：__cxa_allocate_exception和 __cxa_throw</p>
+<p>这些是在libcxxabi中的函数，看名字我们能大概猜到其中的含义，一个是分配exception另一个则是抛出。</p>
+<p>我们在这里先简单窥探一下__cxa_throw的实现</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">void</span></span><br><span class="line">__cxa_throw(<span class="keyword">void</span> *thrown_object, std::type_info *tinfo, <span class="built_in"><span class="keyword">void</span></span> (*dest)(<span class="keyword">void</span> *)) &#123;</span><br><span class="line">    __cxa_eh_globals *globals = __cxa_get_globals();</span><br><span class="line">    __cxa_exception* exception_header = <span class="built_in">cxa_exception_from_thrown_object</span>(thrown_object);</span><br><span class="line"></span><br><span class="line">    exception_header-&gt;unexpectedHandler = std::<span class="built_in">get_unexpected</span>();</span><br><span class="line">    exception_header-&gt;terminateHandler  = std::<span class="built_in">get_terminate</span>();</span><br><span class="line">    exception_header-&gt;exceptionType = tinfo;</span><br><span class="line">    exception_header-&gt;exceptionDestructor = dest;</span><br><span class="line">    <span class="built_in">setOurExceptionClass</span>(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line">    exception_header-&gt;referenceCount = <span class="number">1</span>;  <span class="comment">// This is a newly allocated exception, no need for thread safety.</span></span><br><span class="line">    globals-&gt;uncaughtExceptions += <span class="number">1</span>;   <span class="comment">// Not atomically, since globals are thread-local</span></span><br><span class="line"></span><br><span class="line">    exception_header-&gt;unwindHeader.exception_cleanup = exception_cleanup_func;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> __has_feature(address_sanitizer)</span></span><br><span class="line">    <span class="comment">// Inform the ASan runtime that now might be a good time to clean stuff up.</span></span><br><span class="line">    __asan_handle_no_return();</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> __USING_SJLJ_EXCEPTIONS__</span></span><br><span class="line">    _Unwind_SjLj_RaiseException(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">else</span></span></span><br><span class="line">    _Unwind_RaiseException(&amp;exception_header-&gt;unwindHeader);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">    <span class="comment">//  This only happens when there is no handler, or some unexpected unwinding</span></span><br><span class="line">    <span class="comment">//     error happens.</span></span><br><span class="line">    <span class="built_in">failed_throw</span>(exception_header);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到其中调用了_Unwind_RaiseException，这个函数是属于libunwind库的一个接口，而libunwind中则再无其他库的引用，这印证了前面提到的异常实现的两部分：语言相关的abi和libunwind。</p>
+<h1 id="libunwind的实现"><a href="#libunwind的实现" class="headerlink" title="libunwind的实现"></a>libunwind的实现</h1><p>libunwind中主流的异常实现方式有三类</p>
+<ol>
+<li>seh(structure exception handling)，在Windows上使用，但官方建议使用ISO标准C++异常处理</li>
+<li>ehabi(exception handling application binary interface)，arm中定义的二进制接口，定义如何传递和处理异常的规则。</li>
+<li>sjlj(setjmp / longjmp)，通过jmp指令跳转到异常处理代码。同时ehframe和dwaf经常与sjlj联合使用</li>
+</ol>
+<p><a class="link"   target="_blank" rel="noopener" href="https://learn.microsoft.com/zh-cn/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170" >https://learn.microsoft.com/zh-cn/cpp/cpp/structured-exception-handling-c-cpp?view=msvc-170<i class="fas fa-external-link-alt"></i></a></p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：LLVM异常实现零 异常的多层结构与实现方式</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2024-10-02 11:27:36</li>
+        <li>
+            本文链接：https://homura.live/2024/10/02/Exception/exception-0/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                    <div class="article-prev">
+                        <a class="prev"
+                           rel="prev"
+                           href="/2024/10/02/Exception/exception-1/"
+                        >
+                            <span class="left arrow-icon flex-center">
+                              <i class="fas fa-chevron-left"></i>
+                            </span>
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">LLVM异常实现一 LLVM IR</span>
+                                <span class="post-nav-item">上一篇</span>
+                            </span>
+                        </a>
+                    </div>
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2024/05/20/Life/attend-a-wedding/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">参加婚礼</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2024&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A4%9A%E5%B1%82%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">多层结构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AF%AD%E8%A8%80%E7%9B%B8%E5%85%B3%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">语言相关的实现</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#libunwind%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="nav-number">3.</span> <span class="nav-text">libunwind的实现</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

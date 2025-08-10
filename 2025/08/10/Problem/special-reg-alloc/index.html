@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            不可spill reload的异步用寄存器分配方案 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="工作的时候遇到了这样的一个场景，我们的异步器件通知程序结束的方式是将回答字写到一个内存地址，或者是一个特殊用途的寄存器中。写到内存的速度肯定是远远低于寄存器的，并且会一定程度抢占内存读写带宽，因此如何分配以及利用这个寄存器便是一个难题。以下为了和普通寄存器区分开，简称为SReg（special register）。 现有寄存器分配算法可行的原因是寄存器的值写到内存中保存，后续再取出来，可以保证值的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="不可spill reload的异步用寄存器分配方案">
+<meta property="og:url" content="https://fusionbolt.github.io/2025/08/10/Problem/special-reg-alloc/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="工作的时候遇到了这样的一个场景，我们的异步器件通知程序结束的方式是将回答字写到一个内存地址，或者是一个特殊用途的寄存器中。写到内存的速度肯定是远远低于寄存器的，并且会一定程度抢占内存读写带宽，因此如何分配以及利用这个寄存器便是一个难题。以下为了和普通寄存器区分开，简称为SReg（special register）。 现有寄存器分配算法可行的原因是寄存器的值写到内存中保存，后续再取出来，可以保证值的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2025-08-10T08:19:53.000Z">
+<meta property="article:modified_time" content="2025-08-10T08:27:02.858Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="async">
+<meta name="twitter:card" content="summary">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">不可spill reload的异步用寄存器分配方案</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2025-08-10 16:19:53
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/Compiler/">Compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/async/">async</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.6k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>5 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>工作的时候遇到了这样的一个场景，我们的异步器件通知程序结束的方式是将回答字写到一个内存地址，或者是一个特殊用途的寄存器中。写到内存的速度肯定是远远低于寄存器的，并且会一定程度抢占内存读写带宽，因此如何分配以及利用这个寄存器便是一个难题。以下为了和普通寄存器区分开，简称为SReg（special register）。</p>
+<p>现有寄存器分配算法可行的原因是寄存器的值写到内存中保存，后续再取出来，可以保证值的正确性。但在异步操作的场景下，发起请求后不知道什么时候会将回答字写到寄存器中，假设在异步操作尚未写回值时，把SReg的值保存到内存，将这个SReg认为是可用并且给其他操作使用时，当异步器件实际写回值时，其他使用该SReg的操作得到的是一个和预期不符的值，并且从内存中将值重新加载回SReg时，读到的也是错误的值。因此该SReg用于异步操作时将值写回内存并且重新读取值无法保证正确性，也就是寄存器中分配常提到的spill reload操作。</p>
+<p>由于硬件异步的特性，也可能同时发起多个异步请求，同时会有多个SReg被使用，不同函数之间很可能产生编号冲突。加上SReg的数量有限，无法无限分配SReg编号，因此难以在不同过程间去分配。</p>
+<h1 id="可选方案"><a href="#可选方案" class="headerlink" title="可选方案"></a>可选方案</h1><p>根据该性质，SReg几乎无法被静态时分配。除非强制将执行的所有函数inline到一个大函数中进行分配，那么就从一个全程序区间的问题转换为一个函数内部的问题。但是总是inline并非总是好的，会造成代码体积严重膨胀，加大cache miss率，最后性能可能会下降，并且加大了用户与开发者的调试难度。</p>
+<p>运行时分配可以通过一套简单的malloc free来实现，可以任意分配SReg，随时释放，方案最灵活，但是分配释放的开销略大。</p>
+<h1 id="我的方案"><a href="#我的方案" class="headerlink" title="我的方案"></a>我的方案</h1><p>假设SReg有X个，那么我们<strong>将X个SReg的资源视为一个有X个元素的“栈”资源</strong>，每一个栈元素对应了一个SReg的编号。根据每个函数创建的SReg数量，控制栈桢的增减。其中函数中用到的SReg”指向“这个特殊栈的”栈桢”中的一个位置。当这个SReg作为参数传递时，不会分配新的SReg编号，会延续传入参数的编号，也不会导致新占用一个SReg。简单来说，使用SReg的时候，只需要视为一个普通的local变量来做即可。</p>
+<p>相比于malloc，无需手动释放，可以通过编译时优化，来达到相同的使用效率，编码相对简单很多，并且分配的性能开销相对较小。不论是该方案还是基于普通的malloc，都无法直接解决数量用满时的问题，可以写代码时判断是否用满然后切换不同的实现方式，也可以编译器代替人工自动插入对应切换代码，不过如何高效实现又是一个问题，性能暂时难以评测，这个问题就暂时搁置。</p>
+<p>另外有很多实际的硬件限制导致实际malloc方案有更多不可行的问题，这些限制太局限于专用硬件。将SReg资源视为栈资源的想法我觉得很有趣，使用角度来说和常规C语言局部变量一样自然，这也是我很想把这个方案记录下来的原因。</p>
+<p>比如以下代码示例，其中async_request是发起异步请求，wait是同步等待直到异步请求结束并且将值写回SReg。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo1</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	SReg reg1;</span><br><span class="line">	SReg reg2;</span><br><span class="line">	<span class="keyword">while</span>(<span class="literal">true</span>) &#123;</span><br><span class="line">		<span class="built_in">async_request</span>(reg1);</span><br><span class="line">		<span class="built_in">async_request</span>(reg2);</span><br><span class="line">		<span class="built_in">foo2</span>();</span><br><span class="line">		<span class="built_in">wait</span>(reg1);</span><br><span class="line">		<span class="built_in">wait</span>(reg2);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo2</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	SReg reg1;</span><br><span class="line">	SReg reg2;</span><br><span class="line">	<span class="built_in">foo3</span>(reg2);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo3</span><span class="params">(SReg r)</span> </span>&#123;</span><br><span class="line">	SReg reg0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>当调用到foo1时</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2</span> --------- SRegSP</span><br><span class="line">  foo1::reg1 =&gt; SRegSP - <span class="number">1</span></span><br><span class="line">  foo1::reg2 =&gt; SRegSP - <span class="number">2</span></span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+<p>当调用到foo2中时</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">4</span> --------- SRegSP</span><br><span class="line">  foo2::reg1 =&gt; SRegSP - <span class="number">1</span></span><br><span class="line">  foo2::reg2 =&gt; SRegSP - <span class="number">2</span></span><br><span class="line"><span class="number">2</span> ---------</span><br><span class="line">  foo1::reg1 <span class="comment">// 等待异步器件中</span></span><br><span class="line">  foo1::reg2 <span class="comment">// 等待异步器件中</span></span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+<p>当调用到foo3中时</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">5</span> --------- SRegSP</span><br><span class="line">	foo3::reg0 =&gt; SRegSP - <span class="number">1</span></span><br><span class="line"><span class="number">4</span> --------- </span><br><span class="line">  foo2::reg1 <span class="comment">// 在foo2中创建，在foo2和foo3中使用，使用同一个资源</span></span><br><span class="line">  foo2::reg2</span><br><span class="line"><span class="number">2</span> ---------</span><br><span class="line">  foo1::reg1</span><br><span class="line">  foo1::reg2</span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+<p>鉴于硬件的一些特殊性质，工作中实际提出的方案还在这个基础上加了一些其他的限制，比如说需要清空值的时候只能一次性清空相连的Y个，因此栈需要按照Y去对齐，并且在销毁的时候清零，这都属于硬件绑定的实现细节的部分，就不详细介绍了。</p>
+<p>整体开销较小，需要一个“栈指针”维持整个过程，因此开销包括了开栈和退栈，使用简单的加法计算每个SReg具体位置，另外释放的过程需要对其中的值置0。（硬件的特性导致）</p>
+<h1 id="SReg利用率优化"><a href="#SReg利用率优化" class="headerlink" title="SReg利用率优化"></a>SReg利用率优化</h1><p>通过分析每个SReg的生命周期，根据生命周期结束时间排序，每个SReg结束的时候即可提前递减“栈指针”</p>
+<p>例如</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo1</span><span class="params">(<span class="keyword">bool</span> check)</span> </span>&#123;</span><br><span class="line">	SReg reg1;</span><br><span class="line">	SReg reg2;</span><br><span class="line">	SReg reg3;</span><br><span class="line">	<span class="built_in">async_request</span>(reg1);</span><br><span class="line">	<span class="built_in">foo2</span>();</span><br><span class="line">	<span class="built_in">wait</span>(reg1);  <span class="comment">// bb结束，reg1可以释放</span></span><br><span class="line">	<span class="built_in">after_free</span>();</span><br><span class="line">	<span class="keyword">if</span> (check) &#123;</span><br><span class="line">			<span class="built_in">async_request</span>(reg3);</span><br><span class="line">			<span class="built_in">foo2</span>();</span><br><span class="line">			<span class="built_in">wait</span>(reg3); <span class="comment">// reg3可以在这里释放	</span></span><br><span class="line">			<span class="built_in">async_request</span>(reg2);</span><br><span class="line">			<span class="built_in">after_free</span>();</span><br><span class="line">			<span class="built_in">wait</span>(reg2);</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">// reg3不被使用，释放</span></span><br><span class="line">			<span class="built_in">async_request</span>(reg2);</span><br><span class="line">			<span class="built_in">foo4</span>();</span><br><span class="line">			<span class="built_in">wait</span>(reg2);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">after_free</span>();</span><br><span class="line">	<span class="comment">// reg2在这里释放</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">after_free</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	SReg reg;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在这个例子中，根据lifetime从长到短是2 3 1，因此栈中排布顺序为</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">3</span> ---------</span><br><span class="line">	foo1::reg1</span><br><span class="line">  foo1::reg3</span><br><span class="line">  foo1::reg2</span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+<p>三次执行after_free之前分别释放了栈顶的SReg变量reg1，reg3，reg2，因此三次执行的时候栈分别为</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">3</span> ---------</span><br><span class="line">	after_free:reg</span><br><span class="line"><span class="number">2</span> ---------</span><br><span class="line">  foo1::reg3</span><br><span class="line">  foo1::reg2</span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">2</span> ---------</span><br><span class="line">	after_free:reg</span><br><span class="line"><span class="number">1</span> ---------</span><br><span class="line">  foo1::reg2</span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1</span> ---------</span><br><span class="line">	after_free:reg</span><br><span class="line"><span class="number">0</span> --------- <span class="comment">// foo1的栈已经完全被释放</span></span><br><span class="line"><span class="number">0</span> ---------</span><br></pre></td></tr></table></figure>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：不可spill reload的异步用寄存器分配方案</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2025-08-10 16:19:53</li>
+        <li>
+            本文链接：https://homura.live/2025/08/10/Problem/special-reg-alloc/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2025/01/01/Summary/summary-2024/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">2024年终总结</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2025&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8F%AF%E9%80%89%E6%96%B9%E6%A1%88"><span class="nav-number">1.</span> <span class="nav-text">可选方案</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%88%91%E7%9A%84%E6%96%B9%E6%A1%88"><span class="nav-number">2.</span> <span class="nav-text">我的方案</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#SReg%E5%88%A9%E7%94%A8%E7%8E%87%E4%BC%98%E5%8C%96"><span class="nav-number">3.</span> <span class="nav-text">SReg利用率优化</span></a></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

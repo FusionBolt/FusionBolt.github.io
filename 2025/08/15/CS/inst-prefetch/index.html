@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="keywords" content="Hexo Theme Keep">
+    <meta name="description" content="Hexo Theme Keep">
+    <meta name="author" content="Homura">
+    
+    <title>
+        
+            软件指令预取论文调研 |
+        
+        Homura&#39;s Blog
+    </title>
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <link rel="shortcut icon" href="/images/logo.svg">
+    
+<link rel="stylesheet" href="/css/font-awesome.min.css">
+
+    <script id="hexo-configurations">
+    let KEEP = window.KEEP || {};
+    KEEP.hexo_config = {"hostname":"fusionbolt.github.io","root":"/","language":"zh-CN","path":"search.json"};
+    KEEP.theme_config = {"toc":{"enable":true,"number":true,"expand_all":true,"init_open":true},"style":{"primary_color":"#0066CC","avatar":"/images/avatar.jpeg","favicon":"/images/logo.svg","article_img_align":"left","left_side_width":"260px","content_max_width":"920px","hover":{"shadow":false,"scale":false},"first_screen":{"enable":true,"background_img":"/images/bg.svg","description":"我们所度过的每个平凡的日常\n也许就是连续发生的奇迹\n"},"scroll":{"progress_bar":{"enable":false},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":false},"code_copy":{"enable":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"3.4.2"};
+    KEEP.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 月前","year":"%s 年前"};
+  </script>
+    <meta name="description" content="由于工作需要，最近这段时间调研了一大批指令预取的论文。 其中这篇论文 A Survey of Recent Prefetching Techniques for Processor Caches 介绍了关于预取技术的所有常见概念，从软件预取到硬件预取，从预取数据到预取指令。预取方案的核心是提前加载相关的指令&#x2F;数据到缓存中。有的通过简单的取next n line的方式提升效果，有的方案是通过存储额外">
+<meta property="og:type" content="article">
+<meta property="og:title" content="软件指令预取论文调研">
+<meta property="og:url" content="https://fusionbolt.github.io/2025/08/15/CS/inst-prefetch/index.html">
+<meta property="og:site_name" content="Homura&#39;s Blog">
+<meta property="og:description" content="由于工作需要，最近这段时间调研了一大批指令预取的论文。 其中这篇论文 A Survey of Recent Prefetching Techniques for Processor Caches 介绍了关于预取技术的所有常见概念，从软件预取到硬件预取，从预取数据到预取指令。预取方案的核心是提前加载相关的指令&#x2F;数据到缓存中。有的通过简单的取next n line的方式提升效果，有的方案是通过存储额外">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://fusionbolt.github.io/images/inst-prefetch/image.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/inst-prefetch/image%201.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/inst-prefetch/image%202.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/inst-prefetch/image%203.png">
+<meta property="og:image" content="https://fusionbolt.github.io/images/inst-prefetch/image%204.png">
+<meta property="article:published_time" content="2025-08-15T07:19:10.000Z">
+<meta property="article:modified_time" content="2025-12-21T07:22:52.075Z">
+<meta property="article:author" content="Homura">
+<meta property="article:tag" content="prefetch">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://fusionbolt.github.io/images/inst-prefetch/image.png">
+
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0X2R555BND"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-0X2R555BND');
+</script>
+<meta name="generator" content="Hexo 6.0.0"><link rel="alternate" href="/atom.xml" title="Homura's Blog" type="application/atom+xml">
+</head>
+<body>
+<div class="progress-bar-container">
+    
+
+    
+        <span class="pjax-progress-bar"></span>
+        <span class="pjax-progress-icon">
+            <i class="fas fa-circle-notch fa-spin"></i>
+        </span>
+    
+</div>
+
+
+<main class="page-container">
+
+    
+
+    <div class="page-main-content">
+
+        <div class="page-main-content-top">
+            <header class="header-wrapper">
+
+    <div class="header-content">
+        <div class="left">
+            <a class="logo-title" href="/">
+                Homura&#39;s Blog
+            </a>
+        </div>
+
+        <div class="right">
+            <div class="pc">
+                <ul class="menu-list">
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/"
+                            >
+                                首页
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/archives"
+                            >
+                                归档
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/categories"
+                            >
+                                分类
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/tags"
+                            >
+                                标签
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/navigation"
+                            >
+                                导航
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/links"
+                            >
+                                友链
+                            </a>
+                        </li>
+                    
+                        <li class="menu-item">
+                            <a class=""
+                               href="/about"
+                            >
+                                关于
+                            </a>
+                        </li>
+                    
+                    
+                        <li class="menu-item search search-popup-trigger">
+                            <i class="fas fa-search"></i>
+                        </li>
+                    
+                </ul>
+            </div>
+            <div class="mobile">
+                
+                    <div class="icon-item search search-popup-trigger"><i class="fas fa-search"></i></div>
+                
+                <div class="icon-item menu-bar">
+                    <div class="menu-bar-middle"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-drawer">
+        <ul class="drawer-menu-list">
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/">首页</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/archives">归档</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/categories">分类</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/tags">标签</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/navigation">导航</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/links">友链</a>
+                </li>
+            
+                <li class="drawer-menu-item flex-center">
+                    <a class=""
+                       href="/about">关于</a>
+                </li>
+            
+        </ul>
+    </div>
+
+    <div class="window-mask"></div>
+
+</header>
+
+
+        </div>
+
+        <div class="page-main-content-middle">
+
+            <div class="main-content">
+
+                
+                    <div class="fade-in-down-animation">
+    <div class="article-content-container">
+
+        <div class="article-title">
+            <span class="title-hover-animation">软件指令预取论文调研</span>
+        </div>
+
+        
+            <div class="article-header">
+                <div class="avatar">
+                    <img src="/images/avatar.jpeg">
+                </div>
+                <div class="info">
+                    <div class="author">
+                        <span class="name">Homura</span>
+                        
+                            <span class="author-label">我摸到了！</span>
+                        
+                    </div>
+                    <div class="meta-info">
+                        <div class="article-meta-info">
+    <span class="article-date article-meta-item">
+        <i class="fas fa-edit"></i>&nbsp;2025-08-15 15:19:10
+    </span>
+    
+        <span class="article-categories article-meta-item">
+            <i class="fas fa-folder"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/categories/compiler/">compiler</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+    
+        <span class="article-tags article-meta-item">
+            <i class="fas fa-tags"></i>&nbsp;
+            <ul>
+                
+                    <li>
+                        <a href="/tags/prefetch/">prefetch</a>&nbsp;
+                    </li>
+                
+            </ul>
+        </span>
+    
+
+    
+    
+        <span class="article-wordcount article-meta-item">
+            <i class="fas fa-file-word"></i>&nbsp;<span>1.6k 字</span>
+        </span>
+    
+    
+        <span class="article-min2read article-meta-item">
+            <i class="fas fa-clock"></i>&nbsp;<span>5 分钟</span>
+        </span>
+    
+    
+        <span class="article-pv article-meta-item">
+            <i class="fas fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
+        </span>
+    
+</div>
+
+                    </div>
+                </div>
+            </div>
+        
+
+        <div class="article-content markdown-body">
+            <p>由于工作需要，最近这段时间调研了一大批指令预取的论文。</p>
+<p>其中这篇论文 A Survey of Recent Prefetching Techniques for Processor Caches 介绍了关于预取技术的所有常见概念，从软件预取到硬件预取，从预取数据到预取指令。预取方案的核心是提前加载相关的指令/数据到缓存中。有的通过简单的取next n line的方式提升效果，有的方案是通过存储额外的表去记录内存访问的影响进而预测指令/数据流，等等。</p>
+<p>工作需要的是通过软件层面插入指令预取去预取指令，因为我们之前出现了严重的i cache miss引发的性能问题，所以需要尽可能规避i cache miss的损失。但是看论文的现状是硬件预取的实现方式比较多，软件则是基本集中于循环中的数据预取，关于软件进行预取指令的，符合需求的只有如下一篇：</p>
+<p>Architectural and Compiler Support for Effective Instruction Prefetching: A Cooperative Approach</p>
+<h1 id="论文分析"><a href="#论文分析" class="headerlink" title="论文分析"></a>论文分析</h1><p>该文章中的实现是软硬件相结合，基于其硬件设计了一套预取的算法，而即便在软件侧预取指令，由于缓存的特殊性，实现也都离不开硬件的结构和指令设计两方面。</p>
+<h2 id="文中硬件"><a href="#文中硬件" class="headerlink" title="文中硬件"></a>文中硬件</h2><p>该论文中采取的是软硬件结合的机制，但是依然能适用于纯软件预取（也因此选择参考该方案）。其中硬件的部分主要是预取过滤机制，用于减少无用预取带来的cache污染问题，可以使用更激进的顺序预取。（我认为这是软件预取比较有效的原因）</p>
+<p>另外预取指令比较特殊，有四类</p>
+<ol>
+<li>针对地址预取（直接预取特定地址，16byte / 2Byte对齐的地址）</li>
+<li>针对两个地址预取（两个地址是偏移量，地址计算方式为PC + 偏移量）</li>
+<li>针对返回值预取(存在返回地址栈，直接去栈上获取，无需参数)</li>
+<li>针对indirect-jump预取（存在间接跳转表）</li>
+</ol>
+<h2 id="算法设计原则"><a href="#算法设计原则" class="headerlink" title="算法设计原则"></a>算法设计原则</h2><p>尽可能的减少cache miss（首要目的）</p>
+<p>尽可能避免重复的prefetch（降低无意义开销）</p>
+<p>预取和实际执行要保持一定距离，隐藏延迟（进一步提升性能）</p>
+<h2 id="问题分类"><a href="#问题分类" class="headerlink" title="问题分类"></a>问题分类</h2><p>文中将指令访问造成的cache miss分为两类问题</p>
+<ol>
+<li><p>Sequential Access：通过next n line，即提取预取N行即可。理想方案是激进的预取到序列结束，该行为以硬件为主。</p>
+<p>The ideal solution would be to prefetch ahead aggressively (i.e., with a large N) but to stop upon reaching the end of the sequence.</p>
+</li>
+<li><p>Nonsequential Access：硬件的各种基于表的实现不适用于软件，因此该论选择了通过编译器自动插入相关预取指令来处理该情况。</p>
+</li>
+</ol>
+<h1 id="算法实现"><a href="#算法实现" class="headerlink" title="算法实现"></a>算法实现</h1><p>该论文的实现将整个算法分为了两部分</p>
+<ol>
+<li>插入基本的预取指令</li>
+<li>对预取指令进行优化合并</li>
+</ol>
+<p>the key challenge in designing a better instruction prefetching scheme is to be able to launch prefetches earlier—i.e., to achieve a <strong>larger prefetching distance</strong></p>
+<h2 id="插入预取指令"><a href="#插入预取指令" class="headerlink" title="插入预取指令"></a>插入预取指令</h2><p>论文中插入预取指令算法分为了direct的预取和indirect的预取，两个算法整体结构一致，只有些许细节不同。indirect不会考虑硬件预取的情况，另外indirect不会考虑locality like的情况（两个块同时出现在I cache中）</p>
+<h3 id="代码实现"><a href="#代码实现" class="headerlink" title="代码实现"></a>代码实现</h3><p>以下是论文中贴出的主要代码，后续以伪代码的形式简化整个逻辑</p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/inst-prefetch/image.png"
+                      alt="image.png"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/inst-prefetch/image%201.png"
+                      alt="image.png"
+                ></p>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/inst-prefetch/image%202.png"
+                      alt="image.png"
+                ></p>
+<h3 id="伪代码描述"><a href="#伪代码描述" class="headerlink" title="伪代码描述"></a>伪代码描述</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">Schedule_InDirect_Prefetches（B，T，D，S）其中 B：当前BB，T：target bb，D：distance，S：bb set</span><br><span class="line">	如果B不在S里</span><br><span class="line">		S += B</span><br><span class="line">		B里面是否有预取T这个BB的指令</span><br><span class="line">		如果没有预取指令</span><br><span class="line">			T和B的距离足够大，如果是direct，会检查not LocalityLikely</span><br><span class="line">			插入预取指令</span><br><span class="line">		如果还没预取</span><br><span class="line">			遍历B的前驱P</span><br><span class="line">				如果B是P的fall-through block，并且P的结尾是call</span><br><span class="line">				增量为最短路径</span><br><span class="line">			否则增量为指令数量</span><br><span class="line">			根据增量递增distance</span><br><span class="line">			根据P递归prefetches(P, T, D, S)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>核心思想可以用一段话总结：遍历每一个基本块，将当前基本块作为跳转目标的T，在cfg图中向前广度优先搜索，直到找到前驱基本块B，满足条件B到T的距离刚好大于预取距离，将预取指令插入到前驱B中。</p>
+<p>该算法确保了每个基本块都在执行之前被预取。</p>
+<h3 id="locality-likely"><a href="#locality-likely" class="headerlink" title="locality likely"></a>locality likely</h3><p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/inst-prefetch/image%203.png"
+                      alt="image.png"
+                ></p>
+<p>Locality_Likely：用于判断两个块是否大概率同时在i cache中</p>
+<ol>
+<li>获取两个BB的公共基本块</li>
+<li>循环体小于有效I cache size的情况下为true</li>
+</ol>
+<p>换个方式来解释，满足以下条件的话大概率同时在i cache中</p>
+<ol>
+<li>两个基本块在相同循环中（common loop）</li>
+<li>进入循环之前被预取过。根据论文描述该条件由调用者保证</li>
+<li>迭代过程中两个基本块都保持在icache中（最大loop size &lt; 有效I cache size）</li>
+</ol>
+<p>其中有效I cache size，论文中取实际的1/8。如果超过了有效size，那么可能导致在内部部分预取的cache失效，因此也是需要预取，如果没超过，那数据可能还残留在i cache。</p>
+<h2 id="预取指令优化合并"><a href="#预取指令优化合并" class="headerlink" title="预取指令优化合并"></a>预取指令优化合并</h2><p>预取指令本身也要被解码，并且占用指令段大小。根据上述算法，会造成一个地址被多个基本块预取，因此需要通过优化合并多个预取指令。其中实现过程分为四步</p>
+<ol>
+<li>将预取指令向上移动到最近的dominator中。（支配块到预取目标之间的指令量超过有效缓存大小，则该预取不会提升，本质是判断预取距离是否过大）</li>
+<li>消除不必要预取指令，对自身的预取以及重复的预取</li>
+<li>压缩预取指令（这是针对论文中提到的特殊指令，能够预取两个地址）</li>
+<li>将预取指令从循环中外提</li>
+</ol>
+<p><img  
+                     lazyload
+                     src="/images/loading.svg"
+                     data-src="/images/inst-prefetch/image%204.png"
+                      alt="image.png"
+                ></p>
+
+        </div>
+
+        
+            <div class="post-copyright-info">
+                <div class="article-copyright-info-container">
+    <ul>
+        <li>本文标题：软件指令预取论文调研</li>
+        <li>本文作者：Homura</li>
+        <li>创建时间：2025-08-15 15:19:10</li>
+        <li>
+            本文链接：https://homura.live/2025/08/15/CS/inst-prefetch/
+        </li>
+        <li>
+            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
+        </li>
+    </ul>
+</div>
+
+            </div>
+        
+
+        
+            <div class="article-nav">
+                
+                
+                    <div class="article-next">
+                        <a class="next"
+                           rel="next"
+                           href="/2025/08/10/Problem/special-reg-alloc/"
+                        >
+                            <span class="title flex-center">
+                                <span class="post-nav-title-item">不可spill reload的异步用寄存器分配方案</span>
+                                <span class="post-nav-item">下一篇</span>
+                            </span>
+                            <span class="right arrow-icon flex-center">
+                              <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                
+            </div>
+        
+
+        
+    </div>
+</div>
+
+
+                
+            </div>
+
+        </div>
+
+        <div class="page-main-content-bottom">
+            <footer class="footer">
+    <div class="info-container">
+        <div class="copyright-info info-item">
+            &copy;
+            
+              <span>2021</span>&nbsp;-&nbsp;
+            
+            2025&nbsp;<i class="fas fa-heart icon-animate"></i>&nbsp;<a href="/">Homura</a>
+        </div>
+        
+            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+            <div class="website-count info-item">
+                
+                    <span id="busuanzi_container_site_uv">
+                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
+                    </span>
+                
+                
+                    <span id="busuanzi_container_site_pv">
+                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
+                    </span>
+                
+            </div>
+        
+        <div class="theme-info info-item">
+            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/XPoet/hexo-theme-keep">Keep v3.4.2</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+    </div>
+
+    
+        <div class="post-tools">
+            <div class="post-tools-container">
+    <ul class="tools-list">
+        <!-- TOC aside toggle -->
+        
+            <li class="tools-item page-aside-toggle">
+                <i class="fas fa-outdent"></i>
+            </li>
+        
+
+        <!-- go comment -->
+        
+    </ul>
+</div>
+
+        </div>
+    
+
+    <div class="right-bottom-side-tools">
+        <div class="side-tools-container">
+    <ul class="side-tools-list">
+        <li class="tools-item tool-font-adjust-plus flex-center">
+            <i class="fas fa-search-plus"></i>
+        </li>
+
+        <li class="tools-item tool-font-adjust-minus flex-center">
+            <i class="fas fa-search-minus"></i>
+        </li>
+
+        <li class="tools-item tool-expand-width flex-center">
+            <i class="fas fa-arrows-alt-h"></i>
+        </li>
+
+        <li class="tools-item tool-dark-light-toggle flex-center">
+            <i class="fas fa-moon"></i>
+        </li>
+
+        <!-- rss -->
+        
+            <li class="tools-item rss flex-center">
+                <a class="flex-center"
+                   href="/atom.xml"
+                   target="_blank"
+                >
+                    <i class="fas fa-rss"></i>
+                </a>
+            </li>
+        
+
+        
+            <li class="tools-item tool-scroll-to-top flex-center">
+                <i class="fas fa-arrow-up"></i>
+            </li>
+        
+
+        <li class="tools-item tool-scroll-to-bottom flex-center">
+            <i class="fas fa-arrow-down"></i>
+        </li>
+    </ul>
+
+    <ul class="exposed-tools-list">
+        <li class="tools-item tool-toggle-show flex-center">
+            <i class="fas fa-cog fa-spin"></i>
+        </li>
+        
+    </ul>
+</div>
+
+    </div>
+
+    
+        <aside class="page-aside">
+            <div class="post-toc-wrap">
+    <div class="post-toc">
+        <ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%AE%BA%E6%96%87%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">论文分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%87%E4%B8%AD%E7%A1%AC%E4%BB%B6"><span class="nav-number">1.1.</span> <span class="nav-text">文中硬件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E8%AE%BE%E8%AE%A1%E5%8E%9F%E5%88%99"><span class="nav-number">1.2.</span> <span class="nav-text">算法设计原则</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E5%88%86%E7%B1%BB"><span class="nav-number">1.3.</span> <span class="nav-text">问题分类</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AE%97%E6%B3%95%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">算法实现</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8F%92%E5%85%A5%E9%A2%84%E5%8F%96%E6%8C%87%E4%BB%A4"><span class="nav-number">2.1.</span> <span class="nav-text">插入预取指令</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.1.1.</span> <span class="nav-text">代码实现</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%AA%E4%BB%A3%E7%A0%81%E6%8F%8F%E8%BF%B0"><span class="nav-number">2.1.2.</span> <span class="nav-text">伪代码描述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#locality-likely"><span class="nav-number">2.1.3.</span> <span class="nav-text">locality likely</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A2%84%E5%8F%96%E6%8C%87%E4%BB%A4%E4%BC%98%E5%8C%96%E5%90%88%E5%B9%B6"><span class="nav-number">2.2.</span> <span class="nav-text">预取指令优化合并</span></a></li></ol></li></ol>
+    </div>
+</div>
+        </aside>
+    
+
+    <div class="image-viewer-container">
+    <img src="">
+</div>
+
+
+    
+        <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+          <span class="search-input-field-pre">
+            <i class="fas fa-keyboard"></i>
+          </span>
+            <div class="search-input-container">
+                <input autocomplete="off"
+                       autocorrect="off"
+                       autocapitalize="off"
+                       placeholder="搜索..."
+                       spellcheck="false"
+                       type="search"
+                       class="search-input"
+                >
+            </div>
+            <span class="popup-btn-close">
+                <i class="fas fa-times"></i>
+            </span>
+        </div>
+        <div id="search-result">
+            <div id="no-result">
+                <i class="fas fa-spinner fa-pulse fa-5x fa-fw"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+
+</main>
+
+
+
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/main.js"></script>
+
+<script src="/js/header-shrink.js"></script>
+
+<script src="/js/back2top.js"></script>
+
+<script src="/js/dark-light-toggle.js"></script>
+
+
+
+    
+<script src="/js/local-search.js"></script>
+
+
+
+
+    
+<script src="/js/code-copy.js"></script>
+
+
+
+
+    
+<script src="/js/lazyload.js"></script>
+
+
+
+<div class="post-scripts pjax">
+    
+        
+<script src="/js/left-side-toggle.js"></script>
+
+<script src="/js/libs/anime.min.js"></script>
+
+<script src="/js/toc.js"></script>
+
+    
+</div>
+
+
+    
+<script src="/js/libs/pjax.min.js"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const pjax = new Pjax({
+            selectors: [
+                'head title',
+                '.page-container',
+                '.pjax'
+            ],
+            history: true,
+            debug: false,
+            cacheBust: false,
+            timeout: 0,
+            analytics: false,
+            currentUrlFullReload: false,
+            scrollRestoration: false,
+            // scrollTo: true,
+        });
+
+        document.addEventListener('pjax:send', () => {
+            KEEP.utils.pjaxProgressBarStart();
+        });
+
+        document.addEventListener('pjax:complete', () => {
+            KEEP.utils.pjaxProgressBarEnd();
+            pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
+            KEEP.refresh();
+        });
+    });
+</script>
+
+
+
+</body>
+</html>

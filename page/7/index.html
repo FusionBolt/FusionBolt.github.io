@@ -211,6 +211,87 @@
                 
 
                 <h3 class="home-article-title">
+                    <a href="/2022/10/02/Problem/some-work-problem/">
+                        工作踩坑小结
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        前些时间工作中踩到的坑做个简单小总结，第一次搞裸机与交叉编译，本次内容也以此为主。
+编译一开始闹了一个小乌龙，工具链支持到c++17的标准，但是同事之前指定了14的标准，差点就要把filesystem相关的代码全改掉了。但是后来依然编译不过，在需要系...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Oct 02 2022 17:26:12 GMT+0800">2022-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Debug/">Debug</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/10/02/Problem/some-work-problem/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
+                    <a href="/2022/10/02/Problem/nuttx-mm-in-64/">
+                        NuttX mm模块在64位环境下的问题
+                    </a>
+                </h3>
+
+                <div class="home-article-content markdown-body">
+                    
+                        随手记录一下最近折磨了我很久的一个问题。最近在基于某一套裸机工具链做交叉编译并且在某个模拟器上执行代码，模拟器上几乎没法断点，没法用调试器，只能手工加log的方式。加上打log本身非常拖累运行速度，几乎一秒一个字符，所以这个问题来来回回拖了好几天才解...
+                    
+                </div>
+
+                <div class="home-article-meta-info-container">
+    <div class="home-article-meta-info">
+        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Oct 02 2022 16:03:03 GMT+0800">2022-10-02</span></span>
+        
+            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
+                <ul>
+                    
+                        <li>
+                            
+                            <a href="/categories/Debug/">Debug</a>&nbsp;
+                        </li>
+                    
+                    
+                </ul>
+            </span>
+        
+        
+    </div>
+
+    <a href="/2022/10/02/Problem/nuttx-mm-in-64/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
+</div>
+
+            </li>
+        
+            <li class="home-article-item">
+
+                
+
+                <h3 class="home-article-title">
                     <a href="/2022/09/17/Life/TourTheSummerPalace/">
                         游颐和园
                     </a>
@@ -546,93 +627,6 @@ PassManager和AnalysisManag...
     </div>
 
     <a href="/2022/07/03/llvm-pass/llvm-pass-2/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/06/26/llvm-pass/llvm-pass-1/">
-                        LLVM Pass 其一：PassManager
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        
-现身吧，青眼亚白龙！ 把他给我烧的一干二净，毁灭的焦热疾风弹！ 
-
-上一期我们讲到了每个Pass基本的结构，这期我们从PassManager开始讲述Pass从创建到执行的整个流程，以及涉及到的种种问题
-声明include/llvm/IR/PassM...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Jun 26 2022 19:51:06 GMT+0800">2022-06-26</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/06/26/llvm-pass/llvm-pass-1/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
-</div>
-
-            </li>
-        
-            <li class="home-article-item">
-
-                
-
-                <h3 class="home-article-title">
-                    <a href="/2022/06/19/llvm-pass/llvm-pass-0/">
-                        LLVM Pass 其零：新的Pass机制
-                    </a>
-                </h3>
-
-                <div class="home-article-content markdown-body">
-                    
-                        
-以高攻击力著称的传说之龙。任何编程语言和目标平台都能被粉碎，其破坏力不可估量 
-
-在目前的LLVM中存在两套Pass相关的机制，一套是基本上已经过时的被称为LegacyPass的机制（codegen的部分还没有迁移完毕），另一套则是现在主要使用的P...
-                    
-                </div>
-
-                <div class="home-article-meta-info-container">
-    <div class="home-article-meta-info">
-        <span><i class="fas fa-history"></i>&nbsp;<span class="home-article-date" data-date="Sun Jun 19 2022 14:57:30 GMT+0800">2022-06-19</span></span>
-        
-            <span class="home-article-category"><i class="fas fa-folder"></i>&nbsp;
-                <ul>
-                    
-                        <li>
-                            
-                            <a href="/categories/Compiler/">Compiler</a>&nbsp;
-                        </li>
-                    
-                    
-                </ul>
-            </span>
-        
-        
-    </div>
-
-    <a href="/2022/06/19/llvm-pass/llvm-pass-0/">阅读全文&nbsp;<i class="fas fa-angle-right"></i></a>
 </div>
 
             </li>
